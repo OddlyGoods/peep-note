@@ -86,8 +86,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     <span className={`whitespace-nowrap overflow-hidden transition-all duration-200 ${collapsed ? 'max-w-0 opacity-0' : 'max-w-32 opacity-100'}`}>
                       {label}
                     </span>
-                    {count !== undefined && (
-                      <span className={`${collapsed ? 'absolute top-0 right-0 min-w-3.5 px-0.5 text-[9px]' : 'ml-auto min-w-5 px-1.5 text-xs'} rounded-full text-center tabular-nums bg-indigo-500/10 text-indigo-400`}>
+                    {!collapsed && count !== undefined && (
+                      <span className="ml-auto min-w-5 px-1.5 text-xs rounded-full text-center tabular-nums bg-indigo-500/10 text-indigo-400">
                         {count}
                       </span>
                     )}

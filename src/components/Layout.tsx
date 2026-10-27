@@ -35,13 +35,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           }}
         >
           {/* 네비게이션 */}
-          <nav className="flex-1 p-2 space-y-0.5 pt-4">
+          <nav className="flex flex-1 flex-col gap-0.5 p-2 pt-4">
             {nav.map(({ to, icon: Icon, label }) => {
               const active = location.pathname === to
                 || (to === '/' && (location.pathname.startsWith('/log/') || location.pathname.startsWith('/favorites') || location.pathname === '/trash'))
                 || (to === '/search' && location.pathname.startsWith('/search/'))
               return (
-                <div key={to} className="relative group">
+                <div key={to} className={`relative group ${to === '/settings' ? 'mt-auto' : ''}`}>
                   <Link
                     to={to}
                     className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-all ${

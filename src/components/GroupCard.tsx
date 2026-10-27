@@ -104,7 +104,7 @@ export default function GroupCard({ group, onRefresh, startEditing = false, onSt
     setAiLoading(true)
     setAiError(null)
     try {
-      await api.ai.summarize(group.id)
+      await api.ai.summarize(group.id, language)
       onRefresh()
     } catch (e: any) {
       if (e.message === 'NO_API_KEY') {

@@ -99,9 +99,9 @@ export const api = {
   // AI
   ai: {
     keyStatus: () => request<{ has_key: boolean; provider: string }>('/api/ai/key-status'),
-    summarize: (group_id: string) =>
+    summarize: (group_id: string, language?: Settings['language']) =>
       request<{ ok: boolean; summary: string }>('/api/ai/summarize', {
-        method: 'POST', body: JSON.stringify({ group_id })
+        method: 'POST', body: JSON.stringify({ group_id, language })
       })
   },
 

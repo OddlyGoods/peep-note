@@ -113,6 +113,74 @@ test('AI requests forward preset and custom model IDs, using modern OpenAI param
   }
 })
 
+test('AI summary title and prose follow the active language across all providers with saved/default fallbacks', async () => {
+  insert('language-one', { title: 'RAG pipeline', content: 'Retrieve relevant chunks. Keep `source_id` and https://example.com/docs unchanged.' })
+  insert('language-two', { title: '원문 메모', content: '문서를 나누고 검색합니다.' })
+  const group = await json('/api/groups', 'POST', { name: 'Language test', log_ids: ['language-one', 'language-two'] })
+  const originalFetch = globalThis.fetch
+  const languages = {
+    en: { name: 'English', title: 'RAG notes', summary: '## Overview\nRetrieve relevant chunks.' },
+    ko: { name: 'Korean', title: 'RAG 메모', summary: '## 개요\n관련 청크를 검색합니다.' },
+    ja: { name: 'Japanese', title: 'RAGメモ', summary: '## 概要\n関連するチャンクを検索します。' },
+    zh: { name: 'Simplified Chinese', title: 'RAG 笔记', summary: '## 概述\n检索相关片段。' }
+  } as const
+  let expectedLanguage: keyof typeof languages = 'en'
+  let omitTitle = false
+  let calls = 0
+  try {
+    for (const provider of Object.keys(AI_MODELS) as AiProvider[]) {
+      globalThis.fetch = async (_url, options) => {
+        calls++
+        const body = JSON.parse(String(options?.body))
+        const prompt = provider === 'gemini' ? body.system_instruction.parts[0].text
+          : provider === 'anthropic' ? body.system : body.messages[0].content
+        const parts = provider === 'gemini' ? body.contents[0].parts
+          : provider === 'anthropic' ? body.messages[0].content : body.messages[1].content
+        assert.ok(prompt.includes(`in ${languages[expectedLanguage].name} (${expectedLanguage}), regardless of the language of the source records`))
+        assert.ok(prompt.includes('Keep code, commands, URLs, identifiers, and exact quotations in their original form'))
+        assert.ok(prompt.includes('Keep the JSON keys unchanged'))
+        assert.ok(parts[0].text.includes('RAG pipeline'))
+        assert.ok(parts[0].text.includes('원문 메모'))
+        assert.ok(parts[0].text.includes('https://example.com/docs'))
+        assert.ok(!parts[0].text.includes('다음 기록들을 정리해줘'))
+        const { title, summary } = languages[expectedLanguage]
+        const content = JSON.stringify(omitTitle ? { summary } : { title, summary })
+        return Response.json(provider === 'anthropic' ? { content: [{ type: 'text', text: content }] }
+          : provider === 'gemini' ? { candidates: [{ content: { parts: [{ text: content }] } }] }
+            : { choices: [{ message: { content } }] })
+      }
+      for (const language of Object.keys(languages) as Array<keyof typeof languages>) {
+        expectedLanguage = language
+        await json('/api/settings', 'PUT', {
+          ai_provider: provider, ai_model: DEFAULT_AI_MODELS[provider],
+          [`${provider}_api_key`]: 'test-only-placeholder', language: language === 'en' ? 'ko' : 'en'
+        })
+        const result = await json('/api/ai/summarize', 'POST', { group_id: group.id, language })
+        assert.equal(result.title, languages[language].title)
+        assert.equal(result.summary, languages[language].summary)
+        const saved = queryOne<any>("SELECT title, content FROM logs WHERE group_id = ? AND log_type = 'summary'", [group.id])
+        assert.equal(saved.title, languages[language].title)
+        assert.equal(saved.content, languages[language].summary)
+      }
+      await json('/api/settings', 'PUT', { language: 'ja' })
+      expectedLanguage = 'ja'
+      await json('/api/ai/summarize', 'POST', { group_id: group.id })
+      await json('/api/ai/summarize', 'POST', { group_id: group.id, language: 'unsupported' })
+      run("UPDATE settings SET language = 'unsupported' WHERE user_id = 'local'")
+      expectedLanguage = 'en'
+      omitTitle = true
+      assert.equal((await json('/api/ai/summarize', 'POST', { group_id: group.id })).title, 'Summary')
+      omitTitle = false
+    }
+    assert.equal(calls, 28)
+  } finally {
+    globalThis.fetch = originalFetch
+    run("DELETE FROM settings WHERE user_id = 'local'")
+    run('DELETE FROM logs WHERE group_id = ?', [group.id])
+    run('DELETE FROM log_groups WHERE id = ?', [group.id])
+  }
+})
+
 test('AI summaries recover structured content from complete and token-truncated JSON', () => {
   const complete = parseAiSummaryResult('```json\n{"title":"운영 현황","summary":"## 개요\\n\\n- 계정 10명"}\n```')
   assert.deepEqual(complete, {

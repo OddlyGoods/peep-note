@@ -150,3 +150,17 @@ test('an older dashboard response cannot overwrite the latest navigation result'
     assert.equal(useLogStore.getState().logs[0].id, 'current-record')
   } finally { api.logs.list = list }
 })
+
+test('renderer includes the current UI language in AI summary requests', async () => {
+  const originalFetch = globalThis.fetch
+  const requests: unknown[] = []
+  globalThis.fetch = async (url, options) => {
+    assert.equal(String(url), 'http://127.0.0.1:3848/api/ai/summarize')
+    requests.push(JSON.parse(String(options?.body)))
+    return Response.json({ ok: true, title: 'Title', summary: 'Summary' })
+  }
+  try {
+    for (const language of ['en', 'ko', 'ja', 'zh'] as const) await api.ai.summarize('selected-group', language)
+    assert.deepEqual(requests, ['en', 'ko', 'ja', 'zh'].map(language => ({ group_id: 'selected-group', language })))
+  } finally { globalThis.fetch = originalFetch }
+})

@@ -42,7 +42,7 @@ PeepNote opens directly to the main screen. There are no app accounts, login for
 
 The optional `VITE_LOCAL_SERVER_PORT` setting in `.env.example` defaults to `3848`, separate from the original PeepNote app. It is read at build time. The API listens only on `127.0.0.1` and rejects unrelated browser origins and hosts. No API key is bundled: enter your own provider key in Settings only if you use AI summaries.
 
-The app uses its own `open-peep-note` data directory and package identity. Original PeepNote account data is not copied or imported automatically.
+The package and Linux executable are named `peep-note`. The app keeps its existing `open-peep-note` data directory and internal application ID so installed copies continue to read the same notes and settings after updates. Original PeepNote account data is not copied or imported automatically.
 
 ## Features
 
@@ -111,7 +111,7 @@ To produce an unpacked build for a quick smoke test:
 
 ```bash
 npm run build:linux:dir
-./release/linux-unpacked/open-peep-note
+./release/linux-unpacked/peep-note
 ```
 
 To update an existing PeepNote installation manually, install a newer `.deb` with the same command. Existing local records and settings are preserved.
@@ -231,7 +231,7 @@ Linux:   ~/.config/open-peep-note
 Windows: %APPDATA%/open-peep-note
 ```
 
-This contains the local database, screenshots, recordings, and application settings. Back up this directory before reinstalling the operating system or moving to another computer.
+The legacy directory name is retained for compatibility. It contains the local database, screenshots, recordings, and application settings. Back up this directory before reinstalling the operating system or moving to another computer.
 
 ## License
 

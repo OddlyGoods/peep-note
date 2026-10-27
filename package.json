@@ -1,5 +1,5 @@
 {
-  "name": "open-peep-note",
+  "name": "peep-note",
   "version": "1.0.15",
   "description": "Desktop capture and activity log for notes, screenshots, and recordings",
   "author": {
@@ -95,6 +95,10 @@
     "deb": {
       "recommends": [
         "pkexec"
+      ],
+      "fpm": [
+        "--replaces=open-peep-note",
+        "--conflicts=open-peep-note"
       ]
     },
     "mac": {
@@ -113,7 +117,7 @@
       ],
       "icon": "resources/icons",
       "category": "Utility",
-      "executableName": "open-peep-note",
+      "executableName": "peep-note",
       "artifactName": "PeepNote-${version}-linux-${arch}.${ext}",
       "desktop": {
         "Name": "PeepNote",

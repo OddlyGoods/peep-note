@@ -8,6 +8,7 @@ type SavedRange = { dateFrom: string; dateTo: string }
 const storageKey = 'openpeepnote_dashboard_date_range'
 const today = () => format(new Date(), 'yyyy-MM-dd')
 const defaultRange = (): SavedRange => ({ dateFrom: format(subDays(new Date(), 6), 'yyyy-MM-dd'), dateTo: today() })
+let logsRequest = 0
 
 function initialRange(): SavedRange {
   try {
@@ -33,6 +34,8 @@ interface LogState {
   loading: boolean
   activeDates: string[]
   recentlyCreatedIds: string[]
+  revealTarget: { id: string; workspaceId: string | null } | null
+  revealLog: (log: Log, workspaceId: string | null) => void
   fetchLogs: () => Promise<void>
   fetchActiveDates: () => Promise<void>
   markRecentlyCreated: (id: string) => void
@@ -64,27 +67,50 @@ export const useLogStore = create<LogState>((set, get) => ({
   loading: false,
   activeDates: [],
   recentlyCreatedIds: [],
+  revealTarget: null,
+
+  revealLog: (log, workspaceId) => {
+    ++logsRequest
+    const date = format(new Date(log.created_at * 1000), 'yyyy-MM-dd')
+    const groupDate = log.group_created_at != null ? format(new Date(log.group_created_at * 1000), 'yyyy-MM-dd') : date
+    const range = { dateFrom: [get().dateFrom, date, groupDate].sort()[0], dateTo: [get().dateTo, date, groupDate].sort()[2] }
+    saveRange(range)
+    set({ ...range, followToday: range.dateTo === today(), filterType: '', searchQuery: '', logs: [], loading: true, revealTarget: { id: log.id, workspaceId } })
+  },
 
   fetchLogs: async () => {
+    const request = ++logsRequest
     const hasData = get().logs.length > 0
     if (!hasData) set({ loading: true })
     try {
-      const { dateFrom, dateTo, filterType, searchQuery } = get()
+      const { dateFrom, dateTo, filterType, searchQuery, revealTarget } = get()
       const { useWorkspaceStore } = await import('./workspaceStore')
       const selectedWorkspaceId = useWorkspaceStore.getState().selectedId
-      const logs = await api.logs.list({
+      const params = {
         date_from: dateFrom,
         date_to: dateTo,
         type: filterType || undefined,
         search: searchQuery || undefined,
         workspace_id: selectedWorkspaceId || undefined,
         limit: 500
-      })
+      }
+      const logs = await api.logs.list(params)
+      if (request !== logsRequest) return
+      if (revealTarget?.workspaceId === selectedWorkspaceId) {
+        let page = 1
+        let count = logs.length
+        while (!logs.some(log => log.id === revealTarget.id) && count === 500) {
+          const rows = await api.logs.list({ ...params, page: ++page })
+          if (request !== logsRequest) return
+          count = rows.length
+          logs.push(...rows)
+        }
+      }
       set({ logs })
     } catch (e) {
       console.error(e)
     } finally {
-      set({ loading: false })
+      if (request === logsRequest) set({ loading: false })
     }
   },
 
@@ -150,7 +176,7 @@ export const useLogStore = create<LogState>((set, get) => ({
     if (dateFrom > dateTo) return
     const range = { dateFrom, dateTo }
     saveRange(range)
-    set({ ...range, followToday: dateTo === today() })
+    set({ ...range, followToday: dateTo === today(), revealTarget: null })
     get().fetchLogs()
   },
 
@@ -162,12 +188,14 @@ export const useLogStore = create<LogState>((set, get) => ({
   },
 
   setFilterType: (type) => {
-    set({ filterType: type })
+    if (type === get().filterType) return
+    set({ filterType: type, revealTarget: null })
     get().fetchLogs()
   },
 
   setSearchQuery: (q) => {
-    set({ searchQuery: q })
+    if (q === get().searchQuery) return
+    set({ searchQuery: q, revealTarget: null })
     get().fetchLogs()
   },
 

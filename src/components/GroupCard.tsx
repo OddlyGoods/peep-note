@@ -26,9 +26,10 @@ interface Props {
   onCheck?: (checked: boolean) => void
   isDeleting?: boolean
   isCollapsing?: boolean
+  revealLogId?: string
 }
 
-export default function GroupCard({ group, onRefresh, startEditing = false, onStartEditingHandled, showCheckbox = false, checked = false, onCheck, isDeleting = false, isCollapsing = false }: Props) {
+export default function GroupCard({ group, onRefresh, startEditing = false, onStartEditingHandled, showCheckbox = false, checked = false, onCheck, isDeleting = false, isCollapsing = false, revealLogId }: Props) {
   const { t, language } = useI18n()
   const [expanded, setExpanded] = useState(() => savedGroupViewState(group.id).expanded)
   const [editing, setEditing] = useState(false)
@@ -132,10 +133,19 @@ export default function GroupCard({ group, onRefresh, startEditing = false, onSt
   const summaryLog = group.logs.find(l => l.log_type === 'summary')
   const recordCount = (count: number) => language === 'en' ? `${count} ${t('records')}` : language === 'ko' ? `${count}개` : `${count}${t('records')}`
   const [logsExpanded, setLogsExpanded] = useState(() => savedGroupViewState(group.id).logsExpanded)
+  const [revealedInGroup, setRevealedInGroup] = useState(false)
+
+  useEffect(() => {
+    if (!revealLogId || !group.logs.some(log => log.id === revealLogId)) return
+    setExpanded(true)
+    setLogsExpanded(true)
+    setRevealedInGroup(true)
+    rememberGroupViewState(group.id, { expanded: true, logsExpanded: true })
+  }, [revealLogId, group.logs, group.id])
 
   return (
     <div className={`group relative overflow-hidden rounded-xl border-2 bg-violet-500/5 transition-all duration-300 ease-in-out ${
-      collapsingVisual ? 'max-h-0 opacity-0 scale-[0.98] border-transparent' : 'max-h-[5000px]'
+      collapsingVisual ? 'max-h-0 opacity-0 scale-[0.98] border-transparent' : revealedInGroup ? 'max-h-none' : 'max-h-[5000px]'
     } ${deletingVisual ? 'pointer-events-none opacity-45' : ''} ${checked ? 'border-violet-400/70 ring-1 ring-violet-400/25' : 'border-violet-500/30'}`}>
       {/* 그룹 헤더 */}
       <div

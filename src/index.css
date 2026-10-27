@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+.log-card[data-revealed='true'] {
+  outline: 2px solid rgb(139 92 246);
+  outline-offset: 2px;
+  box-shadow: 0 0 20px rgb(139 92 246 / 0.2);
+}
+
 html[data-theme='light'] .favorite-button[aria-pressed='true'] {
   color: #92400e !important;
   background: #fef3c7;

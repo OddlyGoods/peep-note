@@ -17,6 +17,7 @@ export default function Dashboard() {
   const { language, t } = useI18n()
   const location = useLocation()
   const navigate = useNavigate()
+  const revealLogId = typeof location.state?.revealLogId === 'string' ? location.state.revealLogId as string : undefined
   const {
     logs, loading, dateFrom, dateTo, filterType, searchQuery, fetchLogs, fetchActiveDates, deleteLogs, setSearchQuery
   } = useLogStore()
@@ -217,6 +218,7 @@ export default function Dashboard() {
 
   // 스크롤 위치 복원 — 첫 fetch 완료 후 복원
   useEffect(() => {
+    if (revealLogId) return
     if (loading || groupLoading) {
       didFetch.current = true
       return
@@ -232,7 +234,43 @@ export default function Dashboard() {
         }
       })
     })
-  }, [loading, groupLoading])
+  }, [loading, groupLoading, revealLogId])
+
+  useEffect(() => {
+    const container = scrollRef.current
+    if (!revealLogId || !container || loading || groupLoading) return
+    let frame = 0
+    let timer: ReturnType<typeof setTimeout> | undefined
+    let revealed: HTMLElement | undefined
+    const reveal = () => {
+      const target = Array.from(container.querySelectorAll<HTMLElement>('[data-log-id]')).find(element => element.dataset.logId === revealLogId)
+      if (!target) return
+      observer.disconnect()
+      frame = requestAnimationFrame(() => {
+        const rect = target.getBoundingClientRect()
+        // Leave enough room below the last card to center it without a later jump.
+        const padding = parseFloat(getComputedStyle(container).paddingBottom) || 0
+        container.style.paddingBottom = `${Math.max(padding, (container.clientHeight - rect.height) / 2)}px`
+        container.scrollTo({ top: Math.max(0, container.scrollTop + rect.top - container.getBoundingClientRect().top - (container.clientHeight - rect.height) / 2), behavior: 'auto' })
+        target.dataset.revealed = 'true'
+        revealed = target
+        timer = setTimeout(() => {
+          delete target.dataset.revealed
+          const { revealLogId: _handled, ...rest } = location.state ?? {}
+          navigate(location.pathname, { replace: true, state: rest })
+        }, 2500)
+      })
+    }
+    const observer = new MutationObserver(reveal)
+    observer.observe(container, { childList: true, subtree: true })
+    reveal()
+    return () => {
+      observer.disconnect()
+      cancelAnimationFrame(frame)
+      clearTimeout(timer)
+      if (revealed) delete revealed.dataset.revealed
+    }
+  }, [revealLogId, loading, groupLoading, logs, groups, location.pathname, location.state, navigate])
 
   const pinnedLogs = logs.filter(l => l.pinned && !groupedLogIds.has(l.id))
   const normalLogs = logs.filter(l => !l.pinned && !groupedLogIds.has(l.id))
@@ -472,6 +510,7 @@ export default function Dashboard() {
                   <GroupCard
                     key={item.group.id}
                     group={item.group}
+                    revealLogId={revealLogId}
                     onRefresh={refresh}
                     startEditing={item.group.id === groupToRenameId}
                     onStartEditingHandled={() => setGroupToRenameId(current => current === item.group.id ? null : current)}

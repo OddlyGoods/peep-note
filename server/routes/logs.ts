@@ -13,7 +13,7 @@ logs.get('/', async (c) => {
   const userId = LOCAL_PROFILE_ID
 
   const { date, date_from, date_to, type, search, workspace_id, page = '1', limit = '50', sort, favorite } = c.req.query()
-  let sql = 'SELECT logs.*, (SELECT COUNT(*) FROM comments WHERE comments.log_id = logs.id) AS comment_count FROM logs WHERE deleted_at IS NULL AND user_id = ?'
+  let sql = 'SELECT logs.*, (SELECT COUNT(*) FROM comments WHERE comments.log_id = logs.id) AS comment_count, (SELECT created_at FROM log_groups WHERE log_groups.id = logs.group_id) AS group_created_at FROM logs WHERE deleted_at IS NULL AND user_id = ?'
   const params: unknown[] = [userId]
 
   if (favorite === 'true') {

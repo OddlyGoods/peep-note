@@ -5,6 +5,7 @@ export type Language = 'en' | 'ko' | 'ja' | 'zh'
 
 const messages = {
   en: {
+    showInDashboard: 'Show in dashboard',
     customAiModel: 'Enter manually', customAiModelId: 'Model ID', customAiModelHint: 'Enter the exact model ID provided by your AI provider.', customAiModelRequired: 'Enter a model ID before saving.',
     ...updateMessages.en,
     trashRetention: 'Trash retention',
@@ -59,6 +60,7 @@ const messages = {
     keyStorage: 'Used for AI group summaries. Keys are saved in the local database.', content: 'Content', title: 'Title', attachments: 'Attachments', includedRecords: 'Grouped records ({count})', noTags: 'No tags', noTagsInRange: 'No tags in this date range', preview: 'Preview', viewSource: 'View source', enlarge: 'Enlarge', copy: 'Copy', copied: 'Copied', deleteRecordMessage: 'Delete this log? Deleted items cannot be recovered.', dateRange: 'Date range', reset: 'Reset', startDate: 'Start date', endDate: 'End date', days3: '3 days', week1: '1 week', month1: '1 month', searchPlaceholder: 'Search title, content, or filename...', enterSearch: 'Enter a search term', noSearchResults: 'No search results', results: '{count} results', apiKey: '{provider} API Key', qwenEndpoint: 'Qwen API endpoint', qwenEndpointHint: 'Use your Alibaba Model Studio region or workspace endpoint.', backToTop: 'Back to top', comments: 'Comments', commentPlaceholder: 'Add a comment...', addComment: 'Add comment',
   },
   ko: {
+    showInDashboard: '대시보드에서 보기',
     customAiModel: '직접 입력', customAiModelId: '모델 ID', customAiModelHint: 'AI 공급처에서 제공하는 정확한 모델 ID를 입력하세요.', customAiModelRequired: '저장하려면 모델 ID를 입력하세요.',
     ...updateMessages.ko,
     trashRetention: '휴지통 보관기간',
@@ -113,6 +115,7 @@ const messages = {
     keyStorage: '그룹 AI 정리 기능에 사용됩니다. 키는 로컬 DB에 저장됩니다.', content: '내용', title: '제목', attachments: '첨부 이미지', includedRecords: '함께 그룹된 목록 ({count})', noTags: '태그 없음', noTagsInRange: '현재 조회 기간에 태그가 없습니다', preview: '미리보기', viewSource: '소스 보기', enlarge: '크게 보기', copy: '복사', copied: '복사됨', deleteRecordMessage: '이 로그를 삭제하시겠습니까? 삭제된 항목은 복구할 수 없습니다.', dateRange: '날짜 범위', reset: '초기화', startDate: '시작일', endDate: '종료일', days3: '3일', week1: '1주일', month1: '1개월', searchPlaceholder: '제목, 내용 또는 파일명으로 검색...', enterSearch: '검색어를 입력하세요', noSearchResults: '검색 결과가 없습니다', results: '{count}개의 결과', apiKey: '{provider} API 키', qwenEndpoint: 'Qwen API 엔드포인트', qwenEndpointHint: 'Alibaba Model Studio의 지역 또는 워크스페이스 엔드포인트를 입력하세요.', backToTop: '맨 위로', comments: '댓글', commentPlaceholder: '댓글을 입력하세요...', addComment: '댓글 추가',
   },
   ja: {
+    showInDashboard: 'ダッシュボードで表示',
     customAiModel: '直接入力', customAiModelId: 'モデルID', customAiModelHint: 'AIプロバイダーが指定する正確なモデルIDを入力してください。', customAiModelRequired: '保存するにはモデルIDを入力してください。',
     ...updateMessages.ja,
     trashRetention: 'ゴミ箱の保存期間',
@@ -167,6 +170,7 @@ const messages = {
     keyStorage: 'グループAI要約に使用します。キーはローカルデータベースに保存されます。', content: '内容', title: 'タイトル', attachments: '添付画像', includedRecords: '同じグループの記録（{count}）', noTags: 'タグなし', noTagsInRange: '現在の期間にタグはありません', preview: 'プレビュー', viewSource: 'ソースを表示', enlarge: '拡大', copy: 'コピー', copied: 'コピーしました', deleteRecordMessage: 'この記録を削除しますか？削除した項目は復元できません。', dateRange: '日付範囲', reset: 'リセット', startDate: '開始日', endDate: '終了日', days3: '3日', week1: '1週間', month1: '1か月', searchPlaceholder: 'タイトル、内容、ファイル名を検索...', enterSearch: '検索語を入力してください', noSearchResults: '検索結果がありません', results: '{count}件の結果', apiKey: '{provider} APIキー', qwenEndpoint: 'Qwen APIエンドポイント', qwenEndpointHint: 'Alibaba Model Studioのリージョンまたはワークスペースのエンドポイントを入力してください。', backToTop: '一番上へ', comments: 'コメント', commentPlaceholder: 'コメントを入力...', addComment: 'コメントを追加',
   },
   zh: {
+    showInDashboard: '在仪表板中查看',
     customAiModel: '手动输入', customAiModelId: '模型 ID', customAiModelHint: '请输入 AI 提供商指定的准确模型 ID。', customAiModelRequired: '请先输入模型 ID 再保存。',
     ...updateMessages.zh,
     trashRetention: '回收站保留时间',

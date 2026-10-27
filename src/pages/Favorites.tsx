@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { FolderOpen, Search, Star } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { api, type Log } from '../lib/api'
 import { useLogStore } from '../stores/logStore'
 import { useWorkspaceStore } from '../stores/workspaceStore'
@@ -10,6 +11,7 @@ const PAGE_SIZE = 50
 
 export default function Favorites() {
   const { t } = useI18n()
+  const navigate = useNavigate()
   const logs = useLogStore(state => state.logs)
   const workspaces = useWorkspaceStore(state => state.workspaces)
   const fetchWorkspaces = useWorkspaceStore(state => state.fetchWorkspaces)
@@ -24,6 +26,14 @@ export default function Favorites() {
   const requestRef = useRef(0)
   const pageRef = useRef(1)
   const loadingMoreRef = useRef(false)
+
+  const showInDashboard = (log: Log) => {
+    const workspaceId = log.workspace_id ?? workspaces.find(workspace => workspace.is_default)?.id ?? null
+    useWorkspaceStore.getState().setSelectedId(workspaceId)
+    useLogStore.getState().revealLog(log, workspaceId)
+    sessionStorage.removeItem('dashboard_scroll')
+    navigate('/', { state: { revealLogId: log.id } })
+  }
 
   useEffect(() => {
     void fetchWorkspaces()
@@ -96,7 +106,7 @@ export default function Favorites() {
             const workspace = workspaces.find(ws => log.workspace_id ? ws.id === log.workspace_id : ws.is_default)
             return <div key={log.id}>
               <div className="flex items-center gap-1 text-xs text-gray-400 mb-1 px-1"><FolderOpen className="w-3 h-3 shrink-0" /><span className="truncate">{workspace?.is_default ? t('defaultWorkspace') : (workspace?.name || t('defaultWorkspace'))}</span></div>
-              <LogCard log={log} basePath="/favorites/log" onMoved={updated => setItems(previous => previous.map(item => item.id === updated.id ? updated : item))} />
+              <LogCard log={log} basePath="/favorites/log" onReveal={() => showInDashboard(log)} />
             </div>
           })}
           {hasMore && <button className="btn-secondary w-full disabled:opacity-40" disabled={loadingMore} onClick={loadMore}>{t(loadingMore ? 'loading' : 'loadMore')}</button>}

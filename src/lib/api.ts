@@ -169,6 +169,7 @@ export interface Log {
   is_secret: boolean
   workspace_id: string | null
   group_id: string | null
+  group_created_at?: number | null
   created_at: number
   updated_at: number
   comment_count?: number

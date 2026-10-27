@@ -36,6 +36,8 @@ test('notes, workspaces, comments and settings work immediately without a login'
   const second = await json('/api/logs', 'POST', { title: 'Second record', workspace_id: workspace.id })
   const group = await json('/api/groups', 'POST', { name: 'Local group', log_ids: [first.id, second.id], workspace_id: workspace.id })
   assert.equal(group.logs.length, 2)
+  const groupedRows = await json('/api/logs')
+  assert.equal(groupedRows.find((item: any) => item.id === first.id).group_created_at, group.created_at)
   const comment = await json(`/api/logs/${first.id}/comments`, 'POST', { content: 'No account needed' })
   assert.equal(comment.user_id, LOCAL_PROFILE_ID)
   await json('/api/settings', 'PUT', { language: 'ko', trash_retention_days: 30 })
@@ -93,4 +95,58 @@ test('renderer requests only the local API and never reads or sends account toke
     await api.workspaces.list()
     assert.equal(requests, 2)
   } finally { globalThis.fetch = originalFetch }
+})
+
+test('revealing a favorite includes its group date, clears filters and loads pages through its position', async () => {
+  const values = new Map<string, string>()
+  const previousStorage = (globalThis as any).localStorage
+  ;(globalThis as any).localStorage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => values.set(key, value) }
+  const { useLogStore } = await import('../src/stores/logStore')
+  const { useWorkspaceStore } = await import('../src/stores/workspaceStore')
+  const list = api.logs.list
+  const target = { id: 'favorite-target', created_at: new Date('2020-02-02T12:00:00').getTime() / 1000, group_created_at: new Date('2019-01-02T12:00:00').getTime() / 1000, workspace_id: 'research' } as any
+  try {
+    useWorkspaceStore.setState({ selectedId: 'research' })
+    useLogStore.setState({ dateFrom: '2026-10-01', dateTo: '2026-10-27', filterType: 'video', searchQuery: 'hidden by search' })
+    useLogStore.getState().revealLog(target, 'research')
+    const prepared = useLogStore.getState()
+    assert.equal(prepared.dateFrom, '2019-01-02')
+    assert.equal(prepared.dateTo, '2026-10-27')
+    assert.equal(prepared.filterType, '')
+    assert.equal(prepared.searchQuery, '')
+    assert.deepEqual(JSON.parse(values.get('openpeepnote_dashboard_date_range')!), { dateFrom: '2019-01-02', dateTo: '2026-10-27' })
+    const pages: number[] = []
+    api.logs.list = async params => {
+      assert.equal(params?.workspace_id, 'research')
+      assert.equal(params?.search, undefined)
+      pages.push(params?.page ?? 1)
+      return params?.page === 2 ? [target] : Array.from({ length: 500 }, (_, index) => ({ ...target, id: `newer-${index}` }))
+    }
+    await useLogStore.getState().fetchLogs()
+    assert.deepEqual(pages, [1, 2])
+    assert.equal(useLogStore.getState().logs.at(-1)?.id, target.id)
+    assert.equal(useLogStore.getState().loading, false)
+  } finally {
+    api.logs.list = list
+    ;(globalThis as any).localStorage = previousStorage
+  }
+})
+
+test('an older dashboard response cannot overwrite the latest navigation result', async () => {
+  const { useLogStore } = await import('../src/stores/logStore')
+  const list = api.logs.list
+  const responses: Array<(value: any[]) => void> = []
+  try {
+    useLogStore.setState({ revealTarget: null, logs: [] })
+    api.logs.list = () => new Promise(resolve => responses.push(resolve))
+    const oldRequest = useLogStore.getState().fetchLogs()
+    await new Promise(resolve => setImmediate(resolve))
+    const newRequest = useLogStore.getState().fetchLogs()
+    await new Promise(resolve => setImmediate(resolve))
+    responses[1]([{ id: 'current-record' }])
+    await newRequest
+    responses[0]([{ id: 'outdated-record' }])
+    await oldRequest
+    assert.equal(useLogStore.getState().logs[0].id, 'current-record')
+  } finally { api.logs.list = list }
 })

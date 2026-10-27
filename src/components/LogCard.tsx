@@ -4,7 +4,7 @@ import { format, isToday } from 'date-fns'
 import { ko, ja, zhCN } from 'date-fns/locale'
 import {
   Image as ImageIcon, Video, FileText, Code2, Globe, Hash,
-  Pin, Trash2, ChevronRight, Clock, Check, Sparkles, Loader2, Lock, MessageCircle, File as FileIcon
+  Pin, Trash2, ChevronRight, Clock, Check, Sparkles, Loader2, Lock, MessageCircle, LocateFixed, File as FileIcon
 } from 'lucide-react'
 import { Log } from '../lib/api'
 import { useLogStore } from '../stores/logStore'
@@ -38,6 +38,7 @@ interface LogCardProps {
   isDeleting?: boolean
   isCollapsing?: boolean
   onMoved?: (log: Log) => void
+  onReveal?: () => void
 }
 
 function NoteExcerpt({ content, code, maxLines = 3 }: { content: string; code: boolean; maxLines?: number }) {
@@ -119,7 +120,7 @@ function MediaThumbnail({ log }: { log: Log }) {
   )
 }
 
-export default function LogCard({ log, basePath = '/log', showCheckbox = false, checked = false, onCheck, onCardClick, inGroup = false, isDeleting = false, isCollapsing = false, onMoved }: LogCardProps) {
+export default function LogCard({ log, basePath = '/log', showCheckbox = false, checked = false, onCheck, onCardClick, inGroup = false, isDeleting = false, isCollapsing = false, onMoved, onReveal }: LogCardProps) {
   const { language, t } = useI18n()
   const openLog = useOpenLog()
   const { deleteLog, updateLog, recentlyCreatedIds } = useLogStore()
@@ -166,6 +167,7 @@ export default function LogCard({ log, basePath = '/log', showCheckbox = false, 
 
   return (
     <div
+      data-log-id={log.id}
       onClick={() => {
         if (showCheckbox) { onCheck?.(!checked); return }
         if (onCardClick) { onCardClick(); return }
@@ -259,7 +261,13 @@ export default function LogCard({ log, basePath = '/log', showCheckbox = false, 
         {/* 액션 버튼 */}
         <div className={`flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity ${log.is_secret ? '-mt-0.5' : ''}`}>
           <FavoriteButton log={log} />
-          {!showCheckbox && <WorkspaceMoveButton log={log} onMoved={onMoved} />}
+          {!showCheckbox && (onReveal ? (
+            <button type="button" title={t('showInDashboard')} aria-label={t('showInDashboard')}
+              onClick={event => { event.stopPropagation(); onReveal() }}
+              className="p-1.5 rounded-lg text-gray-400 hover:text-violet-400 hover:bg-violet-500/10 transition-colors">
+              <LocateFixed className="w-3.5 h-3.5" />
+            </button>
+          ) : <WorkspaceMoveButton log={log} onMoved={onMoved} />)}
           {!inGroup && (
               <button
                 onClick={handlePin}

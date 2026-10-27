@@ -3,6 +3,7 @@ import { queryOne, queryAll, run, generateId } from '../db'
 import { LOCAL_PROFILE_ID } from '../localProfile'
 import fs from 'fs'
 import { parseAiSummaryResult } from '../../shared/aiSummary'
+import { DEFAULT_AI_MODELS, type AiProvider } from '../../shared/aiModels'
 
 const ai = new Hono()
 const MAX_SUMMARY_TOKENS = 3000
@@ -11,6 +12,7 @@ const SYSTEM_PROMPT = '당신은 업무 기록을 읽기 쉽게 정리하는 AI 
 
 
 async function callOpenAI(apiKey: string, logsText: string, images: string[], model: string): Promise<string> {
+  const reasoningModel = /^(gpt-[56](?:[.-]|$)|o[134](?:-|$))/.test(model)
   const userContent: any[] = [
     { type: 'text', text: `다음 기록들을 정리해줘:\n\n${logsText}` },
     ...images.map(b64 => ({ type: 'image_url', image_url: { url: `data:image/png;base64,${b64}`, detail: 'low' } }))
@@ -21,7 +23,10 @@ async function callOpenAI(apiKey: string, logsText: string, images: string[], mo
     body: JSON.stringify({
       model,
       messages: [{ role: 'system', content: SYSTEM_PROMPT }, { role: 'user', content: userContent }],
-      max_tokens: MAX_SUMMARY_TOKENS, temperature: 0.5, response_format: { type: 'json_object' }
+      ...(reasoningModel
+        ? { max_completion_tokens: MAX_SUMMARY_TOKENS, reasoning_effort: 'low' }
+        : { max_tokens: MAX_SUMMARY_TOKENS, temperature: 0.5 }),
+      response_format: { type: 'json_object' }
     })
   })
   if (!res.ok) { const e = await res.json() as any; throw new Error(e.error?.message ?? 'OpenAI 오류') }
@@ -71,7 +76,7 @@ async function callAnthropic(apiKey: string, logsText: string, images: string[],
   })
   if (!res.ok) { const e = await res.json() as any; throw new Error(e.error?.message ?? 'Anthropic 오류') }
   const data = await res.json() as any
-  return data.content?.[0]?.text ?? '{}'
+  return data.content?.filter((part: any) => part.type === 'text').map((part: any) => part.text).join('') || '{}'
 }
 
 async function callGemini(apiKey: string, logsText: string, images: string[], model: string): Promise<string> {
@@ -93,7 +98,7 @@ async function callGemini(apiKey: string, logsText: string, images: string[], mo
   )
   if (!res.ok) { const e = await res.json() as any; throw new Error(e.error?.message ?? 'Gemini 오류') }
   const data = await res.json() as any
-  return data.candidates?.[0]?.content?.parts?.[0]?.text ?? '{}'
+  return data.candidates?.[0]?.content?.parts?.filter((part: any) => !part.thought && typeof part.text === 'string').map((part: any) => part.text).join('') || '{}'
 }
 
 // POST /api/ai/summarize  { group_id }
@@ -115,12 +120,7 @@ ai.post('/summarize', async (c) => {
     provider === 'qwen'      ? settings?.qwen_api_key :
     settings?.openai_api_key
   if (!apiKey) return c.json({ error: 'NO_API_KEY' }, 400)
-  const model = settings?.ai_model || (
-    provider === 'anthropic' ? 'claude-haiku-4-5-20251001' :
-    provider === 'gemini' ? 'gemini-2.0-flash' :
-    provider === 'qwen' ? 'qwen3.7-plus' :
-    'gpt-4o-mini'
-  )
+  const model = settings?.ai_model || DEFAULT_AI_MODELS[provider as AiProvider] || DEFAULT_AI_MODELS.openai
 
   // 그룹 확인
   const group = queryOne<any>('SELECT * FROM log_groups WHERE id = ? AND user_id = ?', [group_id, userId])

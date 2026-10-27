@@ -6,6 +6,7 @@ import { useLogStore } from '../stores/logStore'
 import SecretPasswordModal from '../components/SecretPasswordModal'
 import UpdatePanel from '../components/UpdatePanel'
 import { DEFAULT_TRASH_RETENTION_DAYS, TRASH_RETENTION_OPTIONS, normalizeTrashRetentionDays } from '../../shared/trashRetention'
+import { AI_MODELS, DEFAULT_AI_MODELS, getAiModelSelection, type AiProvider } from '../../shared/aiModels'
 
 const DEFAULT_HOTKEYS = {
   openMain: 'Alt+`',
@@ -16,30 +17,6 @@ const DEFAULT_HOTKEYS = {
   quickSwitch: 'Alt+Q',
   quickSwitchPrevious: 'Alt+E'
 }
-
-const AI_MODELS = {
-  openai: [
-    { value: 'gpt-4o-mini', label: 'GPT-4o mini' },
-    { value: 'gpt-5-mini', label: 'GPT-5 mini' },
-    { value: 'gpt-5.1-codex', label: 'GPT-5.1 Codex' }
-  ],
-  anthropic: [
-    { value: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5' },
-    { value: 'claude-sonnet-4-5-20250929', label: 'Claude Sonnet 4.5' }
-  ],
-  gemini: [
-    { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
-    { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
-    { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' }
-  ],
-  qwen: [
-    { value: 'qwen3.7-plus', label: 'Qwen 3.7 Plus' },
-    { value: 'qwen3.7-flash', label: 'Qwen 3.7 Flash' },
-    { value: 'qwen-vl-plus', label: 'Qwen VL Plus' },
-    { value: 'qwen-vl-max', label: 'Qwen VL Max' },
-    { value: 'qwen-plus', label: 'Qwen Plus (text)' }
-  ]
-} as const
 
 function HotkeyInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const { t } = useI18n()
@@ -112,8 +89,10 @@ export default function Settings() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [aiProvider, setAiProvider] = useState<'openai' | 'anthropic' | 'gemini' | 'qwen'>('openai')
-  const [aiModel, setAiModel] = useState('gpt-4o-mini')
+  const [aiProvider, setAiProvider] = useState<AiProvider>('openai')
+  const [aiModel, setAiModel] = useState(DEFAULT_AI_MODELS.openai)
+  const [customAiModel, setCustomAiModel] = useState(false)
+  const customModelInputRef = useRef<HTMLInputElement>(null)
   const [openaiKey, setOpenaiKey] = useState('')
   const [anthropicKey, setAnthropicKey] = useState('')
   const [geminiKey, setGeminiKey] = useState('')
@@ -141,11 +120,9 @@ export default function Settings() {
       setBackupUrl(s.backup_url ?? '')
       const provider = s.ai_provider ?? 'openai'
       setAiProvider(provider)
-      setAiModel(
-        s.ai_model && AI_MODELS[provider].some(model => model.value === s.ai_model)
-          ? s.ai_model
-          : AI_MODELS[provider][0].value
-      )
+      const selection = getAiModelSelection(provider, s.ai_model)
+      setAiModel(selection.model)
+      setCustomAiModel(selection.custom)
       if (s.openai_api_key) setOpenaiKey(s.openai_api_key)
       if (s.anthropic_api_key) setAnthropicKey(s.anthropic_api_key)
       if (s.gemini_api_key) setGeminiKey(s.gemini_api_key)
@@ -190,6 +167,7 @@ export default function Settings() {
   }, [languageMenuOpen, modelMenuOpen])
 
   const handleSave = async () => {
+    if (!aiModel.trim()) return
     setSaving(true)
     try {
       await api.settings.update({
@@ -197,7 +175,7 @@ export default function Settings() {
         backup_enabled: backupEnabled,
         backup_url: backupUrl || null,
         ai_provider: aiProvider,
-        ai_model: aiModel,
+        ai_model: aiModel.trim(),
         openai_api_key: openaiKey || null,
         anthropic_api_key: anthropicKey || null,
         gemini_api_key: geminiKey || null,
@@ -237,7 +215,7 @@ export default function Settings() {
         <h1 className="text-lg font-semibold text-white">{t('settings')}</h1>
         <button
           onClick={handleSave}
-          disabled={saving || saved}
+          disabled={saving || saved || !aiModel.trim()}
           className="btn-primary -translate-y-px flex items-center gap-1.5"
         >
           {saving
@@ -426,8 +404,10 @@ export default function Settings() {
                       type="button"
                       data-active={aiProvider === value}
                       onClick={() => {
+                        if (value === aiProvider) return
                         setAiProvider(value)
-                        setAiModel(AI_MODELS[value][0].value)
+                        setAiModel(DEFAULT_AI_MODELS[value])
+                        setCustomAiModel(false)
                         setModelMenuOpen(false)
                       }}
                       className={`settings-provider-button flex-1 py-2 rounded-lg text-xs font-medium transition-all border ${
@@ -443,7 +423,7 @@ export default function Settings() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-2">{t('aiModel')}</label>
+                <label id="ai-model-label" className="block text-xs font-medium text-gray-400 mb-2">{t('aiModel')}</label>
                 <div ref={modelMenuRef} className="relative">
                   <button
                     type="button"
@@ -452,18 +432,19 @@ export default function Settings() {
                       setLanguageMenuOpen(false)
                     }}
                     aria-haspopup="listbox"
+                    aria-labelledby="ai-model-label ai-model-value"
                     aria-expanded={modelMenuOpen}
                     className="settings-select-trigger input flex items-center justify-between py-2.5 text-left hover:border-violet-400/50"
                   >
-                    <span className="text-sm text-gray-200">
-                      {AI_MODELS[aiProvider].find(model => model.value === aiModel)?.label ?? AI_MODELS[aiProvider][0].label}
+                    <span id="ai-model-value" className="text-sm text-gray-200">
+                      {customAiModel ? t('customAiModel') : AI_MODELS[aiProvider].find(model => model.value === aiModel)?.label}
                     </span>
                     <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${modelMenuOpen ? 'rotate-180' : ''}`} />
                   </button>
                   {modelMenuOpen && (
-                    <div role="listbox" className="absolute z-20 left-0 right-0 mt-1.5 p-1.5 rounded-lg border border-gray-700 bg-gray-900 shadow-xl">
+                    <div role="listbox" aria-labelledby="ai-model-label" className="absolute z-20 left-0 right-0 mt-1.5 p-1.5 max-h-64 overflow-y-auto rounded-lg border border-gray-700 bg-gray-900 shadow-xl">
                       {AI_MODELS[aiProvider].map(({ value, label }) => {
-                        const selected = aiModel === value
+                        const selected = !customAiModel && aiModel === value
                         return (
                           <button
                             key={value}
@@ -472,6 +453,7 @@ export default function Settings() {
                             aria-selected={selected}
                             onClick={() => {
                               setAiModel(value)
+                              setCustomAiModel(false)
                               setModelMenuOpen(false)
                             }}
                             className={`settings-select-option w-full flex items-center justify-between px-3 py-2 rounded-md text-sm text-left transition-colors ${
@@ -485,9 +467,46 @@ export default function Settings() {
                           </button>
                         )
                       })}
+                      <button
+                        type="button"
+                        role="option"
+                        aria-selected={customAiModel}
+                        onClick={() => {
+                          setCustomAiModel(true)
+                          setModelMenuOpen(false)
+                          customModelInputRef.current?.focus()
+                        }}
+                        className={`settings-select-option w-full flex items-center justify-between px-3 py-2 rounded-md text-sm text-left transition-colors ${customAiModel ? 'bg-violet-500/15 text-violet-300' : 'text-gray-300 hover:bg-gray-800 hover:text-gray-100'}`}
+                      >
+                        {t('customAiModel')}
+                        {customAiModel && <Check className="w-4 h-4" />}
+                      </button>
                     </div>
                   )}
                 </div>
+                {customAiModel && (
+                  <div className="mt-2">
+                    <label htmlFor="custom-ai-model" className="sr-only">{t('customAiModelId')}</label>
+                    <input
+                      id="custom-ai-model"
+                      ref={customModelInputRef}
+                      type="text"
+                      autoFocus
+                      autoComplete="off"
+                      spellCheck={false}
+                      className="input w-full font-mono text-xs"
+                      value={aiModel}
+                      placeholder={t('customAiModelId')}
+                      onFocus={event => event.currentTarget.select()}
+                      onChange={event => setAiModel(event.target.value)}
+                      aria-invalid={!aiModel.trim()}
+                      aria-describedby="custom-ai-model-hint"
+                    />
+                    <p id="custom-ai-model-hint" className="text-xs text-gray-400 mt-1.5">
+                      {t(aiModel.trim() ? 'customAiModelHint' : 'customAiModelRequired')}
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* API 키 입력 */}

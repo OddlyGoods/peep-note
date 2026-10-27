@@ -17,6 +17,7 @@ import groups from '../server/routes/groups'
 import ai from '../server/routes/ai'
 import workspaces from '../server/routes/workspaces'
 import settings from '../server/routes/settings'
+import { AI_MODELS, DEFAULT_AI_MODELS, getAiModelSelection, type AiProvider } from '../shared/aiModels'
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'peep-note-test-'))
 const app = new Hono().route('/api/logs', logs).route('/api/trash', trash).route('/api/groups', groups).route('/api/workspaces', workspaces).route('/api/ai', ai).route('/api/settings', settings)
@@ -46,6 +47,70 @@ after(async () => {
   await processOcrQueue()
   getDb().close()
   fs.rmSync(root, { recursive: true, force: true })
+})
+
+test('custom and older model IDs survive settings save and reload without preset substitution', async () => {
+  for (const provider of Object.keys(AI_MODELS) as AiProvider[]) {
+    const model = `${provider}-custom-model-snapshot`
+    await json('/api/settings', 'PUT', { ai_provider: provider, ai_model: `  ${model}  ` })
+    const saved = await json('/api/settings')
+    assert.equal(saved.ai_provider, provider)
+    assert.equal(saved.ai_model, model)
+    assert.deepEqual(getAiModelSelection(provider, saved.ai_model), { model, custom: true })
+    const preset = AI_MODELS[provider][0].value
+    assert.deepEqual(getAiModelSelection(provider, preset), { model: preset, custom: false })
+    assert.equal(getAiModelSelection(provider, null).model, DEFAULT_AI_MODELS[provider])
+  }
+  await json('/api/settings', 'PUT', { ai_provider: 'openai', ai_model: 'gpt-4o-mini' })
+  assert.deepEqual(getAiModelSelection('openai', (await json('/api/settings')).ai_model), { model: 'gpt-4o-mini', custom: true })
+  for (const invalid of ['', '  ', null, 42]) {
+    assert.equal((await request('/api/settings', 'PUT', { ai_model: invalid })).status, 400)
+    assert.equal((await json('/api/settings')).ai_model, 'gpt-4o-mini')
+  }
+  await json('/api/settings', 'PUT', { ai_provider: 'gemini' })
+  assert.equal((await json('/api/settings')).ai_model, DEFAULT_AI_MODELS.gemini)
+  run("DELETE FROM settings WHERE user_id = 'local'")
+})
+
+test('AI requests forward preset and custom model IDs, using modern OpenAI parameters and visible response text', async () => {
+  insert('model-request-one'); insert('model-request-two')
+  const group = await json('/api/groups', 'POST', { name: 'Model requests', log_ids: ['model-request-one', 'model-request-two'] })
+  const originalFetch = globalThis.fetch
+  try {
+    for (const provider of Object.keys(AI_MODELS) as AiProvider[]) {
+      const models = [AI_MODELS[provider][0].value, `${provider}-custom-model-snapshot`]
+      for (const model of models) {
+        await json('/api/settings', 'PUT', { ai_provider: provider, ai_model: model, [`${provider}_api_key`]: 'test-only-placeholder' })
+        let calls = 0
+        globalThis.fetch = async (url, options) => {
+          calls++
+          const body = JSON.parse(String(options?.body))
+          if (provider === 'gemini') assert.ok(String(url).includes(`/models/${model}:generateContent`))
+          else assert.equal(body.model, model)
+          if (model === 'gpt-6.1-sol') {
+            assert.equal(body.max_completion_tokens, 3000)
+            assert.equal(body.reasoning_effort, 'low')
+            assert.equal('temperature' in body, false)
+            assert.equal('max_tokens' in body, false)
+          }
+          const content = JSON.stringify({ title: 'Model test', summary: 'Visible summary' })
+          return Response.json(provider === 'anthropic'
+            ? { content: [{ type: 'thinking', thinking: 'Internal reasoning' }, { type: 'text', text: content }] }
+            : provider === 'gemini'
+              ? { candidates: [{ content: { parts: [{ thought: true, text: 'Internal reasoning' }, { text: content }] } }] }
+              : { choices: [{ message: { content } }] })
+        }
+        const result = await json('/api/ai/summarize', 'POST', { group_id: group.id })
+        assert.equal(calls, 1)
+        assert.equal(result.summary, 'Visible summary')
+      }
+    }
+  } finally {
+    globalThis.fetch = originalFetch
+    run("DELETE FROM settings WHERE user_id = 'local'")
+    run('DELETE FROM logs WHERE group_id = ?', [group.id])
+    run('DELETE FROM log_groups WHERE id = ?', [group.id])
+  }
 })
 
 test('AI summaries recover structured content from complete and token-truncated JSON', () => {

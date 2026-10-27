@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
   Image as ImageIcon, Video, FileText, LayoutGrid, Sparkles,
-  SlidersHorizontal, FolderOpen, Archive, Star, Pencil, Trash2, Check, X as XIcon
+  SlidersHorizontal, FolderOpen, Pencil, Trash2, Check, X as XIcon
 } from 'lucide-react'
 import { useLogStore } from '../stores/logStore'
 import { useWorkspaceStore } from '../stores/workspaceStore'
@@ -57,8 +57,6 @@ export default function DashboardSidebar() {
   const { t } = useI18n()
   const navigate = useNavigate()
   const location = useLocation()
-  const isFavorites = location.pathname === '/favorites' || location.pathname.startsWith('/favorites/')
-  const isCollection = isFavorites || location.pathname === '/trash'
   const {
     logs, dateFrom, dateTo, rangeTarget, filterType, activeDates,
     fetchLogs, fetchActiveDates, markRecentlyCreated, setDateRange, setRangeTarget, setFilterType
@@ -83,8 +81,6 @@ export default function DashboardSidebar() {
   const [editingName, setEditingName] = useState('')
   const [addingNew, setAddingNew] = useState(false)
   const [newName, setNewName] = useState('')
-  const [favoriteCount, setFavoriteCount] = useState(0)
-  const [trashCount, setTrashCount] = useState(0)
   const [typeCounts, setTypeCounts] = useState<Record<string, number>>({})
   const [workspaceCounts, setWorkspaceCounts] = useState<Record<string, number>>({})
   const [workspaceToDelete, setWorkspaceToDelete] = useState<string | null>(null)
@@ -135,13 +131,6 @@ export default function DashboardSidebar() {
     if (addingNew && newInputRef.current) newInputRef.current.focus()
   }, [addingNew])
 
-  useEffect(() => {
-    let cancelled = false
-    api.logs.favoriteCount().then(({ count }) => { if (!cancelled) setFavoriteCount(count) }).catch(() => { if (!cancelled) setFavoriteCount(0) })
-    api.trash.count().then(({ count }) => { if (!cancelled) setTrashCount(count) }).catch(() => { if (!cancelled) setTrashCount(0) })
-    return () => { cancelled = true }
-  }, [logs, location.pathname])
-
   const confirmEdit = async () => {
     if (editingId && editingName.trim()) await updateWorkspace(editingId, editingName.trim())
     setEditingId(null)
@@ -175,44 +164,6 @@ export default function DashboardSidebar() {
         />
       </div>
 
-      {/* 기간과 무관한 보관함 */}
-      <div className="p-3 border-b" style={{ borderColor: 'rgba(99,102,241,0.12)' }}>
-        <div className="flex items-center gap-2 mb-2 px-1">
-          <Archive className="w-3.5 h-3.5 text-gray-400" />
-          <span className="text-xs text-gray-400 font-medium">{t('library')}</span>
-        </div>
-        <div className="space-y-0.5">
-          <button
-            onClick={() => navigate('/favorites')}
-            aria-current={isFavorites ? 'page' : undefined}
-            className={`flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-xs transition-colors ${
-              isFavorites
-                ? 'bg-violet-500/15 text-violet-300 border border-violet-400/25'
-                : 'sidebar-filter-item text-gray-400 hover:text-gray-200 hover:bg-gray-800/70'
-            }`}
-          >
-            <Star className="w-3.5 h-3.5" />
-            {t('favorites')}
-            <span className={`ml-auto text-xs px-1.5 py-0.5 rounded-full ${isFavorites ? 'bg-violet-400/15 text-violet-200' : 'bg-gray-800/80 text-gray-500'}`}>{favoriteCount}</span>
-          </button>
-          <button
-            onClick={() => navigate('/trash')}
-            aria-current={location.pathname === '/trash' ? 'page' : undefined}
-            className={`flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-xs transition-colors ${
-              location.pathname === '/trash'
-                ? 'bg-violet-500/15 text-violet-300 border border-violet-400/25'
-                : 'sidebar-filter-item text-gray-400 hover:text-gray-200 hover:bg-gray-800/70'
-            }`}
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            {t('trash')}
-            <span className={`ml-auto text-xs px-1.5 py-0.5 rounded-full ${location.pathname === '/trash' ? 'bg-violet-400/15 text-violet-200' : 'bg-gray-800/80 text-gray-500'}`}>
-              {trashCount}
-            </span>
-          </button>
-        </div>
-      </div>
-
       {/* 타입 필터 */}
       <div className="p-3 border-b" style={{ borderColor: 'rgba(99,102,241,0.12)' }}>
         <div className="flex items-center gap-2 mb-2 px-1">
@@ -225,7 +176,7 @@ export default function DashboardSidebar() {
               key={value}
               onClick={() => handleFilterChange(value)}
               className={`flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-xs transition-colors ${
-                filterType === value && !isCollection
+                filterType === value
                   ? `border ${activeClass}`
                   : 'sidebar-filter-item text-gray-400 hover:text-gray-200 hover:bg-gray-800/70'
               }`}
@@ -233,7 +184,7 @@ export default function DashboardSidebar() {
               <Icon className="w-3.5 h-3.5" />
               {t(label as 'all' | 'note' | 'screenshot' | 'video' | 'summary')}
               <span className={`ml-auto text-xs px-1.5 py-0.5 rounded-full ${
-                filterType === value && !isCollection ? badgeClass : 'bg-gray-800/80 text-gray-500'
+                filterType === value ? badgeClass : 'bg-gray-800/80 text-gray-500'
               }`}>
                 {value ? (typeCounts[value] ?? 0) : Object.values(typeCounts).reduce((total, count) => total + count, 0)}
               </span>

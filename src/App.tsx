@@ -98,9 +98,9 @@ export default function App() {
             </Layout>
 
         } />
-        <Route path="/favorites" element={<Layout><div className="flex h-full"><DashboardSidebar /><Favorites /></div></Layout>} />
-        <Route path="/favorites/log/:id" element={<Layout><div className="flex h-full"><DashboardSidebar /><LogDetail /></div></Layout>} />
-        <Route path="/trash" element={<Layout><div className="flex h-full"><DashboardSidebar /><Trash /></div></Layout>} />
+        <Route path="/favorites" element={<Layout><Favorites /></Layout>} />
+        <Route path="/favorites/log/:id" element={<Layout><LogDetail /></Layout>} />
+        <Route path="/trash" element={<Layout><Trash /></Layout>} />
         <Route path="/log/:id" element={
 
             <Layout>

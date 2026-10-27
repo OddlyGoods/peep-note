@@ -12,6 +12,7 @@ export default function Favorites() {
   const { t } = useI18n()
   const logs = useLogStore(state => state.logs)
   const workspaces = useWorkspaceStore(state => state.workspaces)
+  const fetchWorkspaces = useWorkspaceStore(state => state.fetchWorkspaces)
   const [items, setItems] = useState<Log[]>([])
   const [query, setQuery] = useState('')
   const [search, setSearch] = useState('')
@@ -23,6 +24,13 @@ export default function Favorites() {
   const requestRef = useRef(0)
   const pageRef = useRef(1)
   const loadingMoreRef = useRef(false)
+
+  useEffect(() => {
+    void fetchWorkspaces()
+    const refreshItems = () => setRefresh(value => value + 1)
+    window.electronAPI?.on('log-created', refreshItems)
+    return () => window.electronAPI?.off('log-created', refreshItems)
+  }, [fetchWorkspaces])
 
   useEffect(() => {
     const timer = window.setTimeout(() => setSearch(query.trim()), 200)

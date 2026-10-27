@@ -1,18 +1,39 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Search, Settings, ChevronLeft, ChevronRight } from 'lucide-react'
+import { LayoutDashboard, Search, Star, Trash2, Settings, ChevronLeft, ChevronRight } from 'lucide-react'
 import TitleBar from './TitleBar'
 import { useI18n } from '../i18n'
 import UpdatePanel from './UpdatePanel'
+import { api } from '../lib/api'
+import { useLogStore } from '../stores/logStore'
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { t } = useI18n()
   const location = useLocation()
   const [collapsed, setCollapsed] = useState(true)
+  const logs = useLogStore(state => state.logs)
+  const [favoriteCount, setFavoriteCount] = useState(0)
+  const [trashCount, setTrashCount] = useState(0)
+
+  useEffect(() => {
+    let cancelled = false
+    const refreshCounts = () => {
+      api.logs.favoriteCount().then(({ count }) => { if (!cancelled) setFavoriteCount(count) }).catch(() => {})
+      api.trash.count().then(({ count }) => { if (!cancelled) setTrashCount(count) }).catch(() => {})
+    }
+    refreshCounts()
+    window.electronAPI?.on('log-created', refreshCounts)
+    return () => {
+      cancelled = true
+      window.electronAPI?.off('log-created', refreshCounts)
+    }
+  }, [logs, location.pathname])
 
   const nav = [
     { to: '/', icon: LayoutDashboard, label: t('dashboard') },
     { to: '/search', icon: Search, label: t('search') },
+    { to: '/favorites', icon: Star, label: t('favorites'), count: favoriteCount },
+    { to: '/trash', icon: Trash2, label: t('trash'), count: trashCount },
     { to: '/settings', icon: Settings, label: t('settings') }
   ]
 
@@ -36,14 +57,18 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         >
           {/* 네비게이션 */}
           <nav className="flex flex-1 flex-col gap-0.5 p-2 pt-4">
-            {nav.map(({ to, icon: Icon, label }) => {
+            {nav.map(({ to, icon: Icon, label, count }) => {
               const active = location.pathname === to
-                || (to === '/' && (location.pathname.startsWith('/log/') || location.pathname.startsWith('/favorites') || location.pathname === '/trash'))
+                || (to === '/' && location.pathname.startsWith('/log/'))
+                || (to === '/favorites' && location.pathname.startsWith('/favorites/'))
                 || (to === '/search' && location.pathname.startsWith('/search/'))
               return (
                 <div key={to} className={`relative group ${to === '/settings' ? 'mt-auto' : ''}`}>
                   <Link
                     to={to}
+                    aria-label={label}
+                    aria-current={active ? 'page' : undefined}
+                    title={count === undefined ? label : `${label} (${count})`}
                     className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                       collapsed ? 'justify-center gap-0' : 'gap-2.5'
                     } ${
@@ -61,12 +86,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     <span className={`whitespace-nowrap overflow-hidden transition-all duration-200 ${collapsed ? 'max-w-0 opacity-0' : 'max-w-32 opacity-100'}`}>
                       {label}
                     </span>
+                    {count !== undefined && (
+                      <span className={`${collapsed ? 'absolute top-0 right-0 min-w-3.5 px-0.5 text-[9px]' : 'ml-auto min-w-5 px-1.5 text-xs'} rounded-full text-center tabular-nums bg-indigo-500/10 text-indigo-400`}>
+                        {count}
+                      </span>
+                    )}
                   </Link>
                   {collapsed && (
                     <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2 py-1 rounded-md text-xs font-medium text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50"
                       style={{ background: 'rgba(30,34,60,0.97)', border: '1px solid rgba(99,102,241,0.25)' }}
                     >
-                      {label}
+                      {label}{count !== undefined && ` (${count})`}
                     </div>
                   )}
                 </div>

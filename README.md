@@ -1,8 +1,34 @@
 # PeepNote
 
-PeepNote is a local-first desktop workspace for quick notes, screenshots, screen recordings, tags, groups, and AI summaries. It is built with Electron, React, Vite, and a local SQLite-compatible database.
+PeepNote is a local-first desktop app for saving useful LLM responses, recording your own thoughts, and finding them again while you work. Keep Markdown answers and screenshots together, recall them with a shortcut, and organize related records into AI summaries.
 
 > PeepNote keeps its application data on the local computer. AI summaries are optional and require an API key configured by the user.
+
+## See it in action
+
+### 1. Save LLM responses as Markdown notes
+
+Keep the answers worth revisiting without searching through a long conversation. Copy an LLM response, press `Alt+1`, choose **Markdown**, and paste it into a note. Save with `Ctrl+Enter`, then open the note to review its headings, tables, and code blocks.
+
+![Copy an LLM response, save it as a Markdown note, and review the saved content](docs/images/save-llm-response.gif)
+
+### 2. Capture diagrams and screenshots
+
+Save the visual parts of an answer alongside your notes. Press `Alt+2`, drag to select a screen region, and capture a diagram, code example, or reference image. Open the saved screenshot to inspect the details.
+
+![Select a screen region and review the saved diagram in PeepNote](docs/images/capture-screenshot.gif)
+
+### 3. Recall notes with Quick List
+
+Bring saved answers back into your workflow without searching through the main window. Press `Alt+Q` to open Quick List and move to the next item; use `Alt+E` to go back. Open an item when you need its full content. Quick List uses the currently selected date range.
+
+![Browse saved notes and screenshots with Quick List, then open a record](docs/images/quick-list.gif)
+
+### 4. Turn related notes into an AI summary
+
+Bring answers from multiple LLM conversations together. Use **Manage** to select related records, create a group, and click **AI Summary** to organize the material into one structured note. Summaries follow your selected app language and use the provider and API key configured in **Settings → AI settings**.
+
+![Group related RAG notes and generate a structured AI summary](docs/images/ai-summary.gif)
 
 ## Configuration
 
@@ -135,7 +161,7 @@ Before the first public rollout, validate on real installed copies of both OSes:
 
 ### Trash
 
-**Trash** is the last item in the dashboard sidebar’s filter list. Deleting a record, selected records, or a group moves its records to Trash and removes them from normal lists, search, Quick List, and calendar counts. Select records to restore them or permanently delete them. **Empty** permanently deletes all of the current user's trashed records after confirmation.
+**Trash** is in the left navigation, below **Favorites**. Deleting a record, selected records, or a group moves its records to Trash and removes them from normal lists, search, Quick List, and calendar counts. Select records to restore them or permanently delete them. **Empty** permanently deletes all of the current user's trashed records after confirmation.
 
 Records, comments, and managed media files are retained for the period selected in Settings → General → Trash retention: 7, 10, 30, or 90 days (default 10). This applies from the original deletion date, including records already in Trash. Expired records are removed at startup and periodically while the app runs. Restoring preserves group membership where the group still exists; records whose workspace was removed return to General. Media still referenced by another record is preserved when purging. Records deleted before this feature was installed cannot be recovered.
 
@@ -183,6 +209,8 @@ The PIN is stored as a hash, not plain text. A four-digit PIN is a convenience l
 1. Open **Settings → AI settings**.
 2. Select a provider and model, then enter your API key.
 3. Create a group from selected records and press **AI Summary**.
+
+Summary titles and content use the app language selected in Settings, regardless of the language of the original records. Code, commands, URLs, and identifiers retain their original form.
 
 Secret note content is excluded from AI summaries. Video files are not uploaded for summaries; only relevant written record content is used.
 

@@ -43,7 +43,7 @@ function isLocalServerRunning() {
 }
 
 // On Linux, Chromium's GPU process can lose its compositing surface across
-// suspend/resume, especially with X11 and NVIDIA hybrid graphics. Open PeepNote does
+// suspend/resume, especially with X11 and NVIDIA hybrid graphics. PeepNote does
 // not need accelerated 3D rendering, so use software compositing to keep its
 // windows paintable after resume. This must run before Electron becomes ready.
 if (process.platform === 'linux') {
@@ -410,7 +410,7 @@ function showAboutWindow() {
         ${iconBase64 ? `<img src="${iconBase64}" style="width:72px;height:72px;object-fit:contain;" />` : ''}
       </div>
       <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
-        <span class="app-name">Open PeepNote</span>
+        <span class="app-name">PeepNote</span>
         <span class="version">v${version}</span>
       </div>
       <hr class="divider"/>
@@ -450,16 +450,16 @@ function createTray() {
     : nativeImage.createEmpty()
 
   tray = new Tray(icon)
-  tray.setToolTip('Open PeepNote')
+  tray.setToolTip('PeepNote')
 
   const language = loadSettings().language
   const text = language === 'ko'
-    ? { open: 'Open PeepNote 열기', quick: '빠른 기록', screenshot: '스크린샷', video: '동영상 녹화', about: '앱 정보', quit: '종료' }
+    ? { open: 'PeepNote 열기', quick: '빠른 기록', screenshot: '스크린샷', video: '동영상 녹화', about: '앱 정보', quit: '종료' }
     : language === 'ja'
-      ? { open: 'Open PeepNoteを開く', quick: 'クイック記録', screenshot: 'スクリーンショット', video: '画面録画を開始', about: 'アプリ情報', quit: '終了' }
+      ? { open: 'PeepNoteを開く', quick: 'クイック記録', screenshot: 'スクリーンショット', video: '画面録画を開始', about: 'アプリ情報', quit: '終了' }
       : language === 'zh'
-        ? { open: '打开 Open PeepNote', quick: '快速记录', screenshot: '截图', video: '开始屏幕录制', about: '应用信息', quit: '退出' }
-        : { open: 'Open PeepNote', quick: 'Quick record', screenshot: 'Screenshot', video: 'Start screen recording', about: 'About', quit: 'Quit' }
+        ? { open: '打开 PeepNote', quick: '快速记录', screenshot: '截图', video: '开始屏幕录制', about: '应用信息', quit: '退出' }
+        : { open: 'Show PeepNote', quick: 'Quick record', screenshot: 'Screenshot', video: 'Start screen recording', about: 'About', quit: 'Quit' }
   const menu = Menu.buildFromTemplate([
     { label: text.open, click: () => showMainWindow() },
     { type: 'separator' },
@@ -1298,7 +1298,7 @@ function refreshWindowsAfterResume() {
 // ── 앱 초기화 ──────────────────────────────────────────────────────────
 app.whenReady().then(async () => {
   // A packaged app and a dev app can have separate Electron instance locks,
-  // but they share this local API port. Treat that as an existing Open PeepNote.
+  // but they share this local API port. Treat that as an existing PeepNote.
   if (await isLocalServerRunning()) {
     app.quit()
     return

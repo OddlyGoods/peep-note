@@ -1,4 +1,4 @@
-name: Build and release Open PeepNote
+name: Build and release PeepNote
 
 on:
   workflow_dispatch:
@@ -98,7 +98,7 @@ jobs:
           if gh release view "$RELEASE_TAG" --json isDraft > release-status.json; then
             node -e "if (!require('./release-status.json').isDraft) throw Error('Refusing to replace an already published release')"
           else
-            gh release create "$RELEASE_TAG" --verify-tag --draft --title "Open PeepNote $RELEASE_TAG" --generate-notes
+            gh release create "$RELEASE_TAG" --verify-tag --draft --title "PeepNote $RELEASE_TAG" --generate-notes
           fi
           gh release upload "$RELEASE_TAG" release/*.deb release/*.exe release/*.blockmap release/latest*.yml --clobber
           gh release edit "$RELEASE_TAG" --draft=false --latest

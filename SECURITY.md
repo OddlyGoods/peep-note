@@ -1,6 +1,6 @@
 # Local data and credentials
 
-Open PeepNote has no application accounts, login service, JWT signing key or session token. All app windows use one local profile. Operating-system users retain separate data directories. The desktop API binds to IPv4 loopback only and rejects unrelated Host/Origin headers and cross-site browser requests. It is not intended to be exposed as a network service.
+PeepNote has no application accounts, login service, JWT signing key or session token. All app windows use one local profile. Operating-system users retain separate data directories. The desktop API binds to IPv4 loopback only and rejects unrelated Host/Origin headers and cross-site browser requests. It is not intended to be exposed as a network service.
 
 User notes, attachments, screenshots, recordings, optional AI provider keys and the hashed secret-note PIN are stored in the local app data directory. They are not part of the source repository. The secret-note PIN is a UI convenience lock; files and the database are not encrypted. Anyone with access to this OS account can access its local app data.
 

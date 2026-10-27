@@ -186,7 +186,7 @@ test('release validation rejects mismatched versions, missing assets and incorre
   assert.throws(() => verifyVersion('v0.0.0'))
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'peepnote-release-'))
   try {
-    const name = `Open PeepNote-${version}-linux-amd64.deb`
+    const name = `PeepNote-${version}-linux-amd64.deb`
     const binary = Buffer.from('installer fixture')
     const sha512 = crypto.createHash('sha512').update(binary).digest('base64')
     fs.writeFileSync(path.join(root, 'latest-linux.yml'), `version: ${version}\nfiles:\n  - url: ${name}\n    sha512: ${sha512}\n    size: ${binary.length}\n`)

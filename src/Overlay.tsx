@@ -417,7 +417,7 @@ export default function Overlay() {
                 draggable={false} />
             </div>
             <span className="text-[11px] font-bold tracking-wider translate-y-px" style={{ color: 'var(--title-text)' }}>
-              Open PeepNote
+              PeepNote
             </span>
             <div ref={workspaceMenuRef} className="relative" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
               <button

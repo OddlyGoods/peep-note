@@ -1,7 +1,7 @@
 export const updateMessages = {
   en: {
     updates: 'App updates', checkUpdates: 'Check for updates', updateChecking: 'Checking for updates…',
-    updateCurrent: 'Open PeepNote is up to date.', updateAvailable: 'Open PeepNote {version} is available.',
+    updateCurrent: 'PeepNote is up to date.', updateAvailable: 'PeepNote {version} is available.',
     updateDownloading: 'Downloading… {percent}%', updateReady: 'The update is ready to install.',
     updateInstalling: 'Installing the update…', updateFailed: 'The update could not be completed. Check your connection and try again. If installation was cancelled, try installing again.',
     updateUnsupported: 'Updates are available in installed Windows and Ubuntu .deb versions.',
@@ -11,7 +11,7 @@ export const updateMessages = {
   },
   ko: {
     updates: '앱 업데이트', checkUpdates: '업데이트 확인', updateChecking: '업데이트 확인 중…',
-    updateCurrent: '최신 버전입니다.', updateAvailable: 'Open PeepNote {version} 업데이트가 있습니다.',
+    updateCurrent: '최신 버전입니다.', updateAvailable: 'PeepNote {version} 업데이트가 있습니다.',
     updateDownloading: '다운로드 중… {percent}%', updateReady: '업데이트 설치 준비가 완료되었습니다.',
     updateInstalling: '업데이트 설치 중…', updateFailed: '업데이트를 완료하지 못했습니다. 연결을 확인하고 다시 시도해 주세요. 설치를 취소했다면 다시 설치할 수 있습니다.',
     updateUnsupported: '설치된 윈도우 및 우분투 .deb 버전에서 업데이트를 사용할 수 있습니다.',
@@ -21,7 +21,7 @@ export const updateMessages = {
   },
   ja: {
     updates: 'アプリの更新', checkUpdates: '更新を確認', updateChecking: '更新を確認中…',
-    updateCurrent: '最新バージョンです。', updateAvailable: 'Open PeepNote {version} を利用できます。',
+    updateCurrent: '最新バージョンです。', updateAvailable: 'PeepNote {version} を利用できます。',
     updateDownloading: 'ダウンロード中… {percent}%', updateReady: '更新のインストール準備ができました。',
     updateInstalling: '更新をインストール中…', updateFailed: '更新を完了できませんでした。接続を確認して再試行してください。インストールをキャンセルした場合は再度お試しください。',
     updateUnsupported: 'インストール済みの Windows と Ubuntu .deb 版で更新できます。',
@@ -31,7 +31,7 @@ export const updateMessages = {
   },
   zh: {
     updates: '应用更新', checkUpdates: '检查更新', updateChecking: '正在检查更新…',
-    updateCurrent: '已是最新版本。', updateAvailable: 'Open PeepNote {version} 可供更新。',
+    updateCurrent: '已是最新版本。', updateAvailable: 'PeepNote {version} 可供更新。',
     updateDownloading: '正在下载… {percent}%', updateReady: '更新已准备就绪。',
     updateInstalling: '正在安装更新…', updateFailed: '无法完成更新。请检查网络连接并重试。如果取消了安装，可以重新安装。',
     updateUnsupported: '已安装的 Windows 和 Ubuntu .deb 版本支持更新。',

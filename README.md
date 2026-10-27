@@ -1,12 +1,12 @@
-# Open PeepNote
+# PeepNote
 
-Open PeepNote is a local-first desktop workspace for quick notes, screenshots, screen recordings, tags, groups, and AI summaries. It is built with Electron, React, Vite, and a local SQLite-compatible database.
+PeepNote is a local-first desktop workspace for quick notes, screenshots, screen recordings, tags, groups, and AI summaries. It is built with Electron, React, Vite, and a local SQLite-compatible database.
 
-> Open PeepNote keeps its application data on the local computer. AI summaries are optional and require an API key configured by the user.
+> PeepNote keeps its application data on the local computer. AI summaries are optional and require an API key configured by the user.
 
 ## Configuration
 
-Open PeepNote opens directly to the main screen. There are no app accounts, login forms, Google sign-in, session tokens or authentication server. All windows use one local data space for notes, workspaces, settings and optional AI keys. OS user accounts still have their own application data directories.
+PeepNote opens directly to the main screen. There are no app accounts, login forms, Google sign-in, session tokens or authentication server. All windows use one local data space for notes, workspaces, settings and optional AI keys. OS user accounts still have their own application data directories.
 
 The optional `VITE_LOCAL_SERVER_PORT` setting in `.env.example` defaults to `3848`, separate from the original PeepNote app. It is read at build time. The API listens only on `127.0.0.1` and rejects unrelated browser origins and hosts. No API key is bundled: enter your own provider key in Settings only if you use AI summaries.
 
@@ -72,7 +72,7 @@ npm run build:linux
 The package is written to `release/`:
 
 ```bash
-sudo apt install ./release/OpenPeepNote-*-linux-amd64.deb
+sudo apt install ./release/PeepNote-*-linux-amd64.deb
 ```
 
 To produce an unpacked build for a quick smoke test:
@@ -82,7 +82,7 @@ npm run build:linux:dir
 ./release/linux-unpacked/open-peep-note
 ```
 
-To update an existing Open PeepNote installation manually, install a newer `.deb` with the same command. Existing local records and settings are preserved.
+To update an existing PeepNote installation manually, install a newer `.deb` with the same command. Existing local records and settings are preserved.
 
 ### Windows package
 
@@ -92,7 +92,7 @@ Build the Windows installer on Windows:
 npm run build:win
 ```
 
-The NSIS installer is written to `release/`. Run the generated `OpenPeepNote-*-Setup.exe` and choose the normal install flow. Running the installer again updates an existing installation while preserving local records and settings.
+The NSIS installer is written to `release/`. Run the generated `PeepNote-*-Setup.exe` and choose the normal install flow. Running the installer again updates an existing installation while preserving local records and settings.
 
 Windows supports the same core features as Linux, including notes, local storage, comments, themes, AI summaries, capture, recording, tray controls, and global shortcuts. Capture behavior, multi-monitor DPI scaling, and shortcut availability should still be smoke-tested on the target Windows setup.
 
@@ -113,11 +113,11 @@ Windows supports the same core features as Linux, including notes, local storage
 
 Installed Windows NSIS and Ubuntu `.deb` builds check GitHub Releases three seconds after startup, then every six hours. **Settings → App information → App updates → Check for updates** checks manually. Downloads start only after a click; the banner and Settings show download progress, errors, retry and **Restart and install**. Update state survives navigation. Updates are not installed on normal app exit.
 
-On Ubuntu, **Restart and install** opens the system administrator authentication prompt (`pkexec`/Polkit), installs the checksum-verified `.deb` with `dpkg`, and restarts Open PeepNote after success. If authentication is cancelled or installation fails, the app remains open and the downloaded installer can be retried. A Polkit authentication agent and `pkexec` must be available (normal Ubuntu desktop sessions provide the agent; the package recommends `pkexec`). On Windows, installation uses the NSIS updater. Unpacked/dev builds show that updating is unavailable. Local records, attachments and settings remain in Electron's user data directory, outside the installed application.
+On Ubuntu, **Restart and install** opens the system administrator authentication prompt (`pkexec`/Polkit), installs the checksum-verified `.deb` with `dpkg`, and restarts PeepNote after success. If authentication is cancelled or installation fails, the app remains open and the downloaded installer can be retried. A Polkit authentication agent and `pkexec` must be available (normal Ubuntu desktop sessions provide the agent; the package recommends `pkexec`). On Windows, installation uses the NSIS updater. Unpacked/dev builds show that updating is unavailable. Local records, attachments and settings remain in Electron's user data directory, outside the installed application.
 
 The first build containing this implementation is **1.0.14**. Install it manually once to establish the new update flow, then test an update to a higher version. The updater compares version numbers; changing files while keeping the same version does not create an update.
 
-The **Build and release Open PeepNote** GitHub Actions workflow builds Windows x64 and Ubuntu amd64 installers. A manual workflow run on a branch produces downloadable Actions artifacts without publishing. A pushed stable version tag matching `package.json` (for example `v1.0.14`) builds both platforms, validates metadata/checksums and uploads all assets to a draft release before publishing it. Published releases are never overwritten. Repository Actions must be enabled; publishing uses the workflow's built-in `GITHUB_TOKEN`, never a token inside the app.
+The **Build and release PeepNote** GitHub Actions workflow builds Windows x64 and Ubuntu amd64 installers. A manual workflow run on a branch produces downloadable Actions artifacts without publishing. A pushed stable version tag matching `package.json` (for example `v1.0.14`) builds both platforms, validates metadata/checksums and uploads all assets to a draft release before publishing it. Published releases are never overwritten. Repository Actions must be enabled; publishing uses the workflow's built-in `GITHUB_TOKEN`, never a token inside the app.
 
 For the current version, after committing the changes and verifying installers:
 
@@ -156,7 +156,7 @@ Run `npm run test:features` to check trash retention, restore, local profile iso
 3. For notes, choose Text, Markdown, Code, or HTML.
 4. Add an optional title, content, tags, and workspace, then save.
 
-For screenshots and recordings, choose a region after selecting the capture action. Use the adjustment button next to the capture/record control in the main composer to choose a different monitor; Open PeepNote remembers the selected monitor for later captures.
+For screenshots and recordings, choose a region after selecting the capture action. Use the adjustment button next to the capture/record control in the main composer to choose a different monitor; PeepNote remembers the selected monitor for later captures.
 
 ### Default global shortcuts
 
@@ -201,4 +201,4 @@ This contains the local database, screenshots, recordings, and application setti
 
 ## License
 
-Open PeepNote is released under the [Apache License 2.0](LICENSE).
+PeepNote is released under the [Apache License 2.0](LICENSE).

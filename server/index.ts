@@ -53,7 +53,7 @@ export async function startServer(port: number, userDataPath: string) {
   trashCleanup.unref()
   const app = createApiApp(port)
   const server = serve({ fetch: app.fetch, port, hostname: '127.0.0.1' }, () => {
-    console.log(`Open PeepNote server running on http://127.0.0.1:${port}`)
+    console.log(`PeepNote server running on http://127.0.0.1:${port}`)
   })
   server.on('close', () => clearInterval(trashCleanup))
   return server

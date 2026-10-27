@@ -3,7 +3,7 @@
   "version": "1.0.14",
   "description": "Desktop capture and activity log for notes, screenshots, and recordings",
   "author": {
-    "name": "Open PeepNote contributors"
+    "name": "PeepNote contributors"
   },
   "homepage": "https://github.com/chYoo01/open-peep-note",
   "private": true,
@@ -61,7 +61,7 @@
   },
   "build": {
     "appId": "com.openpeepnote.app",
-    "productName": "Open PeepNote",
+    "productName": "PeepNote",
     "publish": {
       "provider": "github",
       "owner": "chYoo01",
@@ -90,7 +90,7 @@
     "win": {
       "target": "nsis",
       "icon": "resources/icon.ico",
-      "artifactName": "OpenPeepNote-${version}-win-${arch}-Setup.${ext}"
+      "artifactName": "PeepNote-${version}-win-${arch}-Setup.${ext}"
     },
     "deb": {
       "recommends": [
@@ -114,12 +114,12 @@
       "icon": "resources/icons",
       "category": "Utility",
       "executableName": "open-peep-note",
-      "artifactName": "OpenPeepNote-${version}-linux-${arch}.${ext}",
+      "artifactName": "PeepNote-${version}-linux-${arch}.${ext}",
       "desktop": {
-        "Name": "Open PeepNote",
+        "Name": "PeepNote",
         "Comment": "Capture and organize screenshots, recordings, and notes",
         "Categories": "Utility;Office;",
-        "StartupWMClass": "Open PeepNote"
+        "StartupWMClass": "PeepNote"
       }
     }
   },

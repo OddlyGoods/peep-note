@@ -60,7 +60,7 @@ export default function TitleBar() {
           className="text-[11px] font-semibold tracking-widest translate-y-px"
           style={{ color: 'var(--title-text)' }}
         >
-          Open PeepNote
+          PeepNote
         </span>
         {version && (
           <span

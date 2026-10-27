@@ -30,6 +30,12 @@ Bring answers from multiple LLM conversations together. Use **Manage** to select
 
 ![Group related RAG notes and generate a structured AI summary](docs/images/ai-summary.gif)
 
+### 5. Keep note previews private with Secret
+
+Enable **Secret** when creating a note to hide its content in list previews. Opening the saved note prompts for your four-digit PIN before showing its contents. Set your PIN in **Settings → Secret note lock**.
+
+![Create a note with Secret enabled, then open it to see the PIN prompt](docs/images/secret-note.gif)
+
 ## Configuration
 
 PeepNote opens directly to the main screen. There are no app accounts, login forms, Google sign-in, session tokens or authentication server. All windows use one local data space for notes, workspaces, settings and optional AI keys. OS user accounts still have their own application data directories.

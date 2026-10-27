@@ -155,8 +155,8 @@ For the current version, after committing the changes and verifying installers:
 
 ```bash
 git push origin main
-git tag v1.0.14
-git push origin v1.0.14
+git tag v1.0.15
+git push origin v1.0.15
 ```
 
 For later versions, use `npm version patch` (or the appropriate minor/major bump) to update `package.json` and `package-lock.json` and create a matching commit/tag, then push that commit and the new tag. Never move a previously published tag. Release assets must include the Windows `.exe` and `.exe.blockmap`, `latest.yml`, the Linux `.deb`, and `latest-linux.yml`. The workflow waits for both platform jobs and verifies the complete set before making it visible to installed apps. If a run fails before publication, fix the cause and rerun the failed jobs; an existing draft can be completed on retry.

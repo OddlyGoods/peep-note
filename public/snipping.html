@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <style>
@@ -56,7 +56,7 @@
 </head>
 <body>
   <canvas id="c"></canvas>
-  <div id="hint"><span id="hint-text">드래그하여 영역 선택 · Esc 취소</span><button id="change-monitor" type="button">모니터 변경</button></div>
+  <div id="hint"><span id="hint-text">Drag to select an area · Esc to cancel</span><button id="change-monitor" type="button">Change monitor</button></div>
   <div id="size-badge"></div>
   <script>
     const canvas = document.getElementById('c')
@@ -67,6 +67,23 @@
     let recordingRegionMode = false
     let dragging = false
     let sx = 0, sy = 0, ex = 0, ey = 0
+    let language = 'en'
+    const messages = {
+      en: { screenshot: 'Drag to select an area · Esc to cancel', recording: 'Drag to select a recording area · Esc to cancel', monitor: 'Change monitor' },
+      ko: { screenshot: '드래그하여 영역 선택 · Esc 취소', recording: '드래그하여 녹화 영역 선택 · Esc 취소', monitor: '모니터 변경' },
+      ja: { screenshot: 'ドラッグして範囲を選択 · Escでキャンセル', recording: 'ドラッグして録画範囲を選択 · Escでキャンセル', monitor: 'モニターを変更' },
+      zh: { screenshot: '拖动选择区域 · Esc 取消', recording: '拖动选择录制区域 · Esc 取消', monitor: '切换显示器' }
+    }
+
+    function applyLanguage(value) {
+      language = Object.prototype.hasOwnProperty.call(messages, value) ? value : 'en'
+      const copy = messages[language]
+      document.documentElement.lang = language
+      document.getElementById('hint-text').textContent = recordingRegionMode ? copy.recording : copy.screenshot
+      document.getElementById('change-monitor').textContent = copy.monitor
+    }
+
+    window.electronAPI.on('language-changed', applyLanguage)
 
     window.electronAPI.on('snipping-init', (payload) => {
       const dataUrl = typeof payload === 'string' ? payload : payload.dataUrl
@@ -75,9 +92,7 @@
       dragging = false
       badge.style.display = 'none'
       recordingRegionMode = typeof payload === 'object' && payload?.mode === 'recording-region'
-      document.getElementById('hint-text').textContent = recordingRegionMode
-        ? '드래그하여 녹화 영역 선택 · Esc 취소'
-        : '드래그하여 영역 선택 · Esc 취소'
+      applyLanguage(typeof payload === 'object' && payload?.language ? payload.language : language)
       const image = new Image()
       pendingImage = image
       image.onload = () => {

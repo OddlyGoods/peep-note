@@ -636,6 +636,7 @@ function attachSnippingMonitorSwitch(
       onSourceChanged(source.id)
       regionWindow.webContents.send('snipping-init', {
         dataUrl: source.thumbnail.toDataURL(), mode,
+        language: loadSettings().language,
         width: display.bounds.width, height: display.bounds.height
       })
     } catch (error) {
@@ -721,7 +722,7 @@ async function startSnipping(forceChoose = false): Promise<string | null> {
   }
 
   snippingWindow.webContents.once('did-finish-load', () => {
-    snippingWindow?.webContents.send('snipping-init', { dataUrl, width, height })
+    snippingWindow?.webContents.send('snipping-init', { dataUrl, width, height, language: loadSettings().language })
   })
 
   return new Promise((resolve) => {
@@ -822,7 +823,7 @@ async function selectRecordingRegion(forceChoose = false): Promise<RecordingRegi
   if (isDev) snippingWindow.loadURL('http://localhost:5173/snipping.html')
   else snippingWindow.loadURL('app://dist/snipping.html')
   snippingWindow.webContents.once('did-finish-load', () => {
-    snippingWindow?.webContents.send('snipping-init', { dataUrl: source.thumbnail.toDataURL(), mode: 'recording-region', width, height })
+    snippingWindow?.webContents.send('snipping-init', { dataUrl: source.thumbnail.toDataURL(), mode: 'recording-region', width, height, language: loadSettings().language })
     snippingWindow?.show()
     snippingWindow?.focus()
   })
@@ -1063,6 +1064,7 @@ function setupIPC() {
       mainWindow?.webContents.send('language-changed', language)
       overlayWindow?.webContents.send('language-changed', language)
       quickSwitchWindow?.webContents.send('language-changed', language)
+      snippingWindow?.webContents.send('language-changed', language)
     }
     const theme = (settings as { theme?: unknown }).theme
     if (theme === 'dark' || theme === 'light') {

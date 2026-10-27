@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #000; cursor: crosshair; user-select: none; }
+    canvas { display: block; position: fixed; top: 0; left: 0; }
+    #hint {
+      position: fixed;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(10,12,40,0.85);
+      color: #a5b4fc;
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-family: 'Segoe UI', sans-serif;
+      border: 1px solid rgba(99,102,241,0.3);
+      pointer-events: none;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      white-space: nowrap;
+    }
+    #change-monitor {
+      pointer-events: auto;
+      cursor: pointer;
+      border: 1px solid rgba(165,180,252,0.45);
+      border-radius: 12px;
+      background: rgba(99,102,241,0.2);
+      color: #e0e7ff;
+      padding: 4px 10px;
+      font: inherit;
+    }
+    #change-monitor:hover, #change-monitor:focus-visible {
+      background: rgba(99,102,241,0.45);
+      outline: 2px solid #a5b4fc;
+      outline-offset: 2px;
+    }
+    #size-badge {
+      position: fixed;
+      background: rgba(99,102,241,0.9);
+      color: white;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-family: monospace;
+      pointer-events: none;
+      z-index: 10;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <div id="hint"><span id="hint-text">드래그하여 영역 선택 · Esc 취소</span><button id="change-monitor" type="button">모니터 변경</button></div>
+  <div id="size-badge"></div>
+  <script>
+    const canvas = document.getElementById('c')
+    const ctx = canvas.getContext('2d')
+    const badge = document.getElementById('size-badge')
+    let img = null
+    let pendingImage = null
+    let recordingRegionMode = false
+    let dragging = false
+    let sx = 0, sy = 0, ex = 0, ey = 0
+
+    window.electronAPI.on('snipping-init', (payload) => {
+      const dataUrl = typeof payload === 'string' ? payload : payload.dataUrl
+      img = null
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      dragging = false
+      badge.style.display = 'none'
+      recordingRegionMode = typeof payload === 'object' && payload?.mode === 'recording-region'
+      document.getElementById('hint-text').textContent = recordingRegionMode
+        ? '드래그하여 녹화 영역 선택 · Esc 취소'
+        : '드래그하여 영역 선택 · Esc 취소'
+      const image = new Image()
+      pendingImage = image
+      image.onload = () => {
+        if (pendingImage !== image) return
+        img = image
+        canvas.width = payload?.width || window.innerWidth
+        canvas.height = payload?.height || window.innerHeight
+        canvas.style.width = canvas.width + 'px'
+        canvas.style.height = canvas.height + 'px'
+        draw()
+      }
+      image.src = dataUrl
+    })
+
+    document.getElementById('change-monitor').addEventListener('click', () => {
+      dragging = false
+      draw()
+      window.electronAPI.changeSnippingMonitor()
+    })
+
+    function draw() {
+      if (!img) return
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+
+      // dim overlay
+      ctx.fillStyle = 'rgba(0,0,0,0.5)'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+      if (dragging) {
+        const x = Math.min(sx, ex), y = Math.min(sy, ey)
+        const w = Math.abs(ex - sx), h = Math.abs(ey - sy)
+
+        // restore selection area
+        ctx.save()
+        ctx.globalCompositeOperation = 'destination-out'
+        ctx.fillRect(x, y, w, h)
+        ctx.restore()
+        ctx.drawImage(img, x, y, w, h, x, y, w, h)
+
+        // border
+        ctx.strokeStyle = '#6366f1'
+        ctx.lineWidth = 1.5
+        ctx.strokeRect(x, y, w, h)
+
+        // corner handles
+        const hs = 6
+        ctx.fillStyle = '#6366f1'
+        ;[[x,y],[x+w,y],[x,y+h],[x+w,y+h]].forEach(([cx,cy]) => {
+          ctx.fillRect(cx - hs/2, cy - hs/2, hs, hs)
+        })
+
+        // size badge
+        badge.style.display = 'block'
+        badge.textContent = `${w} × ${h}`
+        badge.style.left = (x + w/2 - 30) + 'px'
+        badge.style.top = (y > 24 ? y - 24 : y + h + 4) + 'px'
+      } else {
+        badge.style.display = 'none'
+      }
+    }
+
+    canvas.addEventListener('mousedown', e => {
+      if (!img || e.button !== 0) return
+      dragging = true
+      sx = ex = e.clientX
+      sy = ey = e.clientY
+    })
+
+    canvas.addEventListener('mousemove', e => {
+      if (!dragging) return
+      ex = e.clientX; ey = e.clientY
+      draw()
+    })
+
+    canvas.addEventListener('mouseup', () => {
+      if (!dragging) return
+      dragging = false
+      badge.style.display = 'none'
+      const x = Math.min(sx, ex), y = Math.min(sy, ey)
+      const w = Math.abs(ex - sx), h = Math.abs(ey - sy)
+      if (w < 5 || h < 5) { window.electronAPI.snippingCancel(); return }
+
+      if (recordingRegionMode) {
+        window.electronAPI.recordingRegionDone({ x, y, width: w, height: h, canvasWidth: canvas.width, canvasHeight: canvas.height })
+        return
+      }
+
+      const off = document.createElement('canvas')
+      off.width = w; off.height = h
+      off.getContext('2d').drawImage(img, x, y, w, h, 0, 0, w, h)
+      window.electronAPI.snippingDone(off.toDataURL('image/png'))
+    })
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') window.electronAPI.snippingCancel()
+    })
+  </script>
+</body>
+</html>

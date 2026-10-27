@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PeepNote Quick Entry</title>
+    <style>
+      *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body, #overlay-root {
+        width: 100%;
+        height: 100%;
+        background: transparent !important;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="overlay-root"></div>
+    <script type="module" src="/src/overlay-main.tsx"></script>
+  </body>
+</html>

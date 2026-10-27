@@ -1,0 +1,262 @@
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { updateMessages } from './updateMessages'
+
+export type Language = 'en' | 'ko' | 'ja' | 'zh'
+
+const messages = {
+  en: {
+    customAiModel: 'Enter manually', customAiModelId: 'Model ID', customAiModelHint: 'Enter the exact model ID provided by your AI provider.', customAiModelRequired: 'Enter a model ID before saving.',
+    ...updateMessages.en,
+    trashRetention: 'Trash retention',
+    trashRetentionDescription: 'Applies from the deletion date, including records already in Trash. Shortening this period makes them expire sooner.',
+    retentionDays: '{days} days',
+    favorites: 'Favorites',
+    addFavorite: 'Add to favorites',
+    removeFavorite: 'Remove from favorites',
+    favoritesEmpty: 'No favorites yet.',
+    favoritesHint: 'Star a record to find it here, regardless of its date.',
+    allDatesAndWorkspaces: 'All dates · All workspaces',
+    library: 'Library',
+    extractText: "Extract text",
+    trash: "Trash",
+    emptyTrash: "Empty",
+    searchTrash: "Search trash by title...",
+    trashHint: "Deleted records are kept for {days} days, then permanently deleted when the app is running.",
+    restoreRecord: "Restore",
+    permanentDelete: "Delete permanently",
+    trashEmpty: "Trash is empty.",
+    deletedOn: "Deleted",
+    trashDays: "{count} days left",
+    permanentDeleteHint: "Permanently delete these records and their files? This cannot be undone.",
+    operationFailed: "The operation failed. Please try again.",
+    retry: "Retry",
+    ocrHint: "Image search includes text you have extracted. Secret images are excluded.",
+    ocrWorking: "Reading image text…",
+    ocrText: "Text in image",
+    ocrEmpty: "No text detected.",
+    ocrError: "Could not read image text.",
+    loadMore: "Load more",
+
+    months3: '3 months', months6: '6 months', year1: '1 year',
+    manage: 'Manage',
+    loading: 'Loading...', dashboard: 'Dashboard', search: 'Search', settings: 'Settings',
+    smartRecords: 'Fast, smarter work records', save: 'Save', saved: 'Saved ✓', settingsSaved: 'Saved', cancel: 'Cancel', delete: 'Delete', edit: 'Edit', move: 'Move', back: 'Back',
+    add: 'Add', group: 'Group', records: 'records', record: 'Record', all: 'All', note: 'Note', screenshot: 'Screenshot', video: 'Video', summary: 'AI Summary', pinned: 'Pinned', selectAll: 'Select all', clearSelection: 'Clear selection', markdown: 'MD',
+    text: 'Text', code: 'Code', secret: 'Secret', secretPassword: 'Secret password', secretPasswordNotSet: 'Set a 4-digit secret password in Settings before opening this note.', setSecretPassword: 'Set secret password', changeSecretPassword: 'Change secret password', currentSecretPassword: 'Current password', newSecretPassword: 'New 4-digit password', confirmSecretPassword: 'Confirm password', enterSecretPassword: 'Enter the 4-digit password to open this note.', unlock: 'Unlock', goToSettings: 'Go to Settings', passwordMismatch: 'Passwords do not match.', passwordIncorrect: 'Incorrect password.', untitled: '(Untitled)', noContent: 'No content', noRecords: 'No records', createRecord: 'Create a new record',
+    filter: 'Filter', workspaces: 'Workspaces', defaultWorkspace: 'General', newWorkspace: 'New workspace', workspaceName: 'Workspace name', moveWorkspace: 'Move to workspace', moveToWorkspace: 'Move to workspace',
+    newRecord: 'New record', titleOptional: 'Title (optional)', enterContent: 'Enter content...', descriptionOptional: 'Description (optional)', tags: 'Tags (comma separated)',
+    captureScreen: 'Capture screen', startRecording: 'Record video', stopRecording: 'Stop recording', regionCapture: 'Capture region', dropFiles: 'Drop files here or click to select (multiple allowed)', dropFilesActive: 'Drop files to attach them', importingFiles: 'Adding files...', fileImportFailed: 'Some files could not be added.', attachmentFiles: 'Attached files', addFiles: 'Add files', openFile: 'Open', downloadFile: 'Download',
+    language: 'Language', languageDescription: 'Choose the language used throughout PeepNote.', english: 'English', korean: '한국어', japanese: '日本語', chinese: '简体中文', general: 'General', lightMode: 'Light mode', lightModeDescription: 'Use a brighter interface. Dark mode is the default.',
+    dateNavigation: 'Date navigation', autoAdvanceDateRange: 'Automatically advance dates', autoAdvanceDateRangeDescription: 'When a new day starts, keep the same range length and move its end date to today.',
+    globalShortcuts: 'Global shortcuts', resetDefaults: 'Reset to defaults', shortcutDescription: 'They work globally even when the app is in the background. Click a shortcut, then press a key combination.', pressKey: 'Press keys...', shortcutOpenMain: 'Open main window', shortcutOpenOverlay: 'Open overlay', shortcutCaptureScreenshot: 'Capture screenshot', shortcutStartRecording: 'Start screen recording', shortcutStopRecording: 'Stop screen recording', shortcutOpenOverlayDescription: 'Open the overlay to create a record quickly', shortcutCaptureScreenshotDescription: 'Capture and save the current screen', shortcutStartRecordingDescription: 'Start recording the screen', shortcutStopRecordingDescription: 'Stop the current screen recording',
+    quickSwitch: 'Open Quick List', quickSwitchPrevious: 'Previous Quick List Item', recentRecords: 'Browse recent records quickly', recentRecordsPrevious: 'Move to the previous recent record', cloudBackup: 'Cloud backup', comingSoon: 'Coming soon', backupComingSoonDescription: 'Cloud backup and restore are not available yet.',
+    aiSettings: 'AI settings', aiProvider: 'AI provider', aiModel: 'Model', appInfo: 'App information', version: 'Version', dataLocation: 'Data location',
+    confirm: 'Confirm', select: 'Select', enterConfirm: 'Enter to confirm · Esc to cancel', deleteLog: 'Delete log', deleteLogMessage: 'Delete "{title}"? You can restore records from Trash during its retention period.', deleteSelectedLogsMessage: 'Delete {count} selected records? You can restore records from Trash during its retention period.',
+    closeToTray: 'Close (keep in tray)', minimize: 'Minimize', maximize: 'Maximize', restore: 'Restore',
+    workspaceDelete: 'Deleting this workspace moves its records to General. Continue?',
+    codeInput: 'Enter code...', htmlInput: '<div>Enter HTML...</div>', overlayContent: 'Enter content (Ctrl+Enter to save)',
+    updated: 'Updated:', aiError: 'An AI error occurred', rename: 'Rename', ungroup: 'Ungroup', deleteGroup: 'Delete group', ungroupMessage: 'Ungroup "{name}"? Its records will be kept.', ungroupSummaryWarning: '⚠️ The AI summary will be moved to Trash.', deleteGroupMessage: 'Delete "{name}" and its {count} records? You can restore records from Trash during its retention period.', videoSummaryNoticeTitle: 'Video records included', videoSummaryNoticeMessage: 'This group contains video records. Video files are not sent to the AI; only their titles and written content are included. Continue with AI summary?',
+    keyStorage: 'Used for AI group summaries. Keys are saved in the local database.', content: 'Content', title: 'Title', attachments: 'Attachments', includedRecords: 'Grouped records ({count})', noTags: 'No tags', noTagsInRange: 'No tags in this date range', preview: 'Preview', viewSource: 'View source', enlarge: 'Enlarge', copy: 'Copy', copied: 'Copied', deleteRecordMessage: 'Delete this log? Deleted items cannot be recovered.', dateRange: 'Date range', reset: 'Reset', startDate: 'Start date', endDate: 'End date', days3: '3 days', week1: '1 week', month1: '1 month', searchPlaceholder: 'Search title, content, or filename...', enterSearch: 'Enter a search term', noSearchResults: 'No search results', results: '{count} results', apiKey: '{provider} API Key', qwenEndpoint: 'Qwen API endpoint', qwenEndpointHint: 'Use your Alibaba Model Studio region or workspace endpoint.', backToTop: 'Back to top', comments: 'Comments', commentPlaceholder: 'Add a comment...', addComment: 'Add comment',
+  },
+  ko: {
+    customAiModel: '직접 입력', customAiModelId: '모델 ID', customAiModelHint: 'AI 공급처에서 제공하는 정확한 모델 ID를 입력하세요.', customAiModelRequired: '저장하려면 모델 ID를 입력하세요.',
+    ...updateMessages.ko,
+    trashRetention: '휴지통 보관기간',
+    trashRetentionDescription: '삭제한 날짜를 기준으로 적용합니다. 기간을 줄이면 기존 휴지통 기록도 더 일찍 삭제됩니다.',
+    retentionDays: '{days}일',
+    favorites: '즐겨찾기',
+    addFavorite: '즐겨찾기 추가',
+    removeFavorite: '즐겨찾기 해제',
+    favoritesEmpty: '즐겨찾기한 기록이 없습니다.',
+    favoritesHint: '기록에 별표를 누르면 날짜와 관계없이 여기에서 볼 수 있습니다.',
+    allDatesAndWorkspaces: '전체 기간 · 모든 워크스페이스',
+    library: '보관함',
+    extractText: "텍스트 추출",
+    trash: "휴지통",
+    emptyTrash: "비우기",
+    searchTrash: "휴지통에서 제목으로 검색...",
+    trashHint: "삭제한 기록은 {days}일 보관하며, 기간이 지나면 앱 실행 중 영구 삭제됩니다.",
+    restoreRecord: "복원",
+    permanentDelete: "영구 삭제",
+    trashEmpty: "휴지통이 비어 있습니다.",
+    deletedOn: "삭제일",
+    trashDays: "{count}일 남음",
+    permanentDeleteHint: "기록과 첨부 파일을 영구 삭제할까요? 이 작업은 되돌릴 수 없습니다.",
+    operationFailed: "처리하지 못했습니다. 다시 시도해 주세요.",
+    retry: "다시 시도",
+    ocrHint: "직접 추출한 이미지 글자도 검색합니다. 시크릿 이미지는 제외됩니다.",
+    ocrWorking: "이미지 속 글자를 읽는 중…",
+    ocrText: "이미지 속 글자",
+    ocrEmpty: "인식된 글자가 없습니다.",
+    ocrError: "이미지 속 글자를 읽지 못했습니다.",
+    loadMore: "더 보기",
+
+    months3: '3개월', months6: '6개월', year1: '1년',
+    manage: '관리',
+    loading: '로딩 중...', dashboard: '대시보드', search: '검색', settings: '설정',
+    smartRecords: '업무 기록의 가장 간단한 방법', save: '저장', saved: '저장됨 ✓', settingsSaved: '저장됨', cancel: '취소', delete: '삭제', edit: '편집', move: '이동', back: '뒤로',
+    add: '추가', group: '그룹', records: '개의 기록', record: '기록', all: '전체', note: '노트', screenshot: '스크린샷', video: '동영상', summary: 'AI 요약', pinned: '고정됨', selectAll: '전체 선택', clearSelection: '전체 해제', markdown: '마크다운',
+    text: '텍스트', code: '코드', secret: '시크릿', secretPassword: '시크릿 비밀번호', secretPasswordNotSet: '이 노트를 열기 전에 설정에서 4자리 시크릿 비밀번호를 설정하세요.', setSecretPassword: '시크릿 비밀번호 설정', changeSecretPassword: '시크릿 비밀번호 변경', currentSecretPassword: '현재 비밀번호', newSecretPassword: '새 4자리 비밀번호', confirmSecretPassword: '비밀번호 확인', enterSecretPassword: '이 노트를 열려면 4자리 비밀번호를 입력하세요.', unlock: '잠금 해제', goToSettings: '설정으로 이동', passwordMismatch: '비밀번호가 일치하지 않습니다.', passwordIncorrect: '비밀번호가 올바르지 않습니다.', untitled: '(제목 없음)', noContent: '내용 없음', noRecords: '기록이 없습니다', createRecord: '새로운 기록을 생성하세요',
+    filter: '필터', workspaces: '워크스페이스', defaultWorkspace: '공통', newWorkspace: '새 워크스페이스', workspaceName: '워크스페이스 이름', moveWorkspace: '워크스페이스 이동', moveToWorkspace: '이동할 워크스페이스',
+    newRecord: '새 기록', titleOptional: '제목 (선택사항)', enterContent: '내용을 입력하세요...', descriptionOptional: '설명 (선택사항)', tags: '태그 (쉼표로 구분)',
+    captureScreen: '화면 캡처', startRecording: '동영상 녹화', stopRecording: '녹화 중지', regionCapture: '영역 캡처', dropFiles: '파일을 놓거나 눌러서 선택하세요 (여러 개 가능)', dropFilesActive: '파일을 놓아 첨부하세요', importingFiles: '파일 첨부 중...', fileImportFailed: '일부 파일을 첨부하지 못했습니다.', attachmentFiles: '첨부 파일', addFiles: '파일 추가', openFile: '열기', downloadFile: '다운로드',
+    language: '언어', languageDescription: 'PeepNote 전체에 표시할 언어를 선택합니다.', english: 'English', korean: '한국어', japanese: '日本語', chinese: '简体中文', general: '일반', lightMode: '라이트 모드', lightModeDescription: '더 밝은 화면으로 표시합니다. 기본값은 다크 모드입니다.',
+    dateNavigation: '날짜 탐색', autoAdvanceDateRange: '자동으로 날짜 넘기기', autoAdvanceDateRangeDescription: '날짜가 바뀌면 조회 기간은 유지한 채 종료일을 오늘로, 시작일도 함께 하루 이동합니다.',
+    globalShortcuts: '전역 단축키', resetDefaults: '기본값으로', shortcutDescription: '앱이 백그라운드에 있어도 전역으로 동작합니다. 클릭 후 키를 누르면 등록됩니다.', pressKey: '키를 누르세요...', shortcutOpenMain: '메인 창 열기', shortcutOpenOverlay: '빠른 작성 창 열기', shortcutCaptureScreenshot: '스크린샷 캡처', shortcutStartRecording: '화면 녹화 시작', shortcutStopRecording: '화면 녹화 중지', shortcutOpenOverlayDescription: '빠른 작성 창을 열어 기록을 생성합니다.', shortcutCaptureScreenshotDescription: '현재 화면을 캡처하여 저장합니다.', shortcutStartRecordingDescription: '화면 녹화를 시작합니다.', shortcutStopRecordingDescription: '진행 중인 화면 녹화를 중지합니다.',
+    quickSwitch: '퀵 리스트 열기', quickSwitchPrevious: '퀵 리스트 이전 기록', recentRecords: '최근 기록을 빠르게 탐색합니다', recentRecordsPrevious: '최근 기록에서 이전 항목으로 이동합니다', cloudBackup: '클라우드 백업', comingSoon: '준비 중', backupComingSoonDescription: '클라우드 백업과 복원 기능은 아직 사용할 수 없습니다.',
+    aiSettings: 'AI 설정', aiProvider: 'AI 제공자', aiModel: '모델', appInfo: '앱 정보', version: '버전', dataLocation: '데이터 저장 위치',
+    confirm: '확인', select: '선택', enterConfirm: 'Enter 확인 · Esc 취소', deleteLog: '로그 삭제', deleteLogMessage: '"{title}" 로그를 삭제할까요? 보관기간 안에 휴지통에서 복원할 수 있습니다.', deleteSelectedLogsMessage: '선택한 {count}개의 기록을 삭제할까요? 보관기간 안에 휴지통에서 복원할 수 있습니다.',
+    closeToTray: '닫기 (트레이로)', minimize: '최소화', maximize: '최대화', restore: '이전 크기로',
+    workspaceDelete: '워크스페이스를 삭제하면 해당 기록이 공통으로 이동됩니다. 계속할까요?',
+    codeInput: '코드 입력...', htmlInput: '<div>HTML 입력...</div>', overlayContent: '내용 입력 (Ctrl+Enter 저장)',
+    updated: '수정:', aiError: 'AI 오류가 발생했습니다', rename: '이름 변경', ungroup: '그룹 해제', deleteGroup: '그룹 삭제', ungroupMessage: '"{name}" 그룹을 해제할까요? 기록들은 유지됩니다.', ungroupSummaryWarning: '⚠️ AI 요약 기록은 휴지통으로 이동합니다.', deleteGroupMessage: '"{name}" 그룹과 포함된 {count}개의 기록을 모두 삭제할까요? 보관기간 안에 휴지통에서 복원할 수 있습니다.', videoSummaryNoticeTitle: '동영상 기록 안내', videoSummaryNoticeMessage: '이 그룹에는 동영상 기록이 포함되어 있습니다. 동영상 파일은 AI에 전송되지 않으며, 제목과 작성한 내용만 요약에 포함됩니다. AI 요약을 진행할까요?',
+    keyStorage: '그룹 AI 정리 기능에 사용됩니다. 키는 로컬 DB에 저장됩니다.', content: '내용', title: '제목', attachments: '첨부 이미지', includedRecords: '함께 그룹된 목록 ({count})', noTags: '태그 없음', noTagsInRange: '현재 조회 기간에 태그가 없습니다', preview: '미리보기', viewSource: '소스 보기', enlarge: '크게 보기', copy: '복사', copied: '복사됨', deleteRecordMessage: '이 로그를 삭제하시겠습니까? 삭제된 항목은 복구할 수 없습니다.', dateRange: '날짜 범위', reset: '초기화', startDate: '시작일', endDate: '종료일', days3: '3일', week1: '1주일', month1: '1개월', searchPlaceholder: '제목, 내용 또는 파일명으로 검색...', enterSearch: '검색어를 입력하세요', noSearchResults: '검색 결과가 없습니다', results: '{count}개의 결과', apiKey: '{provider} API 키', qwenEndpoint: 'Qwen API 엔드포인트', qwenEndpointHint: 'Alibaba Model Studio의 지역 또는 워크스페이스 엔드포인트를 입력하세요.', backToTop: '맨 위로', comments: '댓글', commentPlaceholder: '댓글을 입력하세요...', addComment: '댓글 추가',
+  },
+  ja: {
+    customAiModel: '直接入力', customAiModelId: 'モデルID', customAiModelHint: 'AIプロバイダーが指定する正確なモデルIDを入力してください。', customAiModelRequired: '保存するにはモデルIDを入力してください。',
+    ...updateMessages.ja,
+    trashRetention: 'ゴミ箱の保存期間',
+    trashRetentionDescription: '削除日から適用されます。期間を短くすると、ゴミ箱内の既存の記録も早く削除されます。',
+    retentionDays: '{days}日',
+    favorites: 'お気に入り',
+    addFavorite: 'お気に入りに追加',
+    removeFavorite: 'お気に入りから削除',
+    favoritesEmpty: 'お気に入りはまだありません。',
+    favoritesHint: '記録の星を押すと、日付に関係なくここに表示されます。',
+    allDatesAndWorkspaces: '全期間 · すべてのワークスペース',
+    library: 'ライブラリ',
+    extractText: "テキストを抽出",
+    trash: "ゴミ箱",
+    emptyTrash: "空にする",
+    searchTrash: "ゴミ箱をタイトルで検索...",
+    trashHint: "削除した記録は{days}日間保存され、その後アプリの実行中に完全に削除されます。",
+    restoreRecord: "復元",
+    permanentDelete: "完全に削除",
+    trashEmpty: "ゴミ箱は空です。",
+    deletedOn: "削除日",
+    trashDays: "残り{count}日",
+    permanentDeleteHint: "記録と添付ファイルを完全に削除しますか？元に戻せません。",
+    operationFailed: "処理に失敗しました。再試行してください。",
+    retry: "再試行",
+    ocrHint: "抽出済みの画像文字も検索します。秘密の画像は対象外です。",
+    ocrWorking: "画像内の文字を読み取り中…",
+    ocrText: "画像内の文字",
+    ocrEmpty: "文字が見つかりませんでした。",
+    ocrError: "画像の文字を読み取れませんでした。",
+    loadMore: "もっと見る",
+
+    months3: '3か月', months6: '6か月', year1: '1年',
+    manage: '管理',
+    loading: '読み込み中...', dashboard: 'ダッシュボード', search: '検索', settings: '設定',
+    smartRecords: '仕事の記録をもっとスマートに', save: '保存', saved: '保存済み ✓', settingsSaved: '保存済み', cancel: 'キャンセル', delete: '削除', edit: '編集', move: '移動', back: '戻る',
+    add: '追加', group: 'グループ', records: '件の記録', record: '記録', all: 'すべて', note: 'ノート', screenshot: 'スクリーンショット', video: '動画', summary: 'AI要約', pinned: '固定', selectAll: 'すべて選択', clearSelection: '選択解除', markdown: 'マークダウン',
+    text: 'テキスト', code: 'コード', secret: 'シークレット', secretPassword: 'シークレットパスワード', secretPasswordNotSet: 'このノートを開く前に、設定で4桁のシークレットパスワードを設定してください。', setSecretPassword: 'シークレットパスワードを設定', changeSecretPassword: 'シークレットパスワードを変更', currentSecretPassword: '現在のパスワード', newSecretPassword: '新しい4桁のパスワード', confirmSecretPassword: 'パスワードを確認', enterSecretPassword: 'このノートを開くには4桁のパスワードを入力してください。', unlock: 'ロック解除', goToSettings: '設定へ', passwordMismatch: 'パスワードが一致しません。', passwordIncorrect: 'パスワードが正しくありません。', untitled: '（無題）', noContent: '内容なし', noRecords: '記録がありません', createRecord: '新しい記録を作成してください',
+    filter: 'フィルター', workspaces: 'ワークスペース', defaultWorkspace: '共通', newWorkspace: '新しいワークスペース', workspaceName: 'ワークスペース名', moveWorkspace: 'ワークスペースへ移動', moveToWorkspace: '移動先のワークスペース',
+    newRecord: '新しい記録', titleOptional: 'タイトル（任意）', enterContent: '内容を入力...', descriptionOptional: '説明（任意）', tags: 'タグ（カンマ区切り）',
+    captureScreen: '画面をキャプチャ', startRecording: '動画を録画', stopRecording: '録画を停止', regionCapture: '範囲をキャプチャ', dropFiles: 'ドロップまたはクリックして選択（複数可）', dropFilesActive: 'ドロップして添付', importingFiles: 'ファイルを追加中...', fileImportFailed: '一部のファイルを追加できませんでした。', attachmentFiles: '添付ファイル', addFiles: 'ファイルを追加', openFile: '開く', downloadFile: 'ダウンロード',
+    language: '言語', languageDescription: 'PeepNote 全体で使用する言語を選択します。', english: 'English', korean: '한국어', japanese: '日本語', chinese: '简体中文', general: '一般', lightMode: 'ライトモード', lightModeDescription: '明るい画面で表示します。デフォルトはダークモードです。',
+    dateNavigation: '日付ナビゲーション', autoAdvanceDateRange: '日付を自動で進める', autoAdvanceDateRangeDescription: '日付が変わると、期間を保ったまま終了日を今日にし、開始日も1日進めます。',
+    globalShortcuts: 'グローバルショートカット', resetDefaults: 'デフォルトに戻す', shortcutDescription: 'アプリがバックグラウンドにあってもグローバルに動作します。クリックしてからキー操作を入力してください。', pressKey: 'キーを押してください...', shortcutOpenMain: 'メインウィンドウを開く', shortcutOpenOverlay: 'クイック作成を開く', shortcutCaptureScreenshot: 'スクリーンショットを撮る', shortcutStartRecording: '画面録画を開始', shortcutStopRecording: '画面録画を停止', shortcutOpenOverlayDescription: 'クイック作成ウィンドウを開いて記録を作成します。', shortcutCaptureScreenshotDescription: '現在の画面をキャプチャして保存します。', shortcutStartRecordingDescription: '画面録画を開始します。', shortcutStopRecordingDescription: '実行中の画面録画を停止します。',
+    quickSwitch: 'クイックリストを開く', quickSwitchPrevious: 'クイックリストの前の記録', recentRecords: '最近の記録をすばやく確認します', recentRecordsPrevious: '最近の記録の前の項目へ移動します', cloudBackup: 'クラウドバックアップ', comingSoon: '準備中', backupComingSoonDescription: 'クラウドバックアップと復元はまだ利用できません。',
+    aiSettings: 'AI設定', aiProvider: 'AIプロバイダー', aiModel: 'モデル', appInfo: 'アプリ情報', version: 'バージョン', dataLocation: 'データ保存場所',
+    confirm: '確認', select: '選択', enterConfirm: 'Enterで確認 · Escでキャンセル', deleteLog: '記録を削除', deleteLogMessage: '「{title}」を削除しますか？保存期間内はゴミ箱から復元できます。', deleteSelectedLogsMessage: '選択した{count}件の記録を削除しますか？保存期間内はゴミ箱から復元できます。',
+    closeToTray: '閉じる（トレイに残す）', minimize: '最小化', maximize: '最大化', restore: '元に戻す',
+    workspaceDelete: 'このワークスペースを削除すると、その記録は共通に移動します。続行しますか？',
+    codeInput: 'コードを入力...', htmlInput: '<div>HTMLを入力...</div>', overlayContent: '内容を入力（Ctrl+Enterで保存）',
+    updated: '更新:', aiError: 'AIエラーが発生しました', rename: '名前を変更', ungroup: 'グループ解除', deleteGroup: 'グループを削除', ungroupMessage: '「{name}」をグループ解除しますか？記録は保持されます。', ungroupSummaryWarning: '⚠️ AI要約の記録はゴミ箱に移動します。', deleteGroupMessage: '「{name}」と含まれる{count}件の記録をすべて削除しますか？保存期間内はゴミ箱から復元できます。', videoSummaryNoticeTitle: '動画記録のご案内', videoSummaryNoticeMessage: 'このグループには動画記録が含まれています。動画ファイルはAIに送信されず、タイトルと記録内容のみが要約に含まれます。AI要約を続けますか？',
+    keyStorage: 'グループAI要約に使用します。キーはローカルデータベースに保存されます。', content: '内容', title: 'タイトル', attachments: '添付画像', includedRecords: '同じグループの記録（{count}）', noTags: 'タグなし', noTagsInRange: '現在の期間にタグはありません', preview: 'プレビュー', viewSource: 'ソースを表示', enlarge: '拡大', copy: 'コピー', copied: 'コピーしました', deleteRecordMessage: 'この記録を削除しますか？削除した項目は復元できません。', dateRange: '日付範囲', reset: 'リセット', startDate: '開始日', endDate: '終了日', days3: '3日', week1: '1週間', month1: '1か月', searchPlaceholder: 'タイトル、内容、ファイル名を検索...', enterSearch: '検索語を入力してください', noSearchResults: '検索結果がありません', results: '{count}件の結果', apiKey: '{provider} APIキー', qwenEndpoint: 'Qwen APIエンドポイント', qwenEndpointHint: 'Alibaba Model Studioのリージョンまたはワークスペースのエンドポイントを入力してください。', backToTop: '一番上へ', comments: 'コメント', commentPlaceholder: 'コメントを入力...', addComment: 'コメントを追加',
+  },
+  zh: {
+    customAiModel: '手动输入', customAiModelId: '模型 ID', customAiModelHint: '请输入 AI 提供商指定的准确模型 ID。', customAiModelRequired: '请先输入模型 ID 再保存。',
+    ...updateMessages.zh,
+    trashRetention: '回收站保留时间',
+    trashRetentionDescription: '从删除日期开始计算。缩短时间后，回收站中已有的记录也会更早删除。',
+    retentionDays: '{days}天',
+    favorites: '收藏',
+    addFavorite: '添加收藏',
+    removeFavorite: '取消收藏',
+    favoritesEmpty: '暂无收藏记录。',
+    favoritesHint: '点击记录的星标，即可在此查看，不受日期限制。',
+    allDatesAndWorkspaces: '全部时间 · 所有工作区',
+    library: '资料库',
+    extractText: "提取文字",
+    trash: "回收站",
+    emptyTrash: "清空",
+    searchTrash: "按标题搜索回收站...",
+    trashHint: "删除的记录保留{days}天，之后在应用运行时永久删除。",
+    restoreRecord: "恢复",
+    permanentDelete: "永久删除",
+    trashEmpty: "回收站为空。",
+    deletedOn: "删除日期",
+    trashDays: "剩余{count}天",
+    permanentDeleteHint: "永久删除记录及附件吗？此操作无法撤销。",
+    operationFailed: "操作失败，请重试。",
+    retry: "重试",
+    ocrHint: "搜索包含已手动提取的图片文字，私密图片除外。",
+    ocrWorking: "正在识别图片文字…",
+    ocrText: "图片文字",
+    ocrEmpty: "未识别到文字。",
+    ocrError: "无法识别图片文字。",
+    loadMore: "加载更多",
+
+    months3: '3个月', months6: '6个月', year1: '1年',
+    manage: '管理',
+    loading: '加载中...', dashboard: '仪表盘', search: '搜索', settings: '设置',
+    smartRecords: '更快速、更智能地记录工作', save: '保存', saved: '已保存 ✓', settingsSaved: '已保存', cancel: '取消', delete: '删除', edit: '编辑', move: '移动', back: '返回',
+    add: '添加', group: '分组', records: '条记录', record: '记录', all: '全部', note: '笔记', screenshot: '截图', video: '视频', summary: 'AI 摘要', pinned: '已置顶', selectAll: '全选', clearSelection: '取消全选', markdown: 'Markdown',
+    text: '文本', code: '代码', secret: '私密', secretPassword: '私密密码', secretPasswordNotSet: '打开此笔记前，请先在设置中设定 4 位私密密码。', setSecretPassword: '设置私密密码', changeSecretPassword: '更改私密密码', currentSecretPassword: '当前密码', newSecretPassword: '新的 4 位密码', confirmSecretPassword: '确认密码', enterSecretPassword: '请输入 4 位密码以打开此笔记。', unlock: '解锁', goToSettings: '前往设置', passwordMismatch: '密码不一致。', passwordIncorrect: '密码不正确。', untitled: '（无标题）', noContent: '暂无内容', noRecords: '暂无记录', createRecord: '创建一条新记录',
+    filter: '筛选', workspaces: '工作区', defaultWorkspace: '通用', newWorkspace: '新建工作区', workspaceName: '工作区名称', moveWorkspace: '移动到工作区', moveToWorkspace: '选择目标工作区',
+    newRecord: '新记录', titleOptional: '标题（可选）', enterContent: '输入内容...', descriptionOptional: '说明（可选）', tags: '标签（用逗号分隔）',
+    captureScreen: '截取屏幕', startRecording: '录制视频', stopRecording: '停止录制', regionCapture: '区域截图', dropFiles: '拖放或点击选择文件（可多选）', dropFilesActive: '松开即可添加文件', importingFiles: '正在添加文件...', fileImportFailed: '部分文件无法添加。', attachmentFiles: '附件', addFiles: '添加文件', openFile: '打开', downloadFile: '下载',
+    language: '语言', languageDescription: '选择 PeepNote 中使用的语言。', english: 'English', korean: '한국어', japanese: '日本語', chinese: '简体中文', general: '常规', lightMode: '浅色模式', lightModeDescription: '使用更明亮的界面。默认使用深色模式。',
+    dateNavigation: '日期导航', autoAdvanceDateRange: '自动推进日期', autoAdvanceDateRangeDescription: '新的一天开始时，保持相同的日期范围长度，并将结束日期移至今天。',
+    globalShortcuts: '全局快捷键', resetDefaults: '恢复默认', shortcutDescription: '即使应用在后台也可全局使用。点击快捷键后按下按键组合即可注册。', pressKey: '请按下按键...', shortcutOpenMain: '打开主窗口', shortcutOpenOverlay: '打开快速记录窗口', shortcutCaptureScreenshot: '截取屏幕', shortcutStartRecording: '开始屏幕录制', shortcutStopRecording: '停止屏幕录制', shortcutOpenOverlayDescription: '打开快速记录窗口以创建记录。', shortcutCaptureScreenshotDescription: '截取并保存当前屏幕。', shortcutStartRecordingDescription: '开始录制屏幕。', shortcutStopRecordingDescription: '停止当前屏幕录制。',
+    quickSwitch: '打开快速列表', quickSwitchPrevious: '快速列表上一条记录', recentRecords: '快速浏览最近记录', recentRecordsPrevious: '移至上一条最近记录', cloudBackup: '云端备份', comingSoon: '即将推出', backupComingSoonDescription: '云端备份和恢复功能暂不可用。',
+    aiSettings: 'AI 设置', aiProvider: 'AI 提供商', aiModel: '模型', appInfo: '应用信息', version: '版本', dataLocation: '数据存储位置',
+    confirm: '确认', select: '选择', enterConfirm: 'Enter 确认 · Esc 取消', deleteLog: '删除记录', deleteLogMessage: '要删除“{title}”吗？保留时间内可从回收站恢复。', deleteSelectedLogsMessage: '要删除选中的 {count} 条记录吗？保留时间内可从回收站恢复。',
+    closeToTray: '关闭（保留在托盘）', minimize: '最小化', maximize: '最大化', restore: '还原',
+    workspaceDelete: '删除此工作区会将其记录移至通用工作区。要继续吗？',
+    codeInput: '输入代码...', htmlInput: '<div>输入 HTML...</div>', overlayContent: '输入内容（Ctrl+Enter 保存）',
+    updated: '更新：', aiError: '发生 AI 错误', rename: '重命名', ungroup: '取消分组', deleteGroup: '删除分组', ungroupMessage: '要取消“{name}”的分组吗？记录将被保留。', ungroupSummaryWarning: '⚠️ AI 摘要记录将移入回收站。', deleteGroupMessage: '要删除“{name}”及其包含的 {count} 条记录吗？保留时间内可从回收站恢复。', videoSummaryNoticeTitle: '视频记录说明', videoSummaryNoticeMessage: '该分组包含视频记录。视频文件不会发送给 AI，只会将标题和记录内容纳入摘要。要继续 AI 摘要吗？',
+    keyStorage: '用于 AI 分组摘要。密钥保存在本地数据库中。', content: '内容', title: '标题', attachments: '附件图片', includedRecords: '同组记录（{count}）', noTags: '无标签', noTagsInRange: '当前日期范围内没有标签', preview: '预览', viewSource: '查看源代码', enlarge: '放大', copy: '复制', copied: '已复制', deleteRecordMessage: '确定要删除此记录吗？删除后无法恢复。', dateRange: '日期范围', reset: '重置', startDate: '开始日期', endDate: '结束日期', days3: '3天', week1: '1周', month1: '1个月', searchPlaceholder: '搜索标题、内容或文件名...', enterSearch: '请输入搜索词', noSearchResults: '没有搜索结果', results: '{count} 条结果', apiKey: '{provider} API 密钥', qwenEndpoint: 'Qwen API 端点', qwenEndpointHint: '请输入 Alibaba Model Studio 的区域或工作区端点。', backToTop: '返回顶部', comments: '评论', commentPlaceholder: '添加评论...', addComment: '添加评论'
+  }
+} as const
+
+type Key = keyof typeof messages.en
+type I18n = { language: Language; setLanguage: (language: Language) => void; t: (key: Key, values?: Record<string, string | number>) => string }
+const I18nContext = createContext<I18n | null>(null)
+
+export function I18nProvider({ children }: { children: React.ReactNode }) {
+  const [language, setLanguageState] = useState<Language>(() => {
+    const saved = localStorage.getItem('openpeepnote_language')
+    return saved === 'ko' || saved === 'ja' || saved === 'zh' ? saved : 'en'
+  })
+  const setLanguage = useCallback((next: Language) => { localStorage.setItem('openpeepnote_language', next); setLanguageState(next) }, [])
+  useEffect(() => { document.documentElement.lang = language }, [language])
+  useEffect(() => {
+    const applyLanguage = (next: unknown) => {
+      if (next === 'en' || next === 'ko' || next === 'ja' || next === 'zh') setLanguage(next)
+    }
+    const syncFromStorage = (event: StorageEvent) => {
+      if (event.key === 'openpeepnote_language') applyLanguage(event.newValue)
+    }
+    window.addEventListener('storage', syncFromStorage)
+    window.electronAPI?.on('language-changed', applyLanguage)
+    return () => {
+      window.removeEventListener('storage', syncFromStorage)
+      window.electronAPI?.off('language-changed', applyLanguage)
+    }
+  }, [setLanguage])
+  const value = useMemo<I18n>(() => ({ language, setLanguage, t: (key, values) => {
+    let text: string = messages[language][key]
+    for (const [name, value] of Object.entries(values ?? {})) text = text.replace(`{${name}}`, String(value))
+    return text
+  } }), [language])
+  return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>
+}
+
+export function useI18n() {
+  const context = useContext(I18nContext)
+  if (!context) throw new Error('useI18n must be used inside I18nProvider')
+  return context
+}

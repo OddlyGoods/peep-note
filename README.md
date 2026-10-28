@@ -4,6 +4,10 @@ PeepNote is a local-first desktop app for saving useful LLM responses, recording
 
 > PeepNote keeps its application data on the local computer. AI summaries are optional and require an API key configured by the user.
 
+## News
+
+- **2026-10-28** — Added manual data folder selection in **Settings → App information → Data location → Change folder**. Choose an empty folder and restart to copy your notes, attachments, and settings there. Original files are kept as a backup. Thanks for the suggestion in [#1](https://github.com/OddlyGoods/peep-note/issues/1)!
+
 ## See it in action
 
 ### 1. Save LLM responses as Markdown notes

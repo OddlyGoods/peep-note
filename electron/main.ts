@@ -24,6 +24,7 @@ import { UPDATE_STATE_CHANNEL } from '../shared/updates'
 import { startServer } from '../server/index'
 import { attachmentMimeType, isImageAttachment } from '../shared/attachments'
 import { DataStorageError, prepareDataLocation, scheduleDataLocation } from './dataStorage'
+import { restartAfterDataLocationChange } from './restart'
 import { dataStorageCopy, dataStorageErrorKey, type DataLocationResult } from '../shared/dataStorage'
 
 // Register the internal app scheme before Electron is ready.
@@ -1123,8 +1124,7 @@ function setupIPC() {
       // the process so the next launch can copy data before opening the DB.
       setImmediate(() => {
         for (const win of BrowserWindow.getAllWindows()) win.removeAllListeners('close')
-        app.relaunch()
-        app.quit()
+        restartAfterDataLocationChange(app, isDev && process.env.PEEPNOTE_MANAGED_DEV_RESTART === '1')
       })
       return { status: 'restarting' }
     } catch (error) {

@@ -7,3 +7,4 @@ require.extensions['.ts'] = (module, filename) => module._compile(transformSync(
 }).code, filename)
 require('../tests/local-profile.test.ts')
 require('../tests/data-storage.test.ts')
+require('../tests/development-restart.test.ts')

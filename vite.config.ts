@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import electron from 'vite-plugin-electron'
 import renderer from 'vite-plugin-electron-renderer'
 import path from 'path'
+import { startDevelopmentElectron } from './scripts/developmentElectron'
 
 const electronExternals = [
   'electron',
@@ -37,9 +38,8 @@ export default defineConfig({
       {
         // 메인 프로세스 + 서버
         entry: 'electron/main.ts',
-        onstart(options) {
-          // vite-plugin-electron이 직접 electron을 실행
-          options.startup()
+        async onstart(options) {
+          await startDevelopmentElectron(options.startup)
         },
         vite: {
           build: {

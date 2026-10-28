@@ -35,6 +35,10 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [saving, setSaving] = useState(false)
   const [recording, setRecording] = useState(false)
+  useEffect(() => {
+    void window.electronAPI?.setRecordingActive?.(recording)
+    return () => { void window.electronAPI?.setRecordingActive?.(false) }
+  }, [recording])
   const [recordingTime, setRecordingTime] = useState(0)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const timerRef = useRef<number | null>(null)

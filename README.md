@@ -217,6 +217,8 @@ Windows: %APPDATA%/open-peep-note
 
 The legacy directory name is retained for compatibility. It contains the local database, screenshots, recordings, and application settings. Back up this directory before reinstalling the operating system or moving to another computer.
 
+To choose a different data folder, open **Settings → App information → Data location → Change folder**. Select an empty folder, save any unfinished notes and settings, then confirm **Copy and restart**. PeepNote copies your records, managed media, OCR models, and settings and updates stored attachment paths before opening the new location. Original files are kept as a backup. Keep the selected drive available whenever you use the app.
+
 ## License
 
 PeepNote is released under the [Apache License 2.0](LICENSE).

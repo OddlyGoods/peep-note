@@ -1,4 +1,5 @@
 import type { UpdateState } from '../../shared/updates'
+import type { DataLocationResult } from '../../shared/dataStorage'
 export {}
 
 declare global {
@@ -16,6 +17,9 @@ declare global {
       getScreenshotsDir: () => Promise<string>
       getVideosDir: () => Promise<string>
       getUserDataPath: () => Promise<string>
+      chooseDataLocation: () => Promise<string | null>
+      changeDataLocation: (directory: string) => Promise<DataLocationResult>
+      setRecordingActive: (active: boolean) => Promise<void>
       getSettings: () => Promise<Record<string, unknown>>
       saveSettings: (settings: unknown) => Promise<{ ok: boolean }>
       setHotkeysEnabled: (enabled: boolean) => Promise<{ ok: boolean }>

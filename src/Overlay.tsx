@@ -52,6 +52,10 @@ export default function Overlay() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [recording, setRecording] = useState(false)
+  useEffect(() => {
+    void window.electronAPI?.setRecordingActive?.(recording)
+    return () => { void window.electronAPI?.setRecordingActive?.(false) }
+  }, [recording])
   const [recordingTime, setRecordingTime] = useState(0)
   const [maximized, setMaximized] = useState(false)
   const [format, setFormat] = useState<ContentFormat>('text')

@@ -23,6 +23,8 @@ import { installDeb } from './installDeb'
 import { UPDATE_STATE_CHANNEL } from '../shared/updates'
 import { startServer } from '../server/index'
 import { attachmentMimeType, isImageAttachment } from '../shared/attachments'
+import { DataStorageError, prepareDataLocation, scheduleDataLocation } from './dataStorage'
+import { dataStorageCopy, dataStorageErrorKey, type DataLocationResult } from '../shared/dataStorage'
 
 // Register the internal app scheme before Electron is ready.
 protocol.registerSchemesAsPrivileged([
@@ -105,12 +107,14 @@ function showMainWindow() {
 // ── 데이터 디렉토리 준비 ──────────────────────────────────────────────
 app.setPath('userData', path.join(app.getPath('appData'), 'open-peep-note'))
 const userData = app.getPath('userData')
-const screenshotsDir = path.join(userData, 'screenshots')
-const videosDir = path.join(userData, 'videos')
-const attachmentsDir = path.join(userData, 'attachments')
-;[screenshotsDir, videosDir, attachmentsDir].forEach(dir => {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
-})
+const profilePath = userData
+let dataDirectory = userData
+let screenshotsDir = path.join(dataDirectory, 'screenshots')
+let videosDir = path.join(dataDirectory, 'videos')
+let attachmentsDir = path.join(dataDirectory, 'attachments')
+const recordingWindows = new Set<number>()
+const observedRecordingWindows = new WeakSet<Electron.WebContents>()
+let changingDataLocation = false
 
 function managedLocalFile(filePath: string): string | null {
   try {
@@ -131,7 +135,7 @@ function uniqueAttachmentPath(originalName: string) {
 }
 
 // ── 설정 파일 ──────────────────────────────────────────────────────────
-const settingsPath = path.join(userData, 'settings.json')
+let settingsPath = path.join(dataDirectory, 'settings.json')
 function loadSettings() {
   try {
     if (fs.existsSync(settingsPath)) {
@@ -1086,7 +1090,47 @@ function setupIPC() {
     return { ok: true }
   })
 
-  ipcMain.handle('get-user-data-path', () => userData)
+  ipcMain.handle('get-user-data-path', () => dataDirectory)
+
+  ipcMain.handle('set-recording-active', (event, active: boolean) => {
+    if (active) {
+      recordingWindows.add(event.sender.id)
+      if (!observedRecordingWindows.has(event.sender)) {
+        observedRecordingWindows.add(event.sender)
+        event.sender.once('destroyed', () => recordingWindows.delete(event.sender.id))
+      }
+    } else recordingWindows.delete(event.sender.id)
+  })
+
+  ipcMain.handle('choose-data-location', async event => {
+    if (event.sender !== mainWindow?.webContents || changingDataLocation || !mainWindow) return null
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: dataStorageCopy(loadSettings().language).changeDataLocation,
+      properties: ['openDirectory', 'createDirectory'],
+      defaultPath: path.dirname(dataDirectory)
+    })
+    return result.canceled ? null : result.filePaths[0] ?? null
+  })
+
+  ipcMain.handle('change-data-location', (event, target: unknown): DataLocationResult => {
+    if (event.sender !== mainWindow?.webContents || typeof target !== 'string') return { status: 'error', error: 'unavailable' }
+    if (changingDataLocation || recordingWindows.size || snippingPreparing || snippingWindow || capturePickerWindow
+      || updateController.snapshot().status === 'installing') return { status: 'error', error: 'busy' }
+    try {
+      scheduleDataLocation(profilePath, dataDirectory, target)
+      changingDataLocation = true
+      // Normal window close handlers hide to tray. A storage change must exit
+      // the process so the next launch can copy data before opening the DB.
+      setImmediate(() => {
+        for (const win of BrowserWindow.getAllWindows()) win.removeAllListeners('close')
+        app.relaunch()
+        app.quit()
+      })
+      return { status: 'restarting' }
+    } catch (error) {
+      return { status: 'error', error: error instanceof DataStorageError ? error.code : 'failed' }
+    }
+  })
 
   ipcMain.handle('get-screenshots-dir', () => screenshotsDir)
 
@@ -1306,6 +1350,25 @@ app.whenReady().then(async () => {
     return
   }
 
+  try {
+    const location = await prepareDataLocation(profilePath)
+    dataDirectory = location.directory
+    screenshotsDir = path.join(dataDirectory, 'screenshots')
+    videosDir = path.join(dataDirectory, 'videos')
+    attachmentsDir = path.join(dataDirectory, 'attachments')
+    settingsPath = path.join(dataDirectory, 'settings.json')
+    for (const directory of [screenshotsDir, videosDir, attachmentsDir]) fs.mkdirSync(directory, { recursive: true })
+    if (location.error) {
+      const copy = dataStorageCopy(loadSettings().language)
+      dialog.showErrorBox(copy.dataLocationStartupTitle, `${copy.dataLocationFailed}\n${copy[dataStorageErrorKey(location.error)]}`)
+    }
+  } catch {
+    const copy = dataStorageCopy(loadSettings().language)
+    dialog.showErrorBox(copy.dataLocationStartupTitle, copy.dataLocationStartupFailed)
+    app.exit(1)
+    return
+  }
+
   // 기본 메뉴바(File, Edit...) 제거
   Menu.setApplicationMenu(null)
 
@@ -1317,7 +1380,7 @@ app.whenReady().then(async () => {
   })
 
   // 로컬 Hono 서버 시작
-  await startServer(APP_PORT, userData)
+  await startServer(APP_PORT, dataDirectory)
 
   createMainWindow()
   createOverlayWindow()

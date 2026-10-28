@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { Save, Keyboard, Cloud, User, RotateCcw, Sparkles, Eye, EyeOff, Check, ChevronDown, Lock } from 'lucide-react'
+import { Save, Keyboard, Cloud, User, RotateCcw, Sparkles, Eye, EyeOff, Check, ChevronDown, Lock, FolderOpen, Loader2 } from 'lucide-react'
 import { api, Settings as SettingsType } from '../lib/api'
 import { Language, useI18n } from '../i18n'
 import { useLogStore } from '../stores/logStore'
 import SecretPasswordModal from '../components/SecretPasswordModal'
 import UpdatePanel from '../components/UpdatePanel'
+import ConfirmModal from '../components/ConfirmModal'
+import { dataStorageErrorKey } from '../../shared/dataStorage'
 import { DEFAULT_TRASH_RETENTION_DAYS, TRASH_RETENTION_OPTIONS, normalizeTrashRetentionDays } from '../../shared/trashRetention'
 import { AI_MODELS, DEFAULT_AI_MODELS, getAiModelSelection, type AiProvider } from '../../shared/aiModels'
 
@@ -101,6 +103,9 @@ export default function Settings() {
   const [showKey, setShowKey] = useState(false)
   const [appVersion, setAppVersion] = useState('')
   const [dataPath, setDataPath] = useState('')
+  const [pendingDataPath, setPendingDataPath] = useState<string | null>(null)
+  const [changingDataPath, setChangingDataPath] = useState(false)
+  const [dataPathError, setDataPathError] = useState<ReturnType<typeof dataStorageErrorKey> | ''>('')
   const [selectedLanguage, setSelectedLanguage] = useState<Language>(language)
   const [languageMenuOpen, setLanguageMenuOpen] = useState(false)
   const languageMenuRef = useRef<HTMLDivElement>(null)
@@ -200,6 +205,27 @@ export default function Settings() {
   }
 
   const resetHotkeys = () => setHotkeys({ ...DEFAULT_HOTKEYS })
+
+  const chooseDataPath = async () => {
+    setDataPathError('')
+    try {
+      const directory = await window.electronAPI?.chooseDataLocation()
+      if (directory) setPendingDataPath(directory)
+    } catch { setDataPathError('dataLocationUnavailable') }
+  }
+
+  const changeDataPath = async () => {
+    if (!pendingDataPath || changingDataPath) return
+    const directory = pendingDataPath
+    setPendingDataPath(null)
+    setChangingDataPath(true)
+    try {
+      const result = await window.electronAPI?.changeDataLocation(directory)
+      if (result?.status === 'restarting') return
+      setDataPathError(dataStorageErrorKey(result?.error))
+    } catch { setDataPathError('dataLocationFailed') }
+    setChangingDataPath(false)
+  }
 
 
   if (loading) return (
@@ -576,9 +602,20 @@ export default function Settings() {
                 <span className="text-gray-400">{t('version')}</span>
                 <span className="text-gray-300">{appVersion || '–'}</span>
               </div>
-              <div className="flex justify-between py-1.5 border-b border-gray-800">
-                <span className="text-gray-400">{t('dataLocation')}</span>
-                <span className="text-gray-300 font-mono text-xs text-right break-all">{dataPath || '–'}</span>
+              <div className="py-2 border-b border-gray-800">
+                <div className="flex items-start justify-between gap-4">
+                  <span className="text-gray-400 shrink-0">{t('dataLocation')}</span>
+                  <div className="flex min-w-0 flex-col items-end gap-2">
+                    <span className="text-gray-300 font-mono text-xs text-right break-all">{dataPath || '–'}</span>
+                    <button type="button" onClick={chooseDataPath} disabled={!window.electronAPI?.chooseDataLocation || changingDataPath || saving}
+                      className="btn-secondary flex items-center gap-1.5 text-xs shrink-0 disabled:opacity-50 disabled:cursor-not-allowed">
+                      {changingDataPath ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FolderOpen className="w-3.5 h-3.5" />}
+                      {t(changingDataPath ? 'dataLocationRestarting' : 'changeDataLocation')}
+                    </button>
+                  </div>
+                </div>
+                <p className="mt-2 text-xs text-gray-400 leading-relaxed">{t('dataLocationHint')}</p>
+                {dataPathError && <p role="alert" className="mt-2 text-xs text-red-400">{t(dataPathError)}</p>}
               </div>
             </div>
             <UpdatePanel />
@@ -593,6 +630,8 @@ export default function Settings() {
           onCancel={() => setShowSecretPasswordModal(false)}
         />
       )}
+      {pendingDataPath && <ConfirmModal title={t('dataLocationConfirmTitle')} message={t('dataLocationConfirm').replace('{path}', pendingDataPath)}
+        confirmLabel={t('dataLocationRestart')} danger={false} onConfirm={changeDataPath} onCancel={() => setPendingDataPath(null)} />}
     </div>
   )
 }

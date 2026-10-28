@@ -6,3 +6,4 @@ require.extensions['.ts'] = (module, filename) => module._compile(transformSync(
   define: { 'import.meta.env': '{}' }
 }).code, filename)
 require('../tests/local-profile.test.ts')
+require('../tests/data-storage.test.ts')

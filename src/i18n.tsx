@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { updateMessages } from './updateMessages'
+import { dataStorageMessages } from '../shared/dataStorage'
 
 export type Language = 'en' | 'ko' | 'ja' | 'zh'
 
@@ -8,6 +9,7 @@ const messages = {
     showInDashboard: 'Show in dashboard',
     customAiModel: 'Enter manually', customAiModelId: 'Model ID', customAiModelHint: 'Enter the exact model ID provided by your AI provider.', customAiModelRequired: 'Enter a model ID before saving.',
     ...updateMessages.en,
+    ...dataStorageMessages.en,
     trashRetention: 'Trash retention',
     trashRetentionDescription: 'Applies from the deletion date, including records already in Trash. Shortening this period makes them expire sooner.',
     retentionDays: '{days} days',
@@ -63,6 +65,7 @@ const messages = {
     showInDashboard: '대시보드에서 보기',
     customAiModel: '직접 입력', customAiModelId: '모델 ID', customAiModelHint: 'AI 공급처에서 제공하는 정확한 모델 ID를 입력하세요.', customAiModelRequired: '저장하려면 모델 ID를 입력하세요.',
     ...updateMessages.ko,
+    ...dataStorageMessages.ko,
     trashRetention: '휴지통 보관기간',
     trashRetentionDescription: '삭제한 날짜를 기준으로 적용합니다. 기간을 줄이면 기존 휴지통 기록도 더 일찍 삭제됩니다.',
     retentionDays: '{days}일',
@@ -118,6 +121,7 @@ const messages = {
     showInDashboard: 'ダッシュボードで表示',
     customAiModel: '直接入力', customAiModelId: 'モデルID', customAiModelHint: 'AIプロバイダーが指定する正確なモデルIDを入力してください。', customAiModelRequired: '保存するにはモデルIDを入力してください。',
     ...updateMessages.ja,
+    ...dataStorageMessages.ja,
     trashRetention: 'ゴミ箱の保存期間',
     trashRetentionDescription: '削除日から適用されます。期間を短くすると、ゴミ箱内の既存の記録も早く削除されます。',
     retentionDays: '{days}日',
@@ -173,6 +177,7 @@ const messages = {
     showInDashboard: '在仪表板中查看',
     customAiModel: '手动输入', customAiModelId: '模型 ID', customAiModelHint: '请输入 AI 提供商指定的准确模型 ID。', customAiModelRequired: '请先输入模型 ID 再保存。',
     ...updateMessages.zh,
+    ...dataStorageMessages.zh,
     trashRetention: '回收站保留时间',
     trashRetentionDescription: '从删除日期开始计算。缩短时间后，回收站中已有的记录也会更早删除。',
     retentionDays: '{days}天',

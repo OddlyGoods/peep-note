@@ -52,16 +52,36 @@ if (!historyOnly) walk(root)
 const objects = git(['rev-list', '--objects', '--all']).toString('utf8').trim().split('\n').filter(Boolean)
 const names = new Map(objects.map(line => [line.split(' ')[0], line.slice(line.indexOf(' ') + 1)]))
 if (objects.length) {
-  const output = git(['cat-file', '--batch'], { input: objects.map(line => line.split(' ')[0]).join('\n') + '\n' })
-  let offset = 0
-  while (offset < output.length) {
-    const end = output.indexOf(10, offset)
-    const [hash, type, size] = output.subarray(offset, end).toString('utf8').split(' ')
-    const length = Number(size)
-    offset = end + 1
-    if (type === 'blob') { blobs++; scan(output.subarray(offset, offset + length), `history:${hash.slice(0, 8)}:${names.get(hash)}`) }
-    offset += length + 1
+  // Demo GIFs can make the complete history exceed execFileSync's output
+  // buffer. Scan bounded batches instead of loading all Git objects at once.
+  const metadata = git(['cat-file', '--batch-check'], { input: objects.map(line => line.split(' ')[0]).join('\n') + '\n' }).toString('utf8').trim().split('\n')
+  let batch = []
+  let bytes = 0
+  function scanBatch() {
+    if (!batch.length) return
+    const output = git(['cat-file', '--batch'], { input: batch.join('\n') + '\n', maxBuffer: Math.max(128 * 1024 * 1024, bytes + 1024 * 1024) })
+    let offset = 0
+    while (offset < output.length) {
+      const end = output.indexOf(10, offset)
+      const [hash, , size] = output.subarray(offset, end).toString('utf8').split(' ')
+      const length = Number(size)
+      offset = end + 1
+      blobs++
+      scan(output.subarray(offset, offset + length), `history:${hash.slice(0, 8)}:${names.get(hash)}`)
+      offset += length + 1
+    }
+    batch = []
+    bytes = 0
   }
+  for (const line of metadata) {
+    const [hash, type, size] = line.split(' ')
+    if (type !== 'blob') continue
+    const length = Number(size) + 100
+    if (bytes + length > 16 * 1024 * 1024) scanBatch()
+    batch.push(hash)
+    bytes += length
+  }
+  scanBatch()
 }
 for (const commit of git(['log', '--all', '--format=%h%x09%ae%x09%ce']).toString('utf8').trim().split('\n').filter(Boolean)) {
   const [hash, ...emails] = commit.split('\t')

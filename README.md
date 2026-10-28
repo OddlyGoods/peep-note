@@ -42,7 +42,7 @@ PeepNote opens directly to the main screen. There are no app accounts, login for
 
 The optional `VITE_LOCAL_SERVER_PORT` setting in `.env.example` defaults to `3848`, separate from the original PeepNote app. It is read at build time. The API listens only on `127.0.0.1` and rejects unrelated browser origins and hosts. No API key is bundled: enter your own provider key in Settings only if you use AI summaries.
 
-The package and Linux executable are named `peep-note`. The app keeps its existing `open-peep-note` data directory and internal application ID so installed copies continue to read the same notes and settings after updates. Original PeepNote account data is not copied or imported automatically.
+The package and Linux executable are named `peep-note`. The app keeps its existing `open-peep-note` data directory and internal application ID so installed copies continue to read the same notes and settings after updates.
 
 ## Features
 
@@ -141,27 +141,11 @@ Windows supports the same core features as Linux, including notes, local storage
 | `npm run test:updates` | Test update state, retries, renderer recovery, installation and release validation without installing anything. |
 | `npm run verify:release` | Check the package/lockfile version and optional `RELEASE_TAG`. |
 
-## App updates and publishing
+## App updates
 
-Installed Windows NSIS and Ubuntu `.deb` builds check GitHub Releases three seconds after startup, then every six hours. **Settings → App information → App updates → Check for updates** checks manually. Downloads start only after a click; the banner and Settings show download progress, errors, retry and **Restart and install**. Update state survives navigation. Updates are not installed on normal app exit.
+Installed Windows and Ubuntu `.deb` builds check for updates automatically. To check manually, go to **Settings → App information → App updates → Check for updates**.
 
-On Ubuntu, **Restart and install** opens the system administrator authentication prompt (`pkexec`/Polkit), installs the checksum-verified `.deb` with `dpkg`, and restarts PeepNote after success. If authentication is cancelled or installation fails, the app remains open and the downloaded installer can be retried. A Polkit authentication agent and `pkexec` must be available (normal Ubuntu desktop sessions provide the agent; the package recommends `pkexec`). On Windows, installation uses the NSIS updater. Unpacked/dev builds show that updating is unavailable. Local records, attachments and settings remain in Electron's user data directory, outside the installed application.
-
-The first build containing this implementation is **1.0.14**. Install it manually once to establish the new update flow, then test an update to a higher version. The updater compares version numbers; changing files while keeping the same version does not create an update.
-
-The **Build and release PeepNote** GitHub Actions workflow builds Windows x64 and Ubuntu amd64 installers. A manual workflow run on a branch produces downloadable Actions artifacts without publishing. A pushed stable version tag matching `package.json` (for example `v1.0.14`) builds both platforms, validates metadata/checksums and uploads all assets to a draft release before publishing it. Published releases are never overwritten. Repository Actions must be enabled; publishing uses the workflow's built-in `GITHUB_TOKEN`, never a token inside the app.
-
-For the current version, after committing the changes and verifying installers:
-
-```bash
-git push origin main
-git tag v1.0.15
-git push origin v1.0.15
-```
-
-For later versions, use `npm version patch` (or the appropriate minor/major bump) to update `package.json` and `package-lock.json` and create a matching commit/tag, then push that commit and the new tag. Never move a previously published tag. Release assets must include the Windows `.exe` and `.exe.blockmap`, `latest.yml`, the Linux `.deb`, and `latest-linux.yml`. The workflow waits for both platform jobs and verifies the complete set before making it visible to installed apps. If a run fails before publication, fix the cause and rerun the failed jobs; an existing draft can be completed on retry.
-
-Before the first public rollout, validate on real installed copies of both OSes: install the older build, create a note with an attachment and settings, publish a higher test version, check/download, navigate between detail/list/settings, restart to install, and verify the version and original data. Also test network interruption and cancelling Ubuntu authentication. The automated tests use simulated update backends and fixture installers; they do not replace these OS installation checks. Test releases and installed builds must use a dedicated test feed/repository to avoid updating production users during this validation.
+Choose **Download**, then **Restart and install** when you are ready. Ubuntu may ask for administrator authentication. Notes, attachments, and settings are preserved. Development and unpacked builds do not support in-app updates.
 
 ## Usage guide
 
@@ -222,7 +206,7 @@ Secret note content is excluded from AI summaries. Video files are not uploaded 
 
 ## Data and privacy
 
-The source distribution excludes local databases, environment files, application logs, installed packages and the original project Git history. GitHub Actions uses its own repository token only when publishing releases; end-user apps do not contain a GitHub token. See [SECURITY.md](SECURITY.md) for data boundaries and [PRIVACY-AUDIT.md](PRIVACY-AUDIT.md) for the source audit scope.
+Notes, attachments, and settings are stored on your computer. AI summaries are optional; using them sends the selected non-secret written content to the provider configured in Settings with your own API key. Image text extraction runs locally.
 
 Application data is stored locally. Typical locations are:
 

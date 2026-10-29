@@ -16,6 +16,9 @@ import WorkspaceMoveButton from '../components/WorkspaceMoveButton'
 import MarkdownCodeBlock from '../components/MarkdownCodeBlock'
 import TagInput from '../components/TagInput'
 import TagBadge from '../components/TagBadge'
+import AttachmentModeBadge from '../components/AttachmentModeBadge'
+import { useAttachmentPicker } from '../lib/useAttachmentPicker'
+import type { AttachmentMode } from '../../shared/attachments'
 import ConfirmModal from '../components/ConfirmModal'
 import SecretPasswordModal from '../components/SecretPasswordModal'
 import { useI18n } from '../i18n'
@@ -95,7 +98,6 @@ export default function LogDetail() {
   const [draggingFiles, setDraggingFiles] = useState(false)
   const contentScrollRef = useRef<HTMLDivElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const dragDepthRef = useRef(0)
   const [videoPlaying, setVideoPlaying] = useState(false)
 
@@ -231,13 +233,13 @@ export default function LogDetail() {
     }
   }
 
-  const addFiles = async (files: File[]) => {
+  const addFiles = async (files: File[], mode: AttachmentMode) => {
     if (!log || log.log_type === 'summary' || files.length === 0 || addingFiles) return
     setAddingFiles(true)
     setFileAddFailed(false)
     let imported: Array<{ path: string }> = []
     try {
-      imported = await window.electronAPI?.importAttachments(files) ?? []
+      imported = await window.electronAPI?.importAttachments(files, mode) ?? []
       if (imported.length === 0) {
         setFileAddFailed(true)
         return
@@ -256,11 +258,7 @@ export default function LogDetail() {
     }
   }
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.currentTarget.files ?? [])
-    event.currentTarget.value = ''
-    void addFiles(files)
-  }
+  const attachmentPicker = useAttachmentPicker(addFiles, addingFiles)
 
   const handleDragEnter = (event: React.DragEvent) => {
     if (!event.dataTransfer.types.includes('Files') || log?.log_type === 'summary') return
@@ -287,7 +285,7 @@ export default function LogDetail() {
     event.preventDefault()
     dragDepthRef.current = 0
     setDraggingFiles(false)
-    void addFiles(Array.from(event.dataTransfer.files))
+    attachmentPicker.dropFiles(Array.from(event.dataTransfer.files))
   }
 
   if (loading || log?.id !== id) return (
@@ -611,6 +609,7 @@ export default function LogDetail() {
                             : <FileIcon className="h-5 w-5" />}
                       </button>
                       <span className="min-w-0 flex-1 truncate text-sm text-gray-200" title={attachmentFilename(filePath)}>{attachmentFilename(filePath)}</span>
+                      <AttachmentModeBadge reference={filePath} />
                       <div className="flex shrink-0 items-center gap-1">
                         {editing ? (
                           <button type="button"
@@ -641,10 +640,11 @@ export default function LogDetail() {
 
           {secretGate === 'open' && !isAiSummary && (
             <div className="space-y-2">
-              <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileSelect} />
+              {attachmentPicker.input}
+              {attachmentPicker.dialog}
               <button
                 type="button"
-                onClick={() => fileInputRef.current?.click()}
+                onClick={attachmentPicker.selectFiles}
                 disabled={addingFiles}
                 aria-busy={addingFiles}
                 className="ml-auto flex w-fit items-center gap-1.5 rounded px-1 py-1 text-xs text-violet-400 transition-colors hover:bg-violet-500/10 hover:text-violet-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:cursor-wait disabled:opacity-60"

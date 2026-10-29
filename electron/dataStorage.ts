@@ -1,3 +1,4 @@
+import { isLinkedAttachment } from '../shared/attachments'
 import fs from 'node:fs'
 import path from 'node:path'
 import type { DataStorageErrorCode } from '../shared/dataStorage'
@@ -87,6 +88,7 @@ async function rewriteMediaPaths(databaseFile: string, source: string, destinati
   const SQL = await initSqlJs()
   const db = new SQL.Database(fs.readFileSync(databaseFile))
   const remap = (file: unknown) => {
+    if (typeof file === 'string' && isLinkedAttachment(file)) return file
     if (typeof file !== 'string') return file
     const absolute = path.resolve(file)
     if (!['screenshots', 'videos', 'attachments'].some(dir => contains(path.join(source, dir), absolute))) return file

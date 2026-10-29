@@ -4,6 +4,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { prepareDataLocation, scheduleDataLocation, validateDataLocation, DataStorageError } from '../electron/dataStorage'
+import { attachmentReference } from '../shared/attachments'
 const initSqlJs = require('sql.js')
 
 async function fixture() {
@@ -21,7 +22,7 @@ async function fixture() {
   const SQL = await initSqlJs()
   const db = new SQL.Database()
   db.run('CREATE TABLE logs (id TEXT, file_path TEXT, attachments TEXT, content TEXT, deleted_at INTEGER)')
-  db.run('INSERT INTO logs VALUES (?, ?, ?, ?, ?)', ['shot', shot, JSON.stringify([attachment, '/outside/unmanaged.txt']), 'Keep the original text', null])
+  db.run('INSERT INTO logs VALUES (?, ?, ?, ?, ?)', ['shot', shot, JSON.stringify([attachment, '/outside/unmanaged.txt', attachmentReference(attachment, 'link')]), 'Keep the original text', null])
   db.run('INSERT INTO logs VALUES (?, ?, ?, ?, ?)', ['trash-video', video, '[]', 'Deleted records must move too', 100])
   fs.writeFileSync(path.join(profile, 'open-peep-note.db'), Buffer.from(db.export()))
   db.close()
@@ -41,7 +42,7 @@ test('storage migration copies the latest disk data and rewrites managed paths i
     try {
       const rows = db.exec('SELECT id, file_path, attachments, content, deleted_at FROM logs ORDER BY id')[0].values
       assert.equal(rows[0][1], path.join(f.target, 'screenshots', 'shot.png'))
-      assert.deepEqual(JSON.parse(String(rows[0][2])), [path.join(f.target, 'attachments', 'nested', 'read me.txt'), '/outside/unmanaged.txt'])
+      assert.deepEqual(JSON.parse(String(rows[0][2])), [path.join(f.target, 'attachments', 'nested', 'read me.txt'), '/outside/unmanaged.txt', attachmentReference(f.attachment, 'link')])
       assert.equal(rows[0][3], 'Keep the original text')
       assert.equal(rows[1][1], path.join(f.target, 'videos', 'clip.webm'))
       assert.equal(rows[1][4], 100)

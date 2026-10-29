@@ -10,13 +10,14 @@ declare global {
       saveVideo: (buffer: ArrayBuffer, filename: string) => Promise<string | null>
       deleteVideo: (filepath: string) => Promise<boolean>
       readFileAsBase64: (filepath: string) => Promise<string | null>
-      importAttachments: (files: File[]) => Promise<Array<{ path: string; name: string; size: number; isImage: boolean; mimeType: string | null }>>
+      importAttachments: (files: File[], mode?: 'copy' | 'link') => Promise<Array<{ path: string; name: string; size: number; isImage: boolean; mimeType: string | null }>>
       deleteAttachmentFile: (filepath: string) => Promise<boolean>
       openAttachment: (filepath: string) => Promise<boolean>
       downloadAttachment: (filepath: string) => Promise<boolean>
       getScreenshotsDir: () => Promise<string>
       getVideosDir: () => Promise<string>
       getUserDataPath: () => Promise<string>
+      getDataUsage: () => Promise<{ bytes: number; partial: boolean }>
       chooseDataLocation: () => Promise<string | null>
       changeDataLocation: (directory: string) => Promise<DataLocationResult>
       setRecordingActive: (active: boolean) => Promise<void>

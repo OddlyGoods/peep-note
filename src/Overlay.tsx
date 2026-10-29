@@ -3,7 +3,9 @@ import { X, Maximize2, Minimize2, Camera, Video, FileText, Text as TextIcon, Sto
 import { api, type Workspace } from './lib/api'
 import { useI18n } from './i18n'
 import { startRegionRecording, RecordingRegion } from './lib/regionRecording'
-import { attachmentFilename } from '../shared/attachments'
+import { attachmentFilename, type AttachmentMode } from '../shared/attachments'
+import { useAttachmentPicker } from './lib/useAttachmentPicker'
+import AttachmentModeBadge from './components/AttachmentModeBadge'
 
 type LogType = 'note' | 'screenshot' | 'video'
 type ContentFormat = 'text' | 'markdown' | 'code' | 'html'
@@ -68,7 +70,6 @@ export default function Overlay() {
   const timerRef = useRef<number | null>(null)
   const recordingStartedAtRef = useRef<number | null>(null)
   const contentRef = useRef<HTMLTextAreaElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const attachmentsRef = useRef<Attachment[]>([])
   const savedAttachmentsRef = useRef(false)
   const dragDepthRef = useRef(0)
@@ -236,13 +237,13 @@ export default function Overlay() {
     if (dragDepthRef.current === 0) setDraggingFiles(false)
   }
 
-  const importFiles = async (files: File[]) => {
+  const importFiles = async (files: File[], mode: AttachmentMode) => {
     if (!files.length || importingFiles) return
     setImportingFiles(true)
     setAttachmentError(false)
     const generation = attachmentGenerationRef.current
     try {
-      const imported = await window.electronAPI?.importAttachments(files) ?? []
+      const imported = await window.electronAPI?.importAttachments(files, mode) ?? []
       if (generation !== attachmentGenerationRef.current || document.hidden) {
         imported.forEach(attachment => void window.electronAPI?.deleteAttachmentFile(attachment.path))
         return
@@ -265,18 +266,15 @@ export default function Overlay() {
     }
   }
 
+  const attachmentPicker = useAttachmentPicker(importFiles, importingFiles)
+
   const handleDrop = (event: React.DragEvent) => {
     event.preventDefault()
     dragDepthRef.current = 0
     setDraggingFiles(false)
-    void importFiles(Array.from(event.dataTransfer.files))
+    attachmentPicker.dropFiles(Array.from(event.dataTransfer.files))
   }
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.currentTarget.files ?? [])
-    event.currentTarget.value = ''
-    void importFiles(files)
-  }
 
   const startRecordingFromRegion = async (region: RecordingRegion) => {
     // A repeated global-hotkey event must not create a second recorder whose
@@ -544,8 +542,9 @@ export default function Overlay() {
             }
             value={content} onChange={e => setContent(e.target.value)} />
 
-          <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileSelect} />
-          <button type="button" onClick={() => fileInputRef.current?.click()} disabled={importingFiles}
+          {attachmentPicker.input}
+          {attachmentPicker.dialog}
+          <button type="button" onClick={attachmentPicker.selectFiles} disabled={importingFiles}
             className="flex shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed px-3 py-1.5 text-[11px] transition-all hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 disabled:cursor-wait"
             style={{ borderColor: 'var(--medium-border)', color: 'var(--quick-meta)', background: 'var(--side-panel-bg)' }}>
             {importingFiles
@@ -633,6 +632,7 @@ export default function Overlay() {
                     <p className="truncate text-xs" style={{ color: 'var(--title-text)' }}>{att.name}</p>
                     {!!att.size && <p className="text-[10px] text-slate-500">{formatFileSize(att.size)}</p>}
                   </div>
+                  <AttachmentModeBadge reference={att.path} />
                   <button
                     onClick={() => removeAttachment(i)}
                     className="h-6 w-6 shrink-0 rounded-md flex items-center justify-center opacity-60 hover:opacity-100 hover:bg-red-500/15 transition-all">

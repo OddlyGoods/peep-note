@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Save, Keyboard, Cloud, User, RotateCcw, Sparkles, Eye, EyeOff, Check, ChevronDown, Lock, FolderOpen, Loader2, MoreHorizontal } from 'lucide-react'
+import { Save, Keyboard, Cloud, User, RotateCcw, Sparkles, Eye, EyeOff, Check, ChevronDown, Lock, Loader2, MoreHorizontal } from 'lucide-react'
 import { api, Settings as SettingsType } from '../lib/api'
 import { Language, useI18n } from '../i18n'
 import { useLogStore } from '../stores/logStore'
@@ -7,6 +7,7 @@ import SecretPasswordModal from '../components/SecretPasswordModal'
 import UpdatePanel from '../components/UpdatePanel'
 import ConfirmModal from '../components/ConfirmModal'
 import { dataStorageErrorKey } from '../../shared/dataStorage'
+import DataLocationField from '../components/DataLocationField'
 import { DEFAULT_TRASH_RETENTION_DAYS, TRASH_RETENTION_OPTIONS, normalizeTrashRetentionDays } from '../../shared/trashRetention'
 import { AI_MODELS, DEFAULT_AI_MODELS, getAiModelSelection, type AiProvider } from '../../shared/aiModels'
 import { resolveHotkeys, type HotkeyAction, type Hotkeys } from '../../shared/hotkeys'
@@ -150,6 +151,8 @@ export default function Settings() {
   const [showKey, setShowKey] = useState(false)
   const [appVersion, setAppVersion] = useState('')
   const [dataPath, setDataPath] = useState('')
+  const [dataUsage, setDataUsage] = useState<{ bytes: number; partial: boolean } | null>(null)
+  const [dataUsageError, setDataUsageError] = useState(false)
   const [pendingDataPath, setPendingDataPath] = useState<string | null>(null)
   const [changingDataPath, setChangingDataPath] = useState(false)
   const [dataPathError, setDataPathError] = useState<ReturnType<typeof dataStorageErrorKey> | ''>('')
@@ -194,6 +197,9 @@ export default function Settings() {
     }).catch(() => setLoading(false))
     window.electronAPI?.getAppVersion?.().then((v: string) => setAppVersion(v))
     window.electronAPI?.getUserDataPath?.().then((path: string) => setDataPath(path))
+    const usage = window.electronAPI?.getDataUsage?.()
+    if (usage) void usage.then(setDataUsage).catch(() => setDataUsageError(true))
+    else setDataUsageError(true)
   }, [])
 
   useEffect(() => {
@@ -672,17 +678,8 @@ export default function Settings() {
                 <span className="text-gray-300">{appVersion || '–'}</span>
               </div>
               <div className="py-2 border-b border-gray-800">
-                <div className="flex items-start justify-between gap-4">
-                  <span className="text-gray-400 shrink-0">{t('dataLocation')}</span>
-                  <div className="flex min-w-0 flex-col items-end gap-2">
-                    <span className="text-gray-300 font-mono text-xs text-right break-all">{dataPath || '–'}</span>
-                    <button type="button" onClick={chooseDataPath} disabled={!window.electronAPI?.chooseDataLocation || changingDataPath || saving}
-                      className="btn-secondary flex items-center gap-1.5 text-xs shrink-0 disabled:opacity-50 disabled:cursor-not-allowed">
-                      {changingDataPath ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FolderOpen className="w-3.5 h-3.5" />}
-                      {t(changingDataPath ? 'dataLocationRestarting' : 'changeDataLocation')}
-                    </button>
-                  </div>
-                </div>
+                <DataLocationField directory={dataPath} usage={dataUsage} usageError={dataUsageError}
+                  changing={changingDataPath} disabled={!window.electronAPI?.chooseDataLocation || saving} onChoose={chooseDataPath} />
                 <p className="mt-2 text-xs text-gray-400 leading-relaxed">{t('dataLocationHint')}</p>
                 {dataPathError && <p role="alert" className="mt-2 text-xs text-red-400">{t(dataPathError)}</p>}
               </div>

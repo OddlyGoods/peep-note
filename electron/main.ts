@@ -22,7 +22,10 @@ import { UpdateController, type UpdateEvent } from './updateController'
 import { installDebAndRestart } from './installDeb'
 import { UPDATE_STATE_CHANNEL } from '../shared/updates'
 import { startServer } from '../server/index'
-import { attachmentMimeType, isImageAttachment } from '../shared/attachments'
+import { attachmentPath, isLinkedAttachment } from '../shared/attachments'
+import { importLocalAttachments } from './attachmentFiles'
+import { directoryUsage } from './dataUsage'
+import { queryAll } from '../server/db'
 import { DataStorageError, prepareDataLocation, scheduleDataLocation } from './dataStorage'
 import { restartAfterDataLocationChange } from './restart'
 import { dataStorageCopy, dataStorageErrorKey, type DataLocationResult } from '../shared/dataStorage'
@@ -119,7 +122,10 @@ const recordingWindows = new Set<number>()
 const observedRecordingWindows = new WeakSet<Electron.WebContents>()
 let changingDataLocation = false
 
+const selectedAttachmentLinks = new Set<string>()
+
 function managedLocalFile(filePath: string): string | null {
+  if (isLinkedAttachment(filePath)) return null
   try {
     const resolved = fs.realpathSync(filePath)
     const insideManagedRoot = [screenshotsDir, videosDir, attachmentsDir].some(root => {
@@ -130,11 +136,16 @@ function managedLocalFile(filePath: string): string | null {
   } catch { return null }
 }
 
-function uniqueAttachmentPath(originalName: string) {
-  const safeName = path.basename(originalName).replace(/[^\p{L}\p{N}._ -]+/gu, '_').slice(-120) || 'file'
-  const container = path.join(attachmentsDir, `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`)
-  fs.mkdirSync(container, { recursive: true })
-  return path.join(container, safeName)
+function readableAttachmentFile(reference: string): string | null {
+  if (!isLinkedAttachment(reference)) return managedLocalFile(reference)
+  if (!path.isAbsolute(attachmentPath(reference))) return null
+  try {
+    const saved = selectedAttachmentLinks.has(reference) || queryAll<{ attachments: string }>('SELECT attachments FROM logs')
+      .some(row => { try { const files = JSON.parse(row.attachments); return Array.isArray(files) && files.includes(reference) } catch { return false } })
+    if (!saved) return null
+    const resolved = fs.realpathSync(attachmentPath(reference))
+    return fs.statSync(resolved).isFile() ? resolved : null
+  } catch { return null }
 }
 
 // ── 설정 파일 ──────────────────────────────────────────────────────────
@@ -941,7 +952,9 @@ function registerHotkeys() {
 // ── IPC 핸들러 ─────────────────────────────────────────────────────────
 function setupIPC() {
   ipcMain.handle('open-image-viewer', (_e, filepath: string, requestedTheme?: string) => {
-    const data = fs.readFileSync(filepath).toString('base64')
+    const source = isLinkedAttachment(filepath) ? readableAttachmentFile(filepath) : filepath
+    if (!source) return null
+    const data = fs.readFileSync(source).toString('base64')
     const filename = path.basename(filepath)
     const settings = loadSettings()
     const theme = requestedTheme === 'light' || requestedTheme === 'dark'
@@ -1094,6 +1107,7 @@ function setupIPC() {
   })
 
   ipcMain.handle('get-user-data-path', () => dataDirectory)
+  ipcMain.handle('get-data-usage', () => directoryUsage(dataDirectory))
 
   ipcMain.handle('set-recording-active', (event, active: boolean) => {
     if (active) {
@@ -1159,39 +1173,18 @@ function setupIPC() {
 
   ipcMain.handle('read-file-as-base64', (_e, filepath: string) => {
     try {
-      const data = fs.readFileSync(filepath)
+      const source = isLinkedAttachment(filepath) ? readableAttachmentFile(filepath) : filepath
+      if (!source) return null
+      const data = fs.readFileSync(source)
       return data.toString('base64')
     } catch {
       return null
     }
   })
 
-  ipcMain.handle('import-attachments', async (_e, entries: unknown) => {
-    if (!Array.isArray(entries)) return []
-    const imported: Array<{ path: string; name: string; size: number; isImage: boolean; mimeType: string | null }> = []
-    for (const entry of entries.slice(0, 100)) {
-      if (!entry || typeof entry !== 'object') continue
-      const sourcePath = 'path' in entry && typeof entry.path === 'string' ? entry.path : ''
-      const originalName = 'name' in entry && typeof entry.name === 'string' ? entry.name : path.basename(sourcePath)
-      if (!sourcePath) continue
-      let destination = ''
-      try {
-        const stat = await fs.promises.stat(sourcePath)
-        if (!stat.isFile()) continue
-        destination = uniqueAttachmentPath(originalName)
-        await fs.promises.copyFile(sourcePath, destination)
-        imported.push({
-          path: destination,
-          name: path.basename(originalName),
-          size: stat.size,
-          isImage: isImageAttachment(originalName),
-          mimeType: attachmentMimeType(originalName)
-        })
-      } catch (error) {
-        if (destination) await fs.promises.rmdir(path.dirname(destination)).catch(() => {})
-        console.warn('Attachment import failed:', error)
-      }
-    }
+  ipcMain.handle('import-attachments', async (_e, entries: unknown, mode: unknown = 'copy') => {
+    const imported = await importLocalAttachments(entries, mode, attachmentsDir)
+    for (const file of imported) if (isLinkedAttachment(file.path)) selectedAttachmentLinks.add(file.path)
     return imported
   })
 
@@ -1209,14 +1202,14 @@ function setupIPC() {
 
   ipcMain.handle('open-attachment', async (_e, filepath: unknown) => {
     if (typeof filepath !== 'string') return false
-    const resolved = managedLocalFile(filepath)
+    const resolved = readableAttachmentFile(filepath)
     if (!resolved) return false
     return (await shell.openPath(resolved)) === ''
   })
 
   ipcMain.handle('download-attachment', async (_e, filepath: unknown) => {
     if (typeof filepath !== 'string') return false
-    const resolved = managedLocalFile(filepath)
+    const resolved = readableAttachmentFile(filepath)
     if (!resolved) return false
     const options = { defaultPath: path.join(app.getPath('downloads'), path.basename(resolved)) }
     const result = mainWindow

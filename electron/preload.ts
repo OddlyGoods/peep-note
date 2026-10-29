@@ -37,16 +37,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 파일
   readFileAsBase64: (filepath: string) =>
     ipcRenderer.invoke('read-file-as-base64', filepath),
-  importAttachments: (files: File[]) => ipcRenderer.invoke('import-attachments', files.map(file => ({
+  importAttachments: (files: File[], mode: 'copy' | 'link' = 'copy') => ipcRenderer.invoke('import-attachments', files.map(file => ({
     path: webUtils.getPathForFile(file),
     name: file.name
-  }))),
+  })), mode),
   deleteAttachmentFile: (filepath: string) => ipcRenderer.invoke('delete-attachment-file', filepath),
   openAttachment: (filepath: string) => ipcRenderer.invoke('open-attachment', filepath),
   downloadAttachment: (filepath: string) => ipcRenderer.invoke('download-attachment', filepath),
   getScreenshotsDir: () => ipcRenderer.invoke('get-screenshots-dir'),
   getVideosDir: () => ipcRenderer.invoke('get-videos-dir'),
   getUserDataPath: () => ipcRenderer.invoke('get-user-data-path'),
+  getDataUsage: () => ipcRenderer.invoke('get-data-usage'),
   chooseDataLocation: () => ipcRenderer.invoke('choose-data-location'),
   changeDataLocation: (directory: string) => ipcRenderer.invoke('change-data-location', directory),
   setRecordingActive: (active: boolean) => ipcRenderer.invoke('set-recording-active', active),

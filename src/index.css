@@ -148,6 +148,11 @@ html[data-theme='light'] .tag-search-button:focus-visible {
   color: #6d28d9 !important;
 }
 
+.attachment-mode-option:hover {
+  background: var(--side-panel-bg);
+  border-color: #a78bfa !important;
+}
+
 .tag-input {
   display: flex;
   flex-wrap: wrap;

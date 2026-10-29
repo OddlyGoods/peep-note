@@ -10,7 +10,8 @@ import { normalizeOcrText } from '../shared/ocrText'
 import { formatOcrText } from '../server/ocrText'
 import { getAiSummaryContent, getAiSummaryTitle, normalizeAiSummaryMarkdown, parseAiSummaryResult } from '../shared/aiSummary'
 import { processOcrQueue } from '../server/ocr'
-import { imageMediaPaths, managedMediaPath } from '../server/media'
+import { imageMediaPaths, managedMediaPath, readableMediaPath } from '../server/media'
+import { attachmentReference } from '../shared/attachments'
 import logs from '../server/routes/logs'
 import trash from '../server/routes/trash'
 import groups from '../server/routes/groups'
@@ -325,6 +326,33 @@ test('permanent cleanup protects shared and unmanaged files; expired trash is pu
   assert.equal(row('expired'), null)
 })
 
+test('linked attachments survive removal and trash cleanup without deleting their originals', async () => {
+  const original = path.join(root, 'attachments', 'linked-original.txt')
+  fs.writeFileSync(original, 'original content')
+  const external = path.join(root, 'linked-external.txt')
+  fs.writeFileSync(external, 'external original')
+  const reference = attachmentReference(original, 'link')
+  const externalReference = attachmentReference(external, 'link')
+  assert.equal(managedMediaPath(reference), null)
+  assert.equal(readableMediaPath(reference), original)
+  assert.equal(managedMediaPath(external), null)
+  assert.equal(readableMediaPath(externalReference), external)
+  assert.equal(readableMediaPath('peepnote-link:relative.txt'), null)
+  insert('linked-original-owner', { attachments: JSON.stringify([original]) })
+  const linked = await json('/api/logs', 'POST', { title: 'Linked file', attachments: [reference, externalReference] })
+  assert.deepEqual(linked.attachments, [reference, externalReference])
+  moveToTrash('local', ['linked-original-owner'])
+  permanentlyDelete('id = ?', ['linked-original-owner'])
+  assert.equal(fs.existsSync(original), true, 'a remaining link protects the shared file')
+  await json(`/api/logs/${linked.id}`, 'PUT', { attachments: [] })
+  assert.equal(fs.existsSync(original), true, 'removing a link must not delete the original')
+  await json(`/api/logs/${linked.id}`, 'PUT', { attachments: [reference, externalReference] })
+  moveToTrash('local', [linked.id])
+  permanentlyDelete('id = ?', [linked.id])
+  assert.equal(fs.readFileSync(original, 'utf8'), 'original content')
+  assert.equal(fs.readFileSync(external, 'utf8'), 'external original')
+})
+
 test('general file attachments stay managed, skip OCR, and clean up after removal', async () => {
   const attachmentFolder = path.join(root, 'attachments', 'one')
   const document = path.join(attachmentFolder, 'manual.pdf')
@@ -447,7 +475,7 @@ test('date filtering precedes pagination and OCR never matches secret content', 
 
 test('Korean/English OCR runs only for explicitly requested images', { timeout: 120000 }, async () => {
   insert('ocr-image', { log_type: 'screenshot', file_path: screenshot })
-  insert('ocr-attachment', { attachments: JSON.stringify([screenshot]) })
+  insert('ocr-attachment', { attachments: JSON.stringify([attachmentReference(screenshot, 'link')]) })
   insert('ocr-trashed', { log_type: 'screenshot', file_path: screenshot, deleted_at: now })
   const created = await json('/api/logs', 'POST', { log_type: 'screenshot', file_path: screenshot })
   await processOcrQueue()

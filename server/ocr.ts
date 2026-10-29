@@ -3,7 +3,7 @@ import path from 'path'
 import { createWorker, OEM, PSM, type Worker } from 'tesseract.js'
 import { getUserDataPath, queryAll, queryOne, run } from './db'
 import { formatOcrText } from './ocrText'
-import { imageMediaPaths, managedMediaPath } from './media'
+import { imageMediaPaths, readableMediaPath } from './media'
 
 type OcrRow = { id: string; file_path: string | null; attachments: string; log_type: string }
 let running: Promise<void> | null = null
@@ -68,7 +68,7 @@ export function processOcrQueue(): Promise<void> {
           if (!paths.length) throw new Error('OCR image is unavailable')
           const texts: string[] = []
           for (const file of new Set(paths)) {
-            const resolved = managedMediaPath(file)
+            const resolved = readableMediaPath(file)
             if (!resolved) throw new Error('OCR image is unavailable')
             const stat = await fs.promises.stat(resolved)
             if (!stat.isFile() || stat.size > 40 * 1024 * 1024) throw new Error('OCR image is too large')

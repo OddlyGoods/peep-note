@@ -181,6 +181,8 @@ Run `npm run test:features` to check trash retention, restore, local profile iso
 3. For notes, choose Text, Markdown, Code, or HTML.
 4. Add an optional title, content, tags, and workspace, then save.
 
+When adding files, choose **Link original files** to save space or **Copy to PeepNote** to keep an independent copy. Each attachment shows its mode. Linked originals are never deleted by PeepNote; moving or deleting them breaks the link.
+
 For screenshots and recordings, choose a region after selecting the capture action. Use the adjustment button next to the capture/record control in the main composer to choose a different monitor; PeepNote remembers the selected monitor for later captures.
 
 ### Default global shortcuts

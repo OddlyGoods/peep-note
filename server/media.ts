@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import { getUserDataPath, queryAll } from './db'
-import { isImageAttachment } from '../shared/attachments'
+import { attachmentPath, isLinkedAttachment, isImageAttachment } from '../shared/attachments'
 
 export function mediaPaths(row: { file_path?: string | null; attachments?: string }): string[] {
   let attachments: unknown = []
@@ -14,8 +14,9 @@ export function imageMediaPaths(row: { file_path?: string | null; attachments?: 
   return mediaPaths(row).filter(isImageAttachment)
 }
 
-// Only app-managed files can be read by OCR or removed by trash cleanup.
+// Only app-managed copies can be removed by attachment or trash cleanup.
 export function managedMediaPath(filePath: string): string | null {
+  if (isLinkedAttachment(filePath)) return null
   try {
     const resolved = fs.realpathSync(filePath)
     const roots = ['screenshots', 'videos', 'attachments'].map(dir => path.resolve(getUserDataPath(), dir))
@@ -26,11 +27,20 @@ export function managedMediaPath(filePath: string): string | null {
   } catch { return null }
 }
 
+export function readableMediaPath(reference: string): string | null {
+  if (!isLinkedAttachment(reference)) return managedMediaPath(reference)
+  if (!path.isAbsolute(attachmentPath(reference))) return null
+  try {
+    const resolved = fs.realpathSync(attachmentPath(reference))
+    return fs.statSync(resolved).isFile() ? resolved : null
+  } catch { return null }
+}
+
 export function cleanupUnreferencedMedia(filePaths: string[]) {
   if (!filePaths.length) return
   const references = new Set(queryAll<{ file_path: string | null; attachments: string }>('SELECT file_path, attachments FROM logs')
     .flatMap(mediaPaths)
-    .map(managedMediaPath)
+    .map(file => managedMediaPath(attachmentPath(file)))
     .filter((file): file is string => !!file))
   for (const filePath of new Set(filePaths)) {
     const resolved = managedMediaPath(filePath)

@@ -445,6 +445,7 @@ export default function Settings() {
                   <div>
                     <p className="text-sm text-gray-200">{label}</p>
                     <p className="text-xs text-gray-400 mt-0.5">
+                      {key === 'openMain' && t('shortcutOpenMainDescription')}
                       {key === 'openFavorites' && t('shortcutOpenFavoritesDescription')}
                       {key === 'openOverlay' && t('shortcutOpenOverlayDescription')}
                       {key === 'takeScreenshot' && t('shortcutCaptureScreenshotDescription')}

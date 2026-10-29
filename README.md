@@ -188,7 +188,7 @@ For screenshots and recordings, choose a region after selecting the capture acti
 | Shortcut | Action |
 | --- | --- |
 | `Alt+W` | Open or hide the main window |
-| `Alt+F` | Open the favorites list in the main window |
+| `Alt+F` | Open the favorites list; hide the focused main window if the list is already open |
 | `Alt+1` | Open the quick composer |
 | `Alt+2` | Capture a screenshot region |
 | `Alt+3` | Start screen recording |

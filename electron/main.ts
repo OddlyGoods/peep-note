@@ -27,6 +27,7 @@ import { DataStorageError, prepareDataLocation, scheduleDataLocation } from './d
 import { restartAfterDataLocationChange } from './restart'
 import { dataStorageCopy, dataStorageErrorKey, type DataLocationResult } from '../shared/dataStorage'
 import { getActiveHotkeys, resolveHotkeys } from '../shared/hotkeys'
+import { handleFavoritesShortcut } from './favoritesShortcut'
 
 // Register the internal app scheme before Electron is ready.
 protocol.registerSchemesAsPrivileged([
@@ -890,8 +891,7 @@ function registerHotkeys() {
 
     if (hk.openFavorites) {
       globalShortcut.register(hk.openFavorites, () => {
-        showMainWindow()
-        mainWindow?.webContents.send('hotkey-triggered', 'openFavorites')
+        handleFavoritesShortcut(mainWindow, showMainWindow)
       })
     }
 

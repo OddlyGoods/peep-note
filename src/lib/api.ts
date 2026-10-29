@@ -1,4 +1,5 @@
 import type { TrashRetentionDays } from '../../shared/trashRetention'
+import type { Hotkeys } from '../../shared/hotkeys'
 
 const configuredPort = Number(import.meta.env.VITE_LOCAL_SERVER_PORT)
 const LOCAL_SERVER_PORT = Number.isInteger(configuredPort) && configuredPort >= 1024 && configuredPort <= 65535 ? configuredPort : 3848
@@ -202,14 +203,7 @@ export interface Workspace {
 
 export interface Settings {
   user_id: string
-  hotkeys: {
-    openOverlay: string
-    takeScreenshot: string
-    startRecording: string
-    stopRecording: string
-    quickSwitch: string
-    quickSwitchPrevious: string
-  }
+  hotkeys: Hotkeys
   backup_enabled: boolean
   backup_url: string | null
   theme: string

@@ -24,7 +24,10 @@ before(async () => { await initDb(root) })
 after(() => { getDb().close(); fs.rmSync(root, { recursive: true, force: true }) })
 
 test('notes, workspaces, comments and settings work immediately without a login', async () => {
-  assert.equal((await json('/api/settings')).fixed_start_date, false)
+  const defaults = await json('/api/settings')
+  assert.equal(defaults.fixed_start_date, false)
+  assert.equal(defaults.hotkeys.openMain, 'Alt+W')
+  assert.equal(defaults.hotkeys.openFavorites, 'Alt+F')
   assert.equal((await call('/api/auth/me')).status, 404)
   assert.equal(queryOne("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'sessions'"), null)
   assert.equal(queryOne("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'users'"), null)
@@ -47,6 +50,25 @@ test('notes, workspaces, comments and settings work immediately without a login'
   await json(`/api/logs/${first.id}`, 'DELETE')
   assert.ok((await json('/api/trash')).some((row: any) => row.id === first.id))
   assert.equal((await json('/api/trash/restore', 'POST', { ids: [first.id] })).restored, 1)
+})
+
+test('new global shortcuts fill older settings without replacing saved custom shortcuts', async () => {
+  const previous = await json('/api/settings')
+  try {
+    const saved = await json('/api/settings', 'PUT', { hotkeys: { openMain: 'Ctrl+Alt+W' } })
+    assert.equal(saved.hotkeys.openMain, 'Ctrl+Alt+W')
+    assert.equal(saved.hotkeys.openFavorites, 'Alt+F')
+    await initDb(root)
+    const reloaded = await json('/api/settings')
+    assert.equal(reloaded.hotkeys.openMain, 'Ctrl+Alt+W')
+    assert.equal(reloaded.hotkeys.openFavorites, 'Alt+F')
+    await json('/api/settings', 'PUT', { hotkeys: { ...reloaded.hotkeys, openFavorites: 'Ctrl+Alt+F' } })
+    const updated = await json('/api/settings', 'PUT', { language: 'ko' })
+    assert.equal(updated.hotkeys.openMain, 'Ctrl+Alt+W')
+    assert.equal(updated.hotkeys.openFavorites, 'Ctrl+Alt+F')
+  } finally {
+    await json('/api/settings', 'PUT', { hotkeys: previous.hotkeys })
+  }
 })
 
 test('the fixed start option persists independently of automatic dates and survives partial updates', async () => {

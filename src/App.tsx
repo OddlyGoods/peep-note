@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import Dashboard from './pages/Dashboard'
 import Trash from './pages/Trash'
 import Favorites from './pages/Favorites'
@@ -20,6 +20,7 @@ import { subscribeToUpdates } from './stores/updateStore'
 
 function ElectronNavigation() {
   const openLog = useOpenLog()
+  const navigate = useNavigate()
   const { pathname } = useLocation()
   const dateFrom = useLogStore(state => state.dateFrom)
   const dateTo = useLogStore(state => state.dateTo)
@@ -30,6 +31,13 @@ function ElectronNavigation() {
     const isSearch = pathname === '/search' || pathname.startsWith('/search/')
     saveQuickListRange({ dateFrom: isSearch ? searchDateFrom : dateFrom, dateTo: isSearch ? searchDateTo : dateTo })
   }, [pathname, dateFrom, dateTo, searchDateFrom, searchDateTo])
+  useEffect(() => {
+    const handleHotkey = (action: unknown) => {
+      if (action === 'openFavorites') navigate('/favorites')
+    }
+    window.electronAPI?.on('hotkey-triggered', handleHotkey)
+    return () => window.electronAPI?.off('hotkey-triggered', handleHotkey)
+  }, [navigate])
   useEffect(() => {
     const handleOpenLog = (payload: unknown) => {
       const data = typeof payload === 'object' && payload !== null ? payload as { id?: string; fromQuickSwitch?: boolean } : { id: payload as string }

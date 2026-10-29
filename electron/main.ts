@@ -26,6 +26,7 @@ import { attachmentMimeType, isImageAttachment } from '../shared/attachments'
 import { DataStorageError, prepareDataLocation, scheduleDataLocation } from './dataStorage'
 import { restartAfterDataLocationChange } from './restart'
 import { dataStorageCopy, dataStorageErrorKey, type DataLocationResult } from '../shared/dataStorage'
+import { resolveHotkeys } from '../shared/hotkeys'
 
 // Register the internal app scheme before Electron is ready.
 protocol.registerSchemesAsPrivileged([
@@ -140,20 +141,13 @@ let settingsPath = path.join(dataDirectory, 'settings.json')
 function loadSettings() {
   try {
     if (fs.existsSync(settingsPath)) {
-      return JSON.parse(fs.readFileSync(settingsPath, 'utf-8'))
+      const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'))
+      return { ...settings, hotkeys: resolveHotkeys(settings.hotkeys) }
     }
   } catch {}
   return {
     language: 'en',
-    hotkeys: {
-      openMain: 'Alt+`',
-      openOverlay: 'Alt+1',
-      takeScreenshot: 'Alt+2',
-      startRecording: 'Alt+3',
-      stopRecording: 'Alt+4',
-      quickSwitch: 'Alt+Q',
-      quickSwitchPrevious: 'Alt+E'
-    }
+    hotkeys: resolveHotkeys()
   }
 }
 function saveSettings(settings: object) {
@@ -890,6 +884,13 @@ function registerHotkeys() {
           showMainWindow()
           mainWindow?.webContents.send('hotkey-triggered', 'openMain')
         }
+      })
+    }
+
+    if (hk.openFavorites) {
+      globalShortcut.register(hk.openFavorites, () => {
+        showMainWindow()
+        mainWindow?.webContents.send('hotkey-triggered', 'openFavorites')
       })
     }
 

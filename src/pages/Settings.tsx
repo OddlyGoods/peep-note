@@ -9,16 +9,7 @@ import ConfirmModal from '../components/ConfirmModal'
 import { dataStorageErrorKey } from '../../shared/dataStorage'
 import { DEFAULT_TRASH_RETENTION_DAYS, TRASH_RETENTION_OPTIONS, normalizeTrashRetentionDays } from '../../shared/trashRetention'
 import { AI_MODELS, DEFAULT_AI_MODELS, getAiModelSelection, type AiProvider } from '../../shared/aiModels'
-
-const DEFAULT_HOTKEYS = {
-  openMain: 'Alt+`',
-  openOverlay: 'Alt+1',
-  takeScreenshot: 'Alt+2',
-  startRecording: 'Alt+3',
-  stopRecording: 'Alt+4',
-  quickSwitch: 'Alt+Q',
-  quickSwitchPrevious: 'Alt+E'
-}
+import { DEFAULT_HOTKEYS, resolveHotkeys } from '../../shared/hotkeys'
 
 function HotkeyInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const { t } = useI18n()
@@ -121,7 +112,7 @@ export default function Settings() {
   useEffect(() => {
     api.settings.get().then(s => {
       setSettings(s)
-      setHotkeys({ ...DEFAULT_HOTKEYS, ...s.hotkeys })
+      setHotkeys(resolveHotkeys(s.hotkeys))
       setBackupEnabled(s.backup_enabled)
       setBackupUrl(s.backup_url ?? '')
       const provider = s.ai_provider ?? 'openai'
@@ -393,11 +384,12 @@ export default function Settings() {
               {t('shortcutDescription')}
             </p>
             <div className="space-y-3">
-              {Object.entries({ openMain: t('shortcutOpenMain'), openOverlay: t('shortcutOpenOverlay'), takeScreenshot: t('shortcutCaptureScreenshot'), startRecording: t('shortcutStartRecording'), stopRecording: t('shortcutStopRecording'), quickSwitch: t('quickSwitch'), quickSwitchPrevious: t('quickSwitchPrevious') }).map(([key, label]) => (
+              {Object.entries({ openMain: t('shortcutOpenMain'), openFavorites: t('shortcutOpenFavorites'), openOverlay: t('shortcutOpenOverlay'), takeScreenshot: t('shortcutCaptureScreenshot'), startRecording: t('shortcutStartRecording'), stopRecording: t('shortcutStopRecording'), quickSwitch: t('quickSwitch'), quickSwitchPrevious: t('quickSwitchPrevious') }).map(([key, label]) => (
                 <div key={key} className="flex items-center justify-between py-2 border-b border-gray-800 last:border-0">
                   <div>
                     <p className="text-sm text-gray-200">{label}</p>
                     <p className="text-xs text-gray-400 mt-0.5">
+                      {key === 'openFavorites' && t('shortcutOpenFavoritesDescription')}
                       {key === 'openOverlay' && t('shortcutOpenOverlayDescription')}
                       {key === 'takeScreenshot' && t('shortcutCaptureScreenshotDescription')}
                       {key === 'startRecording' && t('shortcutStartRecordingDescription')}

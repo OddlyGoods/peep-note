@@ -4,6 +4,7 @@ import { LOCAL_PROFILE_ID } from '../localProfile'
 import crypto from 'crypto'
 import { DEFAULT_TRASH_RETENTION_DAYS, isTrashRetentionDays, normalizeTrashRetentionDays } from '../../shared/trashRetention'
 import { DEFAULT_AI_MODELS, type AiProvider } from '../../shared/aiModels'
+import { resolveHotkeys } from '../../shared/hotkeys'
 
 const settings = new Hono()
 const isSupportedLanguage = (value: unknown): value is 'en' | 'ko' | 'ja' | 'zh' =>
@@ -15,12 +16,12 @@ settings.get('/', async (c) => {
 
   const row = queryOne<any>('SELECT * FROM settings WHERE user_id = ?', [userId])
   if (!row) return c.json({
-    hotkeys: { openOverlay: 'Alt+1', takeScreenshot: 'Alt+2', startRecording: 'Alt+3', stopRecording: 'Alt+4', quickSwitch: 'Alt+Q', quickSwitchPrevious: 'Alt+E' },
+    hotkeys: resolveHotkeys(),
     backup_enabled: false, backup_url: null, theme: 'light', trash_retention_days: DEFAULT_TRASH_RETENTION_DAYS,
     ai_provider: 'openai', ai_model: DEFAULT_AI_MODELS.openai, openai_api_key: null, anthropic_api_key: null, gemini_api_key: null, qwen_api_key: null, qwen_base_url: 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1', language: 'en', auto_advance_date_range: true, fixed_start_date: false, secret_password_set: false
   })
   const { secret_password_hash: _secretPasswordHash, ...safeRow } = row
-  return c.json({ ...safeRow, trash_retention_days: normalizeTrashRetentionDays(row.trash_retention_days), secret_password_set: !!_secretPasswordHash, hotkeys: JSON.parse(row.hotkeys || '{}'), backup_enabled: !!row.backup_enabled, auto_advance_date_range: row.auto_advance_date_range !== 0, fixed_start_date: !!row.fixed_start_date })
+  return c.json({ ...safeRow, trash_retention_days: normalizeTrashRetentionDays(row.trash_retention_days), secret_password_set: !!_secretPasswordHash, hotkeys: resolveHotkeys(JSON.parse(row.hotkeys || '{}')), backup_enabled: !!row.backup_enabled, auto_advance_date_range: row.auto_advance_date_range !== 0, fixed_start_date: !!row.fixed_start_date })
 })
 
 const isPin = (value: unknown): value is string => typeof value === 'string' && /^\d{4}$/.test(value)
@@ -112,7 +113,7 @@ settings.put('/', async (c) => {
     run(
       'INSERT INTO settings (user_id, hotkeys, backup_enabled, backup_url, theme, ai_provider, ai_model, openai_api_key, anthropic_api_key, gemini_api_key, qwen_api_key, qwen_base_url, language, auto_advance_date_range, fixed_start_date, trash_retention_days, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [userId,
-       JSON.stringify(hotkeys ?? { openOverlay: 'Alt+1', takeScreenshot: 'Alt+2', startRecording: 'Alt+3', stopRecording: 'Alt+4', quickSwitch: 'Alt+Q', quickSwitchPrevious: 'Alt+E' }),
+       JSON.stringify(resolveHotkeys(hotkeys)),
        backup_enabled ? 1 : 0, backup_url ?? null, theme ?? 'light',
        provider, model, openai_api_key ?? null, anthropic_api_key ?? null, gemini_api_key ?? null, qwen_api_key ?? null, qwen_base_url ?? 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1', isSupportedLanguage(language) ? language : 'en', auto_advance_date_range === false ? 0 : 1, fixed_start_date ? 1 : 0, trash_retention_days ?? DEFAULT_TRASH_RETENTION_DAYS, now]
     )
@@ -120,7 +121,7 @@ settings.put('/', async (c) => {
 
   const row = queryOne<any>('SELECT * FROM settings WHERE user_id = ?', [userId])!
   const { secret_password_hash: _secretPasswordHash, ...safeRow } = row
-  return c.json({ ...safeRow, trash_retention_days: normalizeTrashRetentionDays(row.trash_retention_days), secret_password_set: !!_secretPasswordHash, hotkeys: JSON.parse(row.hotkeys || '{}'), backup_enabled: !!row.backup_enabled, auto_advance_date_range: row.auto_advance_date_range !== 0, fixed_start_date: !!row.fixed_start_date })
+  return c.json({ ...safeRow, trash_retention_days: normalizeTrashRetentionDays(row.trash_retention_days), secret_password_set: !!_secretPasswordHash, hotkeys: resolveHotkeys(JSON.parse(row.hotkeys || '{}')), backup_enabled: !!row.backup_enabled, auto_advance_date_range: row.auto_advance_date_range !== 0, fixed_start_date: !!row.fixed_start_date })
 })
 
 export default settings

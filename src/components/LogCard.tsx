@@ -15,7 +15,6 @@ import { useI18n } from '../i18n'
 import { getAiSummaryContent, getAiSummaryTitle } from '../lib/aiSummary'
 import NoteExcerpt from './NoteExcerpt'
 import SecretIconBadge from './SecretIconBadge'
-import TagBadge from './TagBadge'
 
 const TYPE_CONFIG = {
   note:       { icon: TextIcon, label: 'note',     color: 'text-violet-400', bg: 'bg-violet-500/10 border-violet-500/20' },
@@ -200,7 +199,7 @@ export default function LogCard({ log, basePath = '/log', showCheckbox = false, 
           {log.tags?.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2">
               {log.tags.map(tag => (
-                <TagBadge key={tag} tag={tag} />
+                <span key={tag} className="tag bg-gray-800 text-gray-400 border border-gray-700">#{tag}</span>
               ))}
             </div>
           )}

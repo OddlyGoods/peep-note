@@ -801,6 +801,79 @@ html[data-theme='light'] .markdown-content strong { color: #172033 !important; }
   border: 1px solid rgba(99,102,241,.28);
   border-radius: .65rem;
 }
+
+.note-markdown-preview :is(p, h1, h2, h3, h4, h5, h6, ul, ol, pre, blockquote) {
+  margin: 0;
+  line-height: inherit;
+}
+
+.note-markdown-preview :is(h1, h2, h3, h4, h5, h6) {
+  font-size: inherit;
+  font-weight: 600;
+}
+
+.note-markdown-preview ul {
+  list-style: disc;
+  padding-left: 16px;
+}
+
+.note-markdown-preview ol {
+  list-style: decimal;
+  padding-left: 18px;
+}
+
+.note-markdown-preview .contains-task-list {
+  list-style: none;
+  padding-left: 0;
+}
+
+.note-markdown-preview input {
+  pointer-events: none;
+}
+
+.note-markdown-preview blockquote {
+  border-left: 2px solid #a78bfa;
+  padding-left: 8px;
+}
+
+.note-preview-link {
+  color: #a78bfa;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+html[data-theme='light'] .note-preview-link {
+  color: #7c3aed;
+}
+
+.note-markdown-preview code {
+  padding: 0 3px;
+  border-radius: 3px;
+  background: rgb(148 163 184 / .12);
+  font-size: 11px;
+}
+
+.note-markdown-preview pre {
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--side-panel-bg);
+  white-space: pre-wrap;
+}
+
+.note-markdown-preview pre code {
+  padding: 0;
+  background: transparent;
+}
+
+.note-markdown-preview table {
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.note-markdown-preview :is(th, td) {
+  padding: 0 4px;
+  border: 1px solid var(--soft-border);
+}
 .markdown-table-wrap table {
   width: 100%;
   border-collapse: collapse;

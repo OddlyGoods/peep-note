@@ -13,6 +13,7 @@ import FavoriteButton from './FavoriteButton'
 import WorkspaceMoveButton from './WorkspaceMoveButton'
 import { useI18n } from '../i18n'
 import { getAiSummaryContent, getAiSummaryTitle } from '../lib/aiSummary'
+import NoteExcerpt from './NoteExcerpt'
 
 const TYPE_CONFIG = {
   note:       { icon: TextIcon, label: 'note',     color: 'text-violet-400', bg: 'bg-violet-500/10 border-violet-500/20' },
@@ -39,34 +40,6 @@ interface LogCardProps {
   isCollapsing?: boolean
   onMoved?: (log: Log) => void
   onReveal?: () => void
-}
-
-function NoteExcerpt({ content, code, maxLines = 3 }: { content: string; code: boolean; maxLines?: number }) {
-  const contentRef = useRef<HTMLParagraphElement>(null)
-  const [overflowing, setOverflowing] = useState(false)
-
-  useEffect(() => {
-    const element = contentRef.current
-    if (!element) return
-    const checkOverflow = () => setOverflowing(element.scrollHeight > element.clientHeight + 1)
-    checkOverflow()
-    const observer = new ResizeObserver(checkOverflow)
-    observer.observe(element)
-    return () => observer.disconnect()
-  }, [content])
-
-  return (
-    <div className="mt-1">
-      <p
-        ref={contentRef}
-        className={`text-xs text-gray-400 leading-5 ${code ? 'font-mono bg-gray-900 px-2 py-1 rounded text-emerald-400' : ''}`}
-        style={{ maxHeight: `${maxLines * 1.25}rem`, overflow: 'hidden', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}
-      >
-        {content}
-      </p>
-      {overflowing && <p className="text-xs leading-4 text-gray-500">...</p>}
-    </div>
-  )
 }
 
 function MediaThumbnail({ log }: { log: Log }) {
@@ -216,9 +189,9 @@ export default function LogCard({ log, basePath = '/log', showCheckbox = false, 
           {log.is_secret ? (
             <div className="mt-1 flex items-center gap-1.5 text-xs text-gray-500"><Lock className="h-3 w-3" /><span>••••••••••••</span></div>
           ) : displayContent && (log.log_type === 'note' ? (
-            <NoteExcerpt content={displayContent} code={log.content_format === 'code'} />
+            <NoteExcerpt content={displayContent} code={log.content_format === 'code'} markdown={log.content_format === 'markdown'} />
           ) : (
-            <NoteExcerpt content={displayContent} code={log.content_format === 'code'} maxLines={2} />
+            <NoteExcerpt content={displayContent} code={log.content_format === 'code'} markdown={isAiSummary || log.content_format === 'markdown'} maxLines={2} />
           ))}
           {/* 태그 */}
           {log.tags?.length > 0 && (

@@ -40,6 +40,15 @@ export default function LogNavigationProvider({ children }: { children: React.Re
     return () => { requestRef.current += 1 }
   }, [location.key, cancel])
 
+  useEffect(() => {
+    if (pending?.stage !== 'loading') return
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') cancel()
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [pending?.stage, cancel])
+
   const openLog = useCallback<OpenLog>((id, basePath = '/log', options) => {
     const request = ++requestRef.current
     const target: PendingNavigation = { request, path: `${basePath}/${id}`, options, stage: 'loading' }
@@ -67,11 +76,8 @@ export default function LogNavigationProvider({ children }: { children: React.Re
     <LogNavigationContext.Provider value={openLog}>
       {children}
       {pending?.stage === 'loading' && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="flex flex-col items-center gap-3 rounded-xl p-6" style={{ background: 'var(--modal-bg)' }}>
-            <p className="text-sm text-gray-400" role="status">{t('loading')}</p>
-            <button onClick={cancel} className="btn-ghost">{t('cancel')}</button>
-          </div>
+        <div className="fixed inset-0 z-[70] flex items-center justify-center" role="status" aria-label={t('loading')}>
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-violet-500 border-t-transparent" aria-hidden="true" />
         </div>
       )}
       {pending?.stage === 'unlock' && (

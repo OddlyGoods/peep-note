@@ -385,7 +385,7 @@ export default function LogDetail() {
         <div className="w-full px-[84px] pt-6 pb-40 space-y-6">
 
           {/* 메타 정보 */}
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
             {isAiSummary ? (
               <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg border bg-amber-500/10 border-amber-500/30">
                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />

@@ -1,8 +1,9 @@
 import { useEffect, useState, useRef } from 'react'
-import { X, Camera, Video, FileText, Code2, Globe, StopCircle, Hash, SlidersHorizontal, Lock } from 'lucide-react'
+import { X, Camera, Video, FileText, Text as TextIcon, Code2, Globe, StopCircle, Hash, SlidersHorizontal, Lock } from 'lucide-react'
 import { useLogStore } from '../stores/logStore'
 import { useI18n } from '../i18n'
 import { startRegionRecording } from '../lib/regionRecording'
+import TagInput from './TagInput'
 
 type LogType = 'note' | 'screenshot' | 'video'
 type ContentFormat = 'text' | 'markdown' | 'code' | 'html'
@@ -15,7 +16,7 @@ const TYPES = [
 ]
 
 const FORMATS: { value: ContentFormat; label: string; icon: React.ElementType }[] = [
-  { value: 'text', label: 'text', icon: FileText },
+  { value: 'text', label: 'text', icon: TextIcon },
   { value: 'markdown', label: 'markdown', icon: Hash },
   { value: 'code', label: 'code',   icon: Code2 },
   { value: 'html', label: 'HTML',   icon: Globe }
@@ -29,7 +30,7 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
   const [isSecret, setIsSecret] = useState(false)
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
-  const [tags, setTags] = useState('')
+  const [tags, setTags] = useState<string[]>([])
   const [filePath, setFilePath] = useState<string | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [attachments, setAttachments] = useState<Attachment[]>([])
@@ -154,14 +155,13 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
     if (!title.trim() && !content.trim() && !filePath && attachments.length === 0) return
     setSaving(true)
     try {
-      const tagArr = tags.split(',').map(t => t.trim()).filter(Boolean)
       await createLog({
         title: title || ({ note: t('note'), screenshot: t('screenshot'), video: t('video') }[type]),
         content,
         log_type: type,
         content_format: type === 'note' ? format : 'text',
         file_path: filePath,
-        tags: tagArr,
+        tags,
         attachments: attachments.map(a => a.path),
         workspace_id: workspaceId ?? null,
         is_secret: type === 'note' && isSecret
@@ -306,8 +306,7 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
           )}
 
           {/* 태그 */}
-          <input type="text" className="input" placeholder={t('tags')}
-            value={tags} onChange={e => setTags(e.target.value)} />
+          <TagInput value={tags} onChange={setTags} disabled={saving} />
         </div>
 
         {/* 푸터 */}

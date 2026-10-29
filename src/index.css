@@ -101,6 +101,77 @@ html[data-theme='light'] .favorite-button:focus-visible {
   font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
 }
 
+.tag-input {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 6px 10px;
+  cursor: text;
+}
+
+.tag-input:focus-within {
+  border-color: rgba(99,102,241,.5);
+  box-shadow: 0 0 0 3px rgba(99,102,241,.1);
+}
+
+.tag-input-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 2px 6px;
+  border: 1px solid rgb(139 92 246 / .3);
+  border-radius: 6px;
+  background: rgb(139 92 246 / .12);
+  color: #c4b5fd;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.tag-input-remove {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+}
+
+.tag-input-remove:hover,
+.tag-input-remove:focus-visible {
+  background: rgb(139 92 246 / .25);
+}
+
+.tag-input-field {
+  flex: 1;
+  min-width: 120px;
+  max-width: 100%;
+  padding: 2px 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  font-size: 14px;
+}
+
+.tag-input[data-disabled='true'] {
+  opacity: .6;
+}
+
+html[data-theme='light'] .tag-input-badge {
+  background: #ede9fe;
+  border-color: #ddd6fe;
+  color: #6d28d9;
+}
+
+html[data-theme='light'] .tag-input-remove:hover,
+html[data-theme='light'] .tag-input-remove:focus-visible {
+  background: #ddd6fe;
+}
+
 @keyframes log-card-enter {
   from {
     max-height: 0;

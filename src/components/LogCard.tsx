@@ -224,7 +224,7 @@ export default function LogCard({ log, basePath = '/log', showCheckbox = false, 
           {log.tags?.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2">
               {log.tags.map(tag => (
-                <span key={tag} className="tag bg-gray-800 text-gray-400 border border-gray-700">#{tag}</span>
+                <span key={tag} className="tag bg-gray-800 text-gray-400 border border-gray-700">{tag}</span>
               ))}
             </div>
           )}

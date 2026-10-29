@@ -4,7 +4,7 @@ import { format } from 'date-fns'
 import { ko, ja, zhCN } from 'date-fns/locale'
 import {
   ArrowLeft, Save, Trash2, Pin, X,
-  Image as ImageIcon, Video, FileText, Code2, Globe, Hash, Clock, Tag, Maximize2, Sparkles, Layers, Pencil, SquarePen, Copy, Check, ArrowUp, Lock, Play, MessageCircle, FolderOpen, Download, File as FileIcon, Paperclip, Loader2
+  Image as ImageIcon, Video, FileText, Text as TextIcon, BookOpen, Code2, Globe, Hash, Clock, Tag, Maximize2, Sparkles, Layers, Pencil, SquarePen, Copy, Check, ArrowUp, Lock, Play, MessageCircle, FolderOpen, Download, File as FileIcon, Paperclip, Loader2
 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -14,6 +14,7 @@ import OcrText from '../components/OcrText'
 import FavoriteButton from '../components/FavoriteButton'
 import WorkspaceMoveButton from '../components/WorkspaceMoveButton'
 import MarkdownCodeBlock from '../components/MarkdownCodeBlock'
+import TagInput from '../components/TagInput'
 import ConfirmModal from '../components/ConfirmModal'
 import SecretPasswordModal from '../components/SecretPasswordModal'
 import { useI18n } from '../i18n'
@@ -31,7 +32,7 @@ const TYPE_CONFIG = {
 }
 
 const FORMAT_CONFIG = {
-  text: { icon: FileText, label: 'text' },
+  text: { icon: TextIcon, label: 'text' },
   markdown: { icon: Hash, label: 'markdown' },
   code: { icon: Code2,    label: 'code' },
   html: { icon: Globe,    label: 'HTML' }
@@ -73,7 +74,7 @@ export default function LogDetail() {
   const { updateLog, deleteLog } = useLogStore()
   const [log, setLog] = useState<Log | null>(null)
   const [editing, setEditing] = useState(false)
-  const [form, setForm] = useState({ title: '', content: '', tags: '', content_format: 'text' as Log['content_format'], is_secret: false })
+  const [form, setForm] = useState({ title: '', content: '', tags: [] as string[], content_format: 'text' as Log['content_format'], is_secret: false })
   const [mediaUrl, setMediaUrl] = useState<string | null>(null)
   const [attachmentUrls, setAttachmentUrls] = useState<Array<string | null>>([])
   const [removedAttachments, setRemovedAttachments] = useState<number[]>([])
@@ -127,7 +128,7 @@ export default function LogDetail() {
       if (cancelled) return
       setLog(data)
       setSecretGate(gate)
-      setForm({ title: data.title, content: data.content, tags: data.tags.join(', '), content_format: data.content_format ?? 'text', is_secret: !!data.is_secret })
+      setForm({ title: data.title, content: data.content, tags: data.tags, content_format: data.content_format ?? 'text', is_secret: !!data.is_secret })
       setLoading(false)
     }).catch(() => { if (!cancelled) navigate('/') })
     return () => { cancelled = true }
@@ -173,9 +174,8 @@ export default function LogDetail() {
     if (!log) return
     setSaving(true)
     try {
-      const tagArr = form.tags.split(',').map(t => t.trim()).filter(Boolean)
       const newAttachments = log.attachments.filter((_, i) => !removedAttachments.includes(i))
-      await updateLog(log.id, { title: form.title, content: form.content, tags: tagArr, content_format: form.content_format, attachments: newAttachments, is_secret: form.is_secret })
+      await updateLog(log.id, { title: form.title, content: form.content, tags: form.tags, content_format: form.content_format, attachments: newAttachments, is_secret: form.is_secret })
       setLog(await api.logs.get(log.id))
       setAttachmentUrls(prev => prev.filter((_, i) => !removedAttachments.includes(i)))
       setRemovedAttachments([])
@@ -477,7 +477,7 @@ export default function LogDetail() {
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="flex items-center gap-1.5 text-xs font-medium text-gray-400">
-                <FileText className="h-3.5 w-3.5" aria-hidden="true" />
+                <BookOpen className="h-3.5 w-3.5" aria-hidden="true" />
                 {t('content')}
               </label>
               {!editing && log.content && (!log.is_secret || secretGate === 'open') && (
@@ -694,18 +694,16 @@ export default function LogDetail() {
               <label className="text-xs font-medium text-gray-400">{t('tags')}</label>
             </div>
             {editing ? (
-              <input
-                type="text"
-                className="input"
+              <TagInput
                 value={form.tags}
-                onChange={e => setForm(f => ({ ...f, tags: e.target.value }))}
-                placeholder={t('tags')}
+                onChange={tags => setForm(f => ({ ...f, tags }))}
+                disabled={saving}
               />
             ) : log.tags?.length > 0 ? (
               <div className="flex flex-wrap gap-1.5">
                 {log.tags.map(tag => (
                   <span key={tag} className="tag bg-gray-800 text-gray-400 border border-gray-700 px-2.5 py-1">
-                    #{tag}
+                    {tag}
                   </span>
                 ))}
               </div>
@@ -716,7 +714,7 @@ export default function LogDetail() {
 
           {/* 댓글 */}
           <div className="border-t pt-5" style={{ borderColor: 'var(--soft-border)' }}>
-            <div className="mb-3 flex items-center gap-1.5">
+            <div className="mb-2 flex items-center gap-1.5">
               <MessageCircle className="h-3.5 w-3.5 text-violet-400" />
               <label className="text-xs font-medium text-gray-400">{t('comments')}</label>
               <span className="text-xs text-gray-500">{comments.length}</span>

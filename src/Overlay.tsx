@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { X, Maximize2, Minimize2, Camera, Video, FileText, StopCircle, Code2, Globe, Hash, Lock, SlidersHorizontal, Paperclip, File as FileIcon, ChevronDown, Check, Loader2 } from 'lucide-react'
+import { X, Maximize2, Minimize2, Camera, Video, FileText, Text as TextIcon, StopCircle, Code2, Globe, Hash, Lock, SlidersHorizontal, Paperclip, File as FileIcon, ChevronDown, Check, Loader2 } from 'lucide-react'
 import { api, type Workspace } from './lib/api'
 import { useI18n } from './i18n'
 import { startRegionRecording, RecordingRegion } from './lib/regionRecording'
@@ -15,7 +15,7 @@ const TYPES: { value: LogType; label: string; icon: React.ElementType; color: st
 ]
 
 const FORMATS: { value: ContentFormat; label: string; icon: React.ElementType }[] = [
-  { value: 'text', label: 'text', icon: FileText },
+  { value: 'text', label: 'text', icon: TextIcon },
   { value: 'markdown', label: 'markdown', icon: Hash },
   { value: 'code', label: 'code',   icon: Code2 },
   { value: 'html', label: 'HTML',   icon: Globe }

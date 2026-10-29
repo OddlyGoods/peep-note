@@ -460,7 +460,7 @@ export default function LogDetail() {
                       </button>
                     )}
                   </>
-                : <img src={mediaUrl} alt="screenshot" className="w-full object-contain max-h-96 bg-black" />
+                : <img src={mediaUrl} alt={t('screenshot')} className="w-full object-contain max-h-96 bg-black" />
               }
               {log.log_type !== 'video' && log.file_path && (
                 <button

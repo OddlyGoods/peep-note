@@ -28,7 +28,7 @@ export const dataStorageMessages = {
     dataLocationNotEmpty: '기존 파일을 덮어쓰지 않도록 빈 폴더를 선택하세요.',
     dataLocationUnavailable: '폴더를 사용할 수 없거나 쓰기 권한이 없습니다. 드라이브 연결과 폴더 권한을 확인하세요.',
     dataLocationFailed: '저장 위치를 변경하지 못했습니다. 기존 데이터 폴더를 계속 사용합니다.',
-    dataLocationBusy: '녹화·화면 캡처·업데이트 설치를 마친 뒤 저장 위치를 변경하세요.',
+    dataLocationBusy: '녹화·화면 캡쳐·업데이트 설치를 마친 뒤 저장 위치를 변경하세요.',
     dataLocationStartupTitle: '데이터 저장 위치',
     dataLocationStartupFailed: '설정된 데이터 폴더를 열 수 없습니다. 드라이브 연결이나 폴더 접근 권한을 복구한 뒤 PeepNote를 다시 실행하세요.'
   },

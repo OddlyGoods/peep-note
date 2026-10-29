@@ -177,7 +177,7 @@ Run `npm run test:features` to check trash retention, restore, local profile iso
 ### Create a record
 
 1. Click **Add**, or open the quick composer with `Alt+1`.
-2. Choose **Note**, **Screenshot**, or **Video**.
+2. Choose **Note**, **Capture**, or **Video**.
 3. For notes, choose Text, Markdown, Code, or HTML.
 4. Add an optional title, content, tags, and workspace, then save.
 

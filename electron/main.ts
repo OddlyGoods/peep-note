@@ -455,12 +455,12 @@ function createTray() {
 
   const language = loadSettings().language
   const text = language === 'ko'
-    ? { open: 'PeepNote 열기', quick: '빠른 기록', screenshot: '스크린샷', video: '동영상 녹화', about: '앱 정보', quit: '종료' }
+    ? { open: 'PeepNote 열기', quick: '빠른 기록', screenshot: '캡쳐', video: '동영상 녹화', about: '앱 정보', quit: '종료' }
     : language === 'ja'
-      ? { open: 'PeepNoteを開く', quick: 'クイック記録', screenshot: 'スクリーンショット', video: '画面録画を開始', about: 'アプリ情報', quit: '終了' }
+      ? { open: 'PeepNoteを開く', quick: 'クイック記録', screenshot: 'キャプチャ', video: '画面録画を開始', about: 'アプリ情報', quit: '終了' }
       : language === 'zh'
         ? { open: '打开 PeepNote', quick: '快速记录', screenshot: '截图', video: '开始屏幕录制', about: '应用信息', quit: '退出' }
-        : { open: 'Show PeepNote', quick: 'Quick record', screenshot: 'Screenshot', video: 'Start screen recording', about: 'About', quit: 'Quit' }
+        : { open: 'Show PeepNote', quick: 'Quick record', screenshot: 'Capture', video: 'Start screen recording', about: 'About', quit: 'Quit' }
   const menu = Menu.buildFromTemplate([
     { label: text.open, click: () => showMainWindow() },
     { type: 'separator' },
@@ -510,7 +510,7 @@ async function chooseCaptureDisplay(forceChoose = false): Promise<{ display: Ele
 
   const language = settings.language
   const copy = language === 'ko'
-    ? { title: '캡처할 화면 선택', message: '영역을 캡처할 화면을 선택하세요.', cancel: '취소', monitor: '화면' }
+    ? { title: '캡쳐할 화면 선택', message: '영역을 캡쳐할 화면을 선택하세요.', cancel: '취소', monitor: '화면' }
     : language === 'ja'
       ? { title: 'キャプチャする画面を選択', message: '範囲をキャプチャするモニターを選択してください。', cancel: 'キャンセル', monitor: 'モニター' }
       : language === 'zh'

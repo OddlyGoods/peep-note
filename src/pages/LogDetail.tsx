@@ -13,6 +13,7 @@ import { useLogStore } from '../stores/logStore'
 import OcrText from '../components/OcrText'
 import FavoriteButton from '../components/FavoriteButton'
 import WorkspaceMoveButton from '../components/WorkspaceMoveButton'
+import MarkdownCodeBlock from '../components/MarkdownCodeBlock'
 import ConfirmModal from '../components/ConfirmModal'
 import SecretPasswordModal from '../components/SecretPasswordModal'
 import { useI18n } from '../i18n'
@@ -38,6 +39,7 @@ const FORMAT_CONFIG = {
 
 const FORMATS = ['text', 'markdown', 'code', 'html'] as const
 const MARKDOWN_COMPONENTS = {
+  pre: MarkdownCodeBlock,
   table: ({ node: _node, ...props }: any) => (
     <div className="markdown-table-wrap"><table {...props} /></div>
   )
@@ -55,9 +57,7 @@ function MarkdownContent({ content }: { content: string }) {
       [&_li]:text-gray-300 [&_strong]:font-semibold [&_strong]:text-white
       [&_a]:text-violet-300 [&_a]:underline [&_a]:underline-offset-2
       [&_blockquote]:border-l-2 [&_blockquote]:border-violet-400/60 [&_blockquote]:pl-3 [&_blockquote]:text-gray-400 [&_blockquote]:my-3
-      [&_pre]:bg-gray-950 [&_pre]:border [&_pre]:border-gray-700 [&_pre]:rounded-lg [&_pre]:p-3 [&_pre]:my-3 [&_pre]:overflow-x-auto
-      [&_code]:font-mono [&_code]:text-emerald-300 [&_code]:text-xs [&_code]:bg-gray-900 [&_code]:px-1 [&_code]:rounded
-      [&_pre_code]:bg-transparent [&_pre_code]:p-0">
+      [&_code]:font-mono [&_code]:text-emerald-300 [&_code]:text-xs [&_code]:bg-gray-900 [&_code]:px-1 [&_code]:rounded">
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>{content}</ReactMarkdown>
     </div>
   )

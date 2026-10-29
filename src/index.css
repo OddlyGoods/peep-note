@@ -779,6 +779,74 @@ html[data-theme='light'] .ai-summary-content pre code {
   border: 0;
 }
 .ai-summary-content p { white-space: pre-line; }
+
+.markdown-code-block {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 12px 0;
+  padding: 10px 12px;
+  border: 1px solid #374151;
+  border-radius: 8px;
+  background: #030712;
+}
+
+.markdown-code-block > pre {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 2px 0;
+  overflow-x: auto;
+  white-space: pre;
+  font-size: 12px;
+  line-height: 1.65;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+.markdown-content .markdown-code-block pre code,
+.ai-summary-content .markdown-code-block pre code {
+  padding: 0;
+  border: 0;
+  background: transparent !important;
+  color: #6ee7b7 !important;
+  white-space: pre;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+.markdown-code-copy {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  border-radius: 5px;
+  color: #94a3b8;
+  font-size: 11px;
+  line-height: 18px;
+  white-space: nowrap;
+  transition: background-color .15s, color .15s;
+}
+
+.markdown-code-copy:hover {
+  background: rgb(255 255 255 / .08);
+  color: #f1f5f9;
+}
+
+.markdown-code-copy:focus-visible {
+  outline: 2px solid #a78bfa;
+  outline-offset: 2px;
+}
+
+.markdown-code-copy[data-state='copied'] {
+  color: #86efac;
+}
+
+.markdown-code-copy[data-state='error'] {
+  color: #fda4af;
+}
+
 .detail-content,
 .markdown-content,
 .ai-summary-content {

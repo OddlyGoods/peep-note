@@ -31,15 +31,15 @@ html[data-theme='light'] .favorite-button:focus-visible {
 }
 
 .secret-label-badge {
-  background: #12342f;
-  border-color: #2dd4bf4d;
-  color: #5eead4;
+  background: #27272a;
+  border-color: #52525b;
+  color: #d4d4d8;
 }
 
 html[data-theme='light'] .secret-label-badge {
-  background: #f0fdfa;
-  border-color: #99f6e4;
-  color: #0f766e;
+  background: #f4f4f5;
+  border-color: #d4d4d8;
+  color: #52525b;
 }
 
 html[data-theme='light'] .secret-icon-badge {

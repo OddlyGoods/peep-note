@@ -387,18 +387,18 @@ export default function LogDetail() {
           {/* 메타 정보 */}
           <div className="flex items-center gap-3 flex-wrap">
             {isAiSummary ? (
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border bg-amber-500/10 border-amber-500/30">
+              <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg border bg-amber-500/10 border-amber-500/30">
                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />
                 <span className="text-xs font-medium text-amber-400">{t('summary')}</span>
               </div>
             ) : (
-              <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border bg-gray-800/50 ${cfg.border}`}>
+              <div className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border bg-gray-800/50 ${cfg.border}`}>
                 <Icon className={`w-3.5 h-3.5 ${cfg.color}`} />
                 <span className={`text-xs font-medium ${cfg.color}`}>{t(cfg.label as 'note' | 'screenshot' | 'video')}</span>
               </div>
             )}
             {isNote && (
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border bg-gray-800/50 border-gray-700">
+              <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg border bg-gray-800/50 border-gray-700">
                 <fmtCfg.icon className="w-3.5 h-3.5 text-gray-400" />
                 <span className="text-xs font-medium text-gray-400">{fmtCfg.label === 'html' ? 'HTML' : t(fmtCfg.label as 'text' | 'markdown' | 'code')}</span>
               </div>

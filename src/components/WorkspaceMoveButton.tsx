@@ -96,7 +96,7 @@ export default function WorkspaceMoveButton({ log, variant = 'compact', onMoved 
       disabled={disabled}
       onClick={openMenu}
       className={`${variant === 'detail'
-        ? 'btn-secondary inline-flex h-[38px] w-[38px] items-center justify-center p-0'
+        ? 'btn-secondary inline-flex h-[38px] items-center justify-center gap-1.5 px-3 py-0'
         : 'p-1.5 rounded-lg text-gray-400 hover:text-indigo-400 hover:bg-indigo-500/10'
       } transition-colors disabled:cursor-not-allowed disabled:opacity-30`}
     >
@@ -104,6 +104,7 @@ export default function WorkspaceMoveButton({ log, variant = 'compact', onMoved 
         ? <Loader2 className={`${variant === 'detail' ? 'w-4 h-4' : 'w-3.5 h-3.5'} animate-spin`} />
         : <FolderInput className={variant === 'detail' ? 'w-4 h-4' : 'w-3.5 h-3.5'} />
       }
+      {variant === 'detail' && t('move')}
     </button>
 
     {open && createPortal(

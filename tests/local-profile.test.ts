@@ -7,6 +7,7 @@ import { createApiApp } from '../server/index'
 import { initDb, getDb, queryOne } from '../server/db'
 import { LOCAL_PROFILE_ID } from '../server/localProfile'
 import { api } from '../src/lib/api'
+import { DEFAULT_HOTKEYS, getActiveHotkeys, type HotkeyAction } from '../shared/hotkeys'
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'openpeepnote-local-'))
 const app = createApiApp(3848)
@@ -66,6 +67,37 @@ test('new global shortcuts fill older settings without replacing saved custom sh
     const updated = await json('/api/settings', 'PUT', { language: 'ko' })
     assert.equal(updated.hotkeys.openMain, 'Ctrl+Alt+W')
     assert.equal(updated.hotkeys.openFavorites, 'Ctrl+Alt+F')
+  } finally {
+    await json('/api/settings', 'PUT', { hotkeys: previous.hotkeys })
+  }
+})
+
+test('disabled shortcuts survive reload, are not registered, and restore their saved combinations', async () => {
+  const previous = await json('/api/settings')
+  const actions = Object.keys(DEFAULT_HOTKEYS) as HotkeyAction[]
+  try {
+    await json('/api/settings', 'PUT', { hotkeys: {
+      ...previous.hotkeys,
+      openMain: 'Ctrl+Alt+W',
+      disabled: Object.fromEntries(actions.map(action => [action, true]))
+    } })
+    await initDb(root)
+    const reloaded = await json('/api/settings')
+    const active = getActiveHotkeys(reloaded.hotkeys)
+    for (const action of actions) assert.equal(active[action], '', action)
+    assert.equal(reloaded.hotkeys.openMain, 'Ctrl+Alt+W')
+    const restored = await json('/api/settings', 'PUT', { hotkeys: {
+      ...reloaded.hotkeys,
+      disabled: { ...reloaded.hotkeys.disabled, openMain: false }
+    } })
+    assert.equal(getActiveHotkeys(restored.hotkeys).openMain, 'Ctrl+Alt+W')
+    assert.equal(getActiveHotkeys(restored.hotkeys).quickSwitch, '')
+    assert.equal(getActiveHotkeys(restored.hotkeys).quickSwitchPrevious, '')
+    await initDb(root)
+    const persisted = await json('/api/settings')
+    assert.equal(getActiveHotkeys(persisted.hotkeys).openMain, 'Ctrl+Alt+W')
+    assert.equal(getActiveHotkeys(persisted.hotkeys).openFavorites, '')
+    assert.deepEqual(getActiveHotkeys(), DEFAULT_HOTKEYS)
   } finally {
     await json('/api/settings', 'PUT', { hotkeys: previous.hotkeys })
   }

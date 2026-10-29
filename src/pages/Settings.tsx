@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Save, Keyboard, Cloud, User, RotateCcw, Sparkles, Eye, EyeOff, Check, ChevronDown, Lock, FolderOpen, Loader2 } from 'lucide-react'
+import { Save, Keyboard, Cloud, User, RotateCcw, Sparkles, Eye, EyeOff, Check, ChevronDown, Lock, FolderOpen, Loader2, MoreHorizontal } from 'lucide-react'
 import { api, Settings as SettingsType } from '../lib/api'
 import { Language, useI18n } from '../i18n'
 import { useLogStore } from '../stores/logStore'
@@ -9,18 +9,53 @@ import ConfirmModal from '../components/ConfirmModal'
 import { dataStorageErrorKey } from '../../shared/dataStorage'
 import { DEFAULT_TRASH_RETENTION_DAYS, TRASH_RETENTION_OPTIONS, normalizeTrashRetentionDays } from '../../shared/trashRetention'
 import { AI_MODELS, DEFAULT_AI_MODELS, getAiModelSelection, type AiProvider } from '../../shared/aiModels'
-import { DEFAULT_HOTKEYS, resolveHotkeys } from '../../shared/hotkeys'
+import { resolveHotkeys, type HotkeyAction, type Hotkeys } from '../../shared/hotkeys'
 
-function HotkeyInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function HotkeyInput({ value, label, disabled, onChange, onDisabledChange }: {
+  value: string
+  label: string
+  disabled: boolean
+  onChange: (value: string) => void
+  onDisabledChange: (disabled: boolean) => void
+}) {
   const { t } = useI18n()
   const [listening, setListening] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const menuTriggerRef = useRef<HTMLButtonElement>(null)
+  const menuItemRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => () => {
     window.electronAPI?.setHotkeysEnabled(true)
   }, [])
 
+  useEffect(() => {
+    if (!menuOpen) return
+    menuItemRef.current?.focus()
+    const closeOutside = (event: PointerEvent) => {
+      if (!containerRef.current?.contains(event.target as Node)) setMenuOpen(false)
+    }
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      event.preventDefault()
+      setMenuOpen(false)
+      menuTriggerRef.current?.focus()
+    }
+    document.addEventListener('pointerdown', closeOutside)
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('pointerdown', closeOutside)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [menuOpen])
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     e.preventDefault()
+    if (e.key === 'Escape') {
+      setListening(false)
+      window.electronAPI?.setHotkeysEnabled(true)
+      return
+    }
     const parts: string[] = []
     if (e.ctrlKey) parts.push('Ctrl')
     if (e.altKey) parts.push('Alt')
@@ -43,11 +78,17 @@ function HotkeyInput({ value, onChange }: { value: string; onChange: (v: string)
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <div
-        tabIndex={0}
-        onFocus={() => {
+    <div ref={containerRef} className="relative shrink-0" onBlur={event => {
+      if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setMenuOpen(false)
+    }}>
+      <div className="settings-hotkey-control" data-disabled={disabled} data-listening={listening}>
+      <button
+        type="button"
+        disabled={disabled}
+        aria-label={`${label}: ${disabled ? `${t('shortcutDisabled')} · ` : ''}${value}`}
+        onClick={() => {
           setListening(true)
+          setMenuOpen(false)
           window.electronAPI?.setHotkeysEnabled(false)
         }}
         onBlur={() => {
@@ -55,14 +96,29 @@ function HotkeyInput({ value, onChange }: { value: string; onChange: (v: string)
           window.electronAPI?.setHotkeysEnabled(true)
         }}
         onKeyDown={listening ? handleKeyDown : undefined}
-        className={`settings-hotkey-input px-3 py-1.5 rounded-lg border text-sm font-mono cursor-pointer select-none min-w-24 text-center transition-colors ${
-          listening
-            ? 'is-listening border-violet-500 bg-violet-500/10 text-violet-300 ring-1 ring-violet-500'
-            : 'border-gray-700 bg-gray-800 text-gray-300 hover:border-gray-600'
-        }`}
+        className={`settings-hotkey-input px-3 py-1.5 text-sm font-mono select-none min-w-24 text-center transition-colors ${listening ? 'is-listening' : ''}`}
       >
         {listening ? t('pressKey') : value || '—'}
+      </button>
+      <button ref={menuTriggerRef} type="button" className="settings-hotkey-menu-trigger"
+        aria-label={t('shortcutOptions', { name: label })} aria-haspopup="menu" aria-expanded={menuOpen}
+        onClick={() => setMenuOpen(open => !open)}
+        onKeyDown={event => {
+          if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            event.preventDefault()
+            setMenuOpen(true)
+          }
+        }}>
+        <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+      </button>
       </div>
+      {menuOpen && <div role="menu" aria-label={t('shortcutOptions', { name: label })} className="settings-hotkey-menu">
+        <button ref={menuItemRef} type="button" role="menuitem" onClick={() => {
+          onDisabledChange(!disabled)
+          setMenuOpen(false)
+          menuTriggerRef.current?.focus()
+        }}>{t(disabled ? 'enableShortcut' : 'disableShortcut')}</button>
+      </div>}
     </div>
   )
 }
@@ -76,7 +132,7 @@ export default function Settings() {
     zh: { title: '私密笔记锁定', set: '设置 4 位密码以保护私密笔记。', active: '已设置 4 位密码。', actionSet: '设置密码', actionChange: '重设密码' }
   }[language]
   const [settings, setSettings] = useState<SettingsType | null>(null)
-  const [hotkeys, setHotkeys] = useState({ ...DEFAULT_HOTKEYS })
+  const [hotkeys, setHotkeys] = useState<Hotkeys>(() => resolveHotkeys())
   const [backupEnabled, setBackupEnabled] = useState(false)
   const [backupUrl, setBackupUrl] = useState('')
   const [loading, setLoading] = useState(true)
@@ -199,7 +255,7 @@ export default function Settings() {
     }
   }
 
-  const resetHotkeys = () => setHotkeys({ ...DEFAULT_HOTKEYS })
+  const resetHotkeys = () => setHotkeys(resolveHotkeys())
 
   const chooseDataPath = async () => {
     setDataPathError('')
@@ -399,8 +455,11 @@ export default function Settings() {
                     </p>
                   </div>
                   <HotkeyInput
-                    value={hotkeys[key as keyof typeof hotkeys]}
+                    value={hotkeys[key as HotkeyAction]}
+                    label={label}
+                    disabled={hotkeys.disabled?.[key as HotkeyAction] === true}
                     onChange={v => setHotkeys(prev => ({ ...prev, [key]: v }))}
+                    onDisabledChange={disabled => setHotkeys(prev => ({ ...prev, disabled: { ...prev.disabled, [key]: disabled } }))}
                   />
                 </div>
               ))}

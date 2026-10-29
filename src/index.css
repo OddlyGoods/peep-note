@@ -488,11 +488,108 @@ html[data-theme='light'] .settings-date-toggle:hover {
   box-shadow: 0 0 0 3px rgba(99,102,241,.16) !important;
 }
 
-html[data-theme='light'] .settings-hotkey-input:not(.is-listening):hover {
+.settings-hotkey-control {
+  display: flex;
+  border: 1px solid #374151;
+  border-radius: 8px;
+  background: #1f2937;
+  color: #d1d5db;
+}
+
+.settings-hotkey-input {
+  border-radius: 7px 0 0 7px;
+}
+
+.settings-hotkey-input:not(:disabled):hover,
+.settings-hotkey-menu-trigger:hover {
+  background: #374151;
+}
+
+.settings-hotkey-menu-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  border-left: 1px solid #374151;
+  border-radius: 0 7px 7px 0;
+  transition: background-color .15s ease;
+}
+
+.settings-hotkey-control[data-listening='true'] {
+  border-color: #8b5cf6;
+  background: rgb(139 92 246 / .1);
+  color: #c4b5fd;
+  box-shadow: 0 0 0 1px #8b5cf6;
+}
+
+.settings-hotkey-control[data-disabled='true'] {
+  background: #0b1020;
+  border-color: #293245;
+  color: #64748b;
+}
+
+.settings-hotkey-input:disabled {
+  cursor: not-allowed;
+}
+
+.settings-hotkey-menu {
+  position: absolute;
+  z-index: 50;
+  right: 0;
+  top: calc(100% + 6px);
+  min-width: 140px;
+  padding: 4px;
+  border: 1px solid var(--medium-border);
+  border-radius: 8px;
+  background: var(--app-bg);
+  color: var(--title-text);
+  box-shadow: 0 8px 24px rgb(0 0 0 / .25);
+}
+
+.settings-hotkey-menu > button {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 5px;
+  font-size: 12px;
+  text-align: left;
+}
+
+.settings-hotkey-menu > button:hover,
+.settings-hotkey-menu > button:focus-visible {
+  background: rgb(139 92 246 / .15);
+}
+
+.settings-hotkey-input:focus-visible,
+.settings-hotkey-menu-trigger:focus-visible {
+  outline: 2px solid #8b5cf6;
+  outline-offset: 2px;
+}
+
+html[data-theme='light'] .settings-hotkey-control {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+html[data-theme='light'] .settings-hotkey-menu-trigger {
+  border-left-color: #cbd5e1;
+}
+
+html[data-theme='light'] .settings-hotkey-control[data-disabled='true'] {
+  background: #e2e8f0;
+  color: #94a3b8;
+}
+
+html[data-theme='light'] .settings-hotkey-input:not(.is-listening):not(:disabled):hover,
+html[data-theme='light'] .settings-hotkey-menu-trigger:hover {
   background: #eef2ff !important;
-  border-color: #a5b4fc !important;
   color: #3730a3 !important;
-  box-shadow: 0 2px 7px rgba(79,70,229,.08);
+}
+
+html[data-theme='light'] .settings-hotkey-control[data-listening='true'] {
+  background: #f5f3ff;
+  border-color: #8b5cf6;
+  color: #6d28d9;
 }
 
 html[data-theme='light'] .dashboard-scroll-top {

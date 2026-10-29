@@ -26,7 +26,7 @@ import { attachmentMimeType, isImageAttachment } from '../shared/attachments'
 import { DataStorageError, prepareDataLocation, scheduleDataLocation } from './dataStorage'
 import { restartAfterDataLocationChange } from './restart'
 import { dataStorageCopy, dataStorageErrorKey, type DataLocationResult } from '../shared/dataStorage'
-import { resolveHotkeys } from '../shared/hotkeys'
+import { getActiveHotkeys, resolveHotkeys } from '../shared/hotkeys'
 
 // Register the internal app scheme before Electron is ready.
 protocol.registerSchemesAsPrivileged([
@@ -327,8 +327,9 @@ function previousQuickSwitch() {
 }
 
 function registerQuickSwitchShortcut() {
-  globalShortcut.register(quickSwitchAccelerator, advanceQuickSwitch)
-  globalShortcut.register(quickSwitchPreviousAccelerator, previousQuickSwitch)
+  if (!globalHotkeysEnabled) return
+  if (quickSwitchAccelerator) globalShortcut.register(quickSwitchAccelerator, advanceQuickSwitch)
+  if (quickSwitchPreviousAccelerator) globalShortcut.register(quickSwitchPreviousAccelerator, previousQuickSwitch)
 }
 
 // ── 제품 정보 창 ────────────────────────────────────────────────────────
@@ -870,9 +871,9 @@ function registerHotkeys() {
   if (!globalHotkeysEnabled) return
   globalShortcut.unregisterAll()
   const settings = loadSettings()
-  const hk = settings.hotkeys
-  quickSwitchAccelerator = hk.quickSwitch || 'Alt+Q'
-  quickSwitchPreviousAccelerator = hk.quickSwitchPrevious || 'Alt+E'
+  const hk = getActiveHotkeys(settings.hotkeys)
+  quickSwitchAccelerator = hk.quickSwitch
+  quickSwitchPreviousAccelerator = hk.quickSwitchPrevious
 
   try {
     if (hk.openMain) {

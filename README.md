@@ -197,6 +197,7 @@ For screenshots and recordings, choose a region after selecting the capture acti
 | `Alt+E` | Move to the previous Quick List item |
 
 Shortcuts can be changed in **Settings → Global shortcuts**.
+Use the **⋯** menu beside a shortcut to disable or re-enable it while keeping its key combination. Click **Save** to apply your changes.
 
 ### Secret notes
 

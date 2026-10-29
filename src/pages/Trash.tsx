@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Trash2, RotateCcw, Lock, Image as ImageIcon, Video, FileText, Sparkles, Clock, Check, Search, FolderOpen } from 'lucide-react'
+import { Trash2, RotateCcw, Lock, Image as ImageIcon, Video, Text as TextIcon, Hash, Code2, Globe, Sparkles, Clock, Check, Search, FolderOpen } from 'lucide-react'
 import { api, TrashItem } from '../lib/api'
 import { useI18n } from '../i18n'
 import { useLogStore } from '../stores/logStore'
@@ -7,11 +7,13 @@ import ConfirmModal from '../components/ConfirmModal'
 import type { TrashRetentionDays } from '../../shared/trashRetention'
 
 const TYPE_CONFIG = {
-  note: { icon: FileText, color: 'text-violet-400', bg: 'bg-violet-500/10 border-violet-500/20' },
+  note: { icon: TextIcon, color: 'text-violet-400', bg: 'bg-violet-500/10 border-violet-500/20' },
   screenshot: { icon: ImageIcon, color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/20' },
   video: { icon: Video, color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-500/20' },
   summary: { icon: Sparkles, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' }
 }
+
+const NOTE_ICONS = { text: TextIcon, markdown: Hash, code: Code2, html: Globe }
 
 type Confirmation = { kind: 'selected' | 'all'; ids: string[] }
 
@@ -92,7 +94,7 @@ export default function Trash() {
           <div className="space-y-2">
             {visibleItems.map(item => {
               const cfg = TYPE_CONFIG[item.log_type] ?? TYPE_CONFIG.note
-              const Icon = cfg.icon
+              const Icon = item.log_type === 'note' ? (NOTE_ICONS[item.content_format ?? 'text'] ?? TextIcon) : cfg.icon
               const checked = selected.includes(item.id)
               return <div key={item.id} className={`log-card group card relative overflow-hidden p-4 hover:border-gray-700 hover:bg-gray-800/50 transition-all duration-300 cursor-pointer ${checked ? 'border-violet-500/50 bg-violet-500/5' : ''} ${busy ? 'opacity-50' : ''}`}
                 onClick={() => toggleItem(item.id)}>

@@ -12,7 +12,7 @@ trash.use('*', async (c, next) => {
 
 trash.get('/', c => {
   // Trash returns metadata only; secret content and file paths are never previewed.
-  const rows = queryAll(`SELECT id, title, log_type, is_secret, deleted_at,
+  const rows = queryAll(`SELECT id, title, log_type, content_format, is_secret, deleted_at,
     deleted_at + ? AS expires_at,
     COALESCE(
       (SELECT name FROM workspaces WHERE id = logs.workspace_id AND user_id = logs.user_id),

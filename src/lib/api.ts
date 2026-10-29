@@ -147,6 +147,7 @@ export interface TrashItem {
   id: string
   title: string
   log_type: Log['log_type']
+  content_format?: Log['content_format']
   is_secret: boolean
   deleted_at: number
   expires_at: number

@@ -377,12 +377,12 @@ export default function LogDetail() {
         onDrop={handleDrop}
       >
         {draggingFiles && (
-          <div className="pointer-events-none sticky top-3 z-40 mx-6 -mb-14 flex h-14 items-center justify-center gap-2 rounded-xl border-2 border-dashed border-violet-400 bg-violet-950/90 text-sm font-medium text-violet-100 shadow-xl">
+          <div className="pointer-events-none sticky top-3 z-40 mx-[84px] -mb-14 flex h-14 items-center justify-center gap-2 rounded-xl border-2 border-dashed border-violet-400 bg-violet-950/90 text-sm font-medium text-violet-100 shadow-xl">
             <Paperclip className="h-4 w-4" />
             {t('dropFilesActive')}
           </div>
         )}
-        <div className="w-full px-6 pt-6 pb-40 space-y-6">
+        <div className="w-full px-[84px] pt-6 pb-40 space-y-6">
 
           {/* 메타 정보 */}
           <div className="flex items-center gap-3 flex-wrap">

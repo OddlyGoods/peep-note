@@ -5,8 +5,9 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import crypto from 'node:crypto'
+import { execFileSync } from 'node:child_process'
 import { UpdateController } from '../electron/updateController'
-import { installDeb } from '../electron/installDeb'
+import { installDeb, installDebAndRestart, updatedDebExecutable } from '../electron/installDeb'
 import type { UpdateState } from '../shared/updates'
 import { UPDATE_STATE_CHANNEL } from '../shared/updates'
 import { useUpdateStore, subscribeToUpdates, checkForUpdates as rendererCheck } from '../src/stores/updateStore'
@@ -113,6 +114,68 @@ test('Debian installer passes file paths as one argument and reports cancellatio
     await assert.rejects(installDeb(null, runner), /unavailable/)
     await assert.rejects(installDeb(`${file}.missing`, runner), /unavailable/)
     assert.equal(calls, 2)
+  } finally { fs.rmSync(root, { recursive: true, force: true }) }
+})
+
+test('Linux update relaunch resolves the renamed executable only after installation succeeds', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'peepnote-relaunch-'))
+  const installer = path.join(root, "PeepNote 'update'.deb")
+  const previous = path.join(root, 'open-peep-note')
+  const current = path.join(root, 'peep-note')
+  fs.writeFileSync(installer, 'installer fixture')
+  fs.writeFileSync(previous, 'old executable')
+  fs.chmodSync(previous, 0o755)
+  const events: string[] = []
+  const args = ['--test-argument', 'spaces and quotes " remain one argument']
+  const app = {
+    relaunch(options: { execPath: string; args: string[] }) {
+      assert.equal(options.execPath, current)
+      assert.deepEqual(options.args, args)
+      events.push('relaunch')
+    },
+    quit() { events.push('quit') }
+  }
+  try {
+    await installDebAndRestart(installer, app, previous, args, (_command, _args, done) => {
+      events.push('install')
+      fs.unlinkSync(previous)
+      fs.writeFileSync(current, 'new executable')
+      fs.chmodSync(current, 0o755)
+      done(null)
+    })
+    assert.deepEqual(events, ['install', 'relaunch', 'quit'])
+    assert.equal(updatedDebExecutable(previous), current)
+  } finally { fs.rmSync(root, { recursive: true, force: true }) }
+})
+
+test('failed installation or a missing replacement executable keeps the app open', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'peepnote-relaunch-error-'))
+  const installer = path.join(root, 'update.deb')
+  fs.writeFileSync(installer, 'installer fixture')
+  let relaunched = 0
+  let quit = 0
+  const app = { relaunch: () => { relaunched++ }, quit: () => { quit++ } }
+  try {
+    await assert.rejects(installDebAndRestart(installer, app, path.join(root, 'missing'), [], (_command, _args, done) => done(new Error('Cancelled'))), /Cancelled/)
+    await assert.rejects(installDebAndRestart(installer, app, path.join(root, 'missing'), [], (_command, _args, done) => done(null)), /executable is unavailable/)
+    assert.equal(relaunched, 0)
+    assert.equal(quit, 0)
+  } finally { fs.rmSync(root, { recursive: true, force: true }) }
+})
+
+test('the legacy Linux launch path forwards arguments to the installed replacement', () => {
+  if (process.platform !== 'linux') return
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'peepnote-legacy-launch-'))
+  const legacy = path.join(root, 'open-peep-note')
+  const current = path.join(root, 'peep-note')
+  try {
+    fs.copyFileSync(path.join(__dirname, '../resources/linux/open-peep-note'), legacy)
+    fs.chmodSync(legacy, 0o755)
+    fs.writeFileSync(current, '#!/bin/sh\nprintf "%s\\n" "$@"\n', { mode: 0o755 })
+    const args = ['argument with spaces', 'a"b', "a'b", '$(must-stay-literal)']
+    assert.equal(execFileSync(legacy, args, { cwd: os.tmpdir(), encoding: 'utf8' }), args.join('\n') + '\n')
+    const pkg = require('../package.json')
+    assert.ok(pkg.build.linux.extraFiles.some((entry: { from: string; to: string }) => entry.from === 'resources/linux/open-peep-note' && entry.to === 'open-peep-note'))
   } finally { fs.rmSync(root, { recursive: true, force: true }) }
 })
 

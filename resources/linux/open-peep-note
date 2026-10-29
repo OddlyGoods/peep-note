@@ -1,0 +1,3 @@
+#!/bin/sh
+# Keep the executable path used by older installed versions valid on update.
+exec "$(dirname -- "$0")/peep-note" "$@"

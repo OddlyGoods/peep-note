@@ -19,7 +19,7 @@ import fs from 'fs'
 import { createConnection } from 'node:net'
 import { autoUpdater } from 'electron-updater'
 import { UpdateController, type UpdateEvent } from './updateController'
-import { installDeb } from './installDeb'
+import { installDebAndRestart } from './installDeb'
 import { UPDATE_STATE_CHANNEL } from '../shared/updates'
 import { startServer } from '../server/index'
 import { attachmentMimeType, isImageAttachment } from '../shared/attachments'
@@ -1307,9 +1307,7 @@ function setupAutoUpdater() {
       if (!isDeb) return autoUpdater.quitAndInstall(false, true)
       // electron-updater verifies the downloaded package checksum. Run dpkg
       // without a shell and keep the app open if authentication/install fails.
-      await installDeb(downloadedDeb)
-      app.relaunch()
-      app.quit()
+      await installDebAndRestart(downloadedDeb, app, process.execPath, process.argv.slice(1))
     }
   }
   updateController = new UpdateController(backend, app.getVersion(), process.platform, supported, state => {

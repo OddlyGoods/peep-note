@@ -483,10 +483,10 @@ export default function LogDetail() {
               {!editing && log.content && (!log.is_secret || secretGate === 'open') && (
                 <button
                   onClick={handleCopyContent}
-                  className="flex items-center gap-1 px-2 py-0.5 rounded text-xs text-gray-400 hover:text-violet-300 hover:bg-violet-500/10 transition-colors"
+                  className="flex items-center gap-1.5 px-2 py-0.5 rounded text-xs text-gray-400 hover:text-violet-300 hover:bg-violet-500/10 transition-colors"
                   title={t('copy')}
                 >
-                  {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                   {copied ? t('copied') : t('copy')}
                 </button>
               )}

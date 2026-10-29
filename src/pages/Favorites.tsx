@@ -83,6 +83,15 @@ export default function Favorites() {
     }
   }
 
+  const defaultWorkspaceId = workspaces.find(workspace => workspace.is_default)?.id ?? null
+  const sections: Array<{ workspaceId: string | null; logs: Log[] }> = []
+  for (const log of items) {
+    const workspaceId = log.workspace_id ?? defaultWorkspaceId
+    const previous = sections[sections.length - 1]
+    if (previous && previous.workspaceId === workspaceId) previous.logs.push(log)
+    else sections.push({ workspaceId, logs: [log] })
+  }
+
   return <main className="relative flex-1 flex flex-col min-w-0 h-full" style={{ background: 'var(--app-bg)' }}>
     <header className="px-6 py-4 border-b" style={{ borderColor: 'rgba(99,102,241,0.12)' }}>
       <h1 className="text-lg font-semibold text-white">{t('favorites')}</h1>
@@ -102,12 +111,14 @@ export default function Favorites() {
           <p className="text-sm text-gray-400">{t(search ? 'noSearchResults' : 'favoritesEmpty')}</p>
           {!search && <p className="text-xs text-gray-500 mt-2">{t('favoritesHint')}</p>}
         </div> : <div className="space-y-3">
-          {items.map(log => {
-            const workspace = workspaces.find(ws => log.workspace_id ? ws.id === log.workspace_id : ws.is_default)
-            return <div key={log.id}>
-              <div className="flex items-center gap-1 text-xs text-gray-400 mb-1 px-1"><FolderOpen className="w-3 h-3 shrink-0" /><span className="truncate">{workspace?.is_default ? t('defaultWorkspace') : (workspace?.name || t('defaultWorkspace'))}</span></div>
-              <LogCard log={log} basePath="/favorites/log" onReveal={() => showInDashboard(log)} />
-            </div>
+          {sections.map(section => {
+            const workspace = workspaces.find(ws => ws.id === section.workspaceId)
+            return <section key={section.logs[0].id}>
+              <h2 className="flex items-center gap-1 text-xs font-normal text-gray-400 mb-2 px-1"><FolderOpen className="w-3 h-3 shrink-0" /><span className="truncate">{workspace?.is_default ? t('defaultWorkspace') : (workspace?.name || t('defaultWorkspace'))}</span></h2>
+              <div className="space-y-3">
+                {section.logs.map(log => <LogCard key={log.id} log={log} basePath="/favorites/log" onReveal={() => showInDashboard(log)} />)}
+              </div>
+            </section>
           })}
           {hasMore && <button className="btn-secondary w-full disabled:opacity-40" disabled={loadingMore} onClick={loadMore}>{t(loadingMore ? 'loading' : 'loadMore')}</button>}
         </div>}

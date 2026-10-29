@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Save, Keyboard, Cloud, User, RotateCcw, Sparkles, Eye, EyeOff, Check, ChevronDown, Lock, Loader2, MoreHorizontal } from 'lucide-react'
+import { Save, Keyboard, Cloud, User, RotateCcw, Sparkles, Eye, EyeOff, Check, ChevronDown, Lock, Loader2, MoreHorizontal, Settings2 } from 'lucide-react'
 import { api, Settings as SettingsType } from '../lib/api'
 import { Language, useI18n } from '../i18n'
 import { useLogStore } from '../stores/logStore'
@@ -313,7 +313,10 @@ export default function Settings() {
         <div className="max-w-2xl mx-auto px-6 py-6 space-y-6">
 
           <section className="card p-5">
-            <h2 className="text-sm font-semibold text-white mb-4">{t('general')}</h2>
+            <div className="mb-4 flex items-center gap-2">
+              <Settings2 className="h-4 w-4 text-violet-400" />
+              <h2 className="text-sm font-semibold text-white">{t('general')}</h2>
+            </div>
             <div className="space-y-4">
               <div>
                 <h3 className="text-sm font-medium text-gray-200 mb-1">{t('language')}</h3>
@@ -418,13 +421,14 @@ export default function Settings() {
           </section>
 
           <section className="card p-5">
-            <div className="flex items-center justify-between gap-4">
+            <div className="mb-4 flex items-center justify-between gap-4">
               <div className="flex items-center gap-2 min-w-0">
                 <Lock className="w-4 h-4 shrink-0 text-violet-400" />
-                <div><h2 className="text-sm font-semibold text-white">{secretSettingsCopy.title}</h2><p className="mt-1 text-xs text-gray-400">{secretPasswordSet ? secretSettingsCopy.active : secretSettingsCopy.set}</p></div>
+                <h2 className="text-sm font-semibold text-white">{secretSettingsCopy.title}</h2>
               </div>
               <button type="button" onClick={() => setShowSecretPasswordModal(true)} className="btn-secondary shrink-0 text-xs">{secretPasswordSet ? secretSettingsCopy.actionChange : secretSettingsCopy.actionSet}</button>
             </div>
+            <p className="text-xs text-gray-400">{secretPasswordSet ? secretSettingsCopy.active : secretSettingsCopy.set}</p>
           </section>
 
           {/* 단축키 설정 */}

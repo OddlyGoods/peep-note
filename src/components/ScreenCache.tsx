@@ -14,7 +14,7 @@ function CachedScreen({ active, children }: { active: boolean; children: ReactNo
   const targets = () => Array.from(container.current?.querySelectorAll<HTMLElement>('[data-screen-scroll], textarea') ?? [])
   const name = (element: HTMLElement, index: number) => element.dataset.screenScroll ?? `textarea-${index}`
   const save = () => {
-    if (restoring.current) return
+    if (restoring.current || !container.current?.getClientRects().length) return
     targets().forEach((element, index) => {
       if (element.closest('[aria-busy="true"]')) return
       positions.current.set(name(element, index), { identity: element.dataset.screenScrollKey ?? '', top: element.scrollTop, left: element.scrollLeft })
@@ -53,7 +53,7 @@ function CachedScreen({ active, children }: { active: boolean; children: ReactNo
     return () => { save(); observer.disconnect(); cancelAnimationFrame(frame) }
   }, [active])
 
-  return <div ref={container} className={`absolute inset-0 min-w-0 ${active ? '' : 'invisible pointer-events-none'}`}
+  return <div ref={container} className="absolute inset-0 min-w-0" style={{ display: active ? 'block' : 'none' }}
     aria-hidden={!active || undefined}
     onScrollCapture={() => { if (active) save() }}
     onWheelCapture={event => { if ((event.target as Element).closest('[data-screen-scroll],textarea')) restoring.current = false }}

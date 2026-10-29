@@ -13,6 +13,7 @@ declare global {
       importAttachments: (files: File[], mode?: 'copy' | 'link') => Promise<Array<{ path: string; name: string; size: number; isImage: boolean; mimeType: string | null }>>
       deleteAttachmentFile: (filepath: string) => Promise<boolean>
       openAttachment: (filepath: string) => Promise<boolean>
+      showAttachmentInFolder: (filepath: string) => Promise<boolean>
       downloadAttachment: (filepath: string) => Promise<boolean>
       getScreenshotsDir: () => Promise<string>
       getVideosDir: () => Promise<string>

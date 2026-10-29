@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
-import { X, Maximize2, Minimize2, Camera, Video, FileText, Text as TextIcon, StopCircle, Code2, Globe, Hash, Lock, SlidersHorizontal, Paperclip, File as FileIcon, ChevronDown, Check, Loader2 } from 'lucide-react'
+import { X, Maximize2, Minimize2, Camera, Video, FileText, Text as TextIcon, StopCircle, Code2, Globe, Hash, Lock, SlidersHorizontal, Paperclip, ChevronDown, Check, Loader2 } from 'lucide-react'
 import { api, type Workspace } from './lib/api'
 import { useI18n } from './i18n'
 import { startRegionRecording, RecordingRegion } from './lib/regionRecording'
 import { attachmentFilename, type AttachmentMode } from '../shared/attachments'
 import { useAttachmentPicker } from './lib/useAttachmentPicker'
-import AttachmentModeBadge from './components/AttachmentModeBadge'
+import AttachmentFileRow from './components/AttachmentFileRow'
+import FileDropZone from './components/FileDropZone'
 
 type LogType = 'note' | 'screenshot' | 'video'
 type ContentFormat = 'text' | 'markdown' | 'code' | 'html'
@@ -25,13 +26,6 @@ const FORMATS: { value: ContentFormat; label: string; icon: React.ElementType }[
 
 type Attachment = { path: string; name: string; size?: number; url?: string }
 type SelectedWorkspace = Pick<Workspace, 'id' | 'name' | 'is_default'>
-
-function formatFileSize(size?: number) {
-  if (!size) return ''
-  if (size < 1024) return `${size} B`
-  if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`
-  return `${(size / (1024 * 1024)).toFixed(1)} MB`
-}
 
 function getWorkspaceFromStorage(): SelectedWorkspace | null {
   try {
@@ -70,6 +64,7 @@ export default function Overlay() {
   const timerRef = useRef<number | null>(null)
   const recordingStartedAtRef = useRef<number | null>(null)
   const contentRef = useRef<HTMLTextAreaElement>(null)
+  const filePickerHostRef = useRef<HTMLDivElement>(null)
   const attachmentsRef = useRef<Attachment[]>([])
   const savedAttachmentsRef = useRef(false)
   const dragDepthRef = useRef(0)
@@ -266,7 +261,7 @@ export default function Overlay() {
     }
   }
 
-  const attachmentPicker = useAttachmentPicker(importFiles, importingFiles)
+  const attachmentPicker = useAttachmentPicker(importFiles, importingFiles, { containerRef: filePickerHostRef })
 
   const handleDrop = (event: React.DragEvent) => {
     event.preventDefault()
@@ -394,11 +389,6 @@ export default function Overlay() {
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      {draggingFiles && (
-        <div className="pointer-events-none absolute inset-2 z-50 flex items-center justify-center rounded-xl border-2 border-dashed border-violet-400 bg-violet-950/85 text-sm font-semibold text-violet-200 shadow-2xl">
-          <div className="flex flex-col items-center gap-2"><Paperclip className="h-6 w-6" />{t('dropFilesActive')}</div>
-        </div>
-      )}
       <div
         className="flex-1 flex flex-col overflow-hidden"
         style={{ background: 'var(--overlay-bg)', border: '1px solid var(--medium-border)' }}
@@ -485,195 +475,175 @@ export default function Overlay() {
           </div>
         </div>
 
-        {/* 타입 탭 */}
-        <div className="flex items-center gap-1 px-3 py-2 shrink-0"
-          style={{ borderBottom: type === 'note' ? 'none' : '1px solid rgba(99,102,241,0.1)' }}>
-          {TYPES.map(({ value, label, icon: Icon, color, accent }) => (
-            <button key={value} onClick={() => handleTypeChange(value)}
-              className={`overlay-tab ${type !== value ? 'overlay-tab-inactive' : ''} flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex-1 justify-center ${
-                type === value ? 'text-white' : 'text-slate-500 hover:text-slate-300'
-              }`}
-              style={type === value ? { background: accent, border: `1px solid ${accent.replace('0.15', '0.4')}` } : { border: '1px solid transparent' }}>
-              <Icon className={`w-3.5 h-3.5 ${type === value ? color : ''}`} />
-              {t(label as 'note' | 'screenshot' | 'video')}
-            </button>
-          ))}
-        </div>
-
-        {/* 포맷 토글 (노트) */}
-        {type === 'note' && (
-          <div className="flex items-center gap-1 px-3 py-1.5 shrink-0"
-            style={{ borderBottom: '1px solid rgba(99,102,241,0.1)' }}>
-            {FORMATS.map(({ value, label, icon: Icon }) => (
-              <button key={value} onClick={() => setFormat(value)}
-                className={`overlay-tab flex items-center gap-1 px-2.5 py-1 rounded-md text-xs transition-all ${
-                  format === value
-                    ? 'text-violet-300 bg-violet-500/15 border border-violet-500/30'
-                    : 'text-slate-500 hover:text-slate-400 border border-transparent'
-                }`}>
-                <Icon className="w-3 h-3" />
-                {value === 'html' ? label : t(label as 'text' | 'markdown' | 'code')}
+        <div ref={filePickerHostRef} className="relative flex min-h-0 flex-1 flex-col">
+          {/* 타입 탭 */}
+          <div className="flex items-center gap-1 px-3 py-2 shrink-0"
+            style={{ borderBottom: type === 'note' ? 'none' : '1px solid rgba(99,102,241,0.1)' }}>
+            {TYPES.map(({ value, label, icon: Icon, color, accent }) => (
+              <button key={value} onClick={() => handleTypeChange(value)}
+                className={`overlay-tab ${type !== value ? 'overlay-tab-inactive' : ''} flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex-1 justify-center ${
+                  type === value ? 'text-white' : 'text-slate-500 hover:text-slate-300'
+                }`}
+                style={type === value ? { background: accent, border: `1px solid ${accent.replace('0.15', '0.4')}` } : { border: '1px solid transparent' }}>
+                <Icon className={`w-3.5 h-3.5 ${type === value ? color : ''}`} />
+                {t(label as 'note' | 'screenshot' | 'video')}
               </button>
             ))}
-            <button type="button" onClick={() => setIsSecret(value => !value)} aria-pressed={isSecret}
-              className={`ml-auto flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs transition-colors ${isSecret ? 'border-violet-500/50 bg-violet-500/15 text-violet-300' : 'text-slate-400 hover:text-slate-200'}`}
-              style={!isSecret ? { borderColor: 'var(--soft-border)', background: 'var(--side-panel-bg)', color: 'var(--title-text)' } : undefined}>
-              <Lock className="h-3.5 w-3.5" />
-              {t('secret')}
-            </button>
           </div>
-        )}
 
-        {/* 입력 영역 */}
-        <div className="flex-1 flex flex-col overflow-y-auto px-3 pt-2.5 pb-2 gap-2 min-h-0">
-          <input type="text" className="input py-1.5 text-sm shrink-0" placeholder={t('titleOptional')}
-            value={title} onChange={e => setTitle(e.target.value)} />
-
-          <textarea ref={contentRef}
-            className={`input resize-none text-sm flex-1 min-h-0 ${
-              format === 'code' && type === 'note' ? 'font-mono text-emerald-400 bg-gray-950' :
-              format === 'html' && type === 'note' ? 'font-mono text-sky-300 bg-gray-950' : ''
-            }`}
-            style={{ minHeight: previewUrl ? '36px' : '80px' }}
-            placeholder={
-              format === 'code' ? t('codeInput') :
-              format === 'html' ? t('htmlInput') :
-              type === 'note' ? t('overlayContent') : t('descriptionOptional')
-            }
-            value={content} onChange={e => setContent(e.target.value)} />
-
-          {attachmentPicker.input}
-          {attachmentPicker.dialog}
-          <button type="button" onClick={attachmentPicker.selectFiles} disabled={importingFiles}
-            className="flex shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed px-3 py-1.5 text-[11px] transition-all hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 disabled:cursor-wait"
-            style={{ borderColor: 'var(--medium-border)', color: 'var(--quick-meta)', background: 'var(--side-panel-bg)' }}>
-            {importingFiles
-              ? <span className="h-3.5 w-3.5 rounded-full border-2 border-violet-500 border-t-transparent animate-spin" />
-              : <Paperclip className="h-3.5 w-3.5" />}
-            {t(importingFiles ? 'importingFiles' : 'dropFiles')}
-          </button>
-          {attachmentError && <p className="shrink-0 text-right text-[11px] text-red-400">{t('fileImportFailed')}</p>}
-
-          {/* 스크린샷 캡처 버튼 */}
-          {type === 'screenshot' && (
-            <div className="flex items-center gap-2 shrink-0">
-              <button onClick={() => handleScreenshot()}
-                className="flex flex-1 items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-bold text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 transition-colors"
-                style={{ border: '1px dashed rgba(96,165,250,0.3)', fontWeight: 800 }}>
-                <Camera className="w-3.5 h-3.5" />
-                {t('captureScreen')}
-              </button>
-              <button onClick={() => handleScreenshot(true)} title={t('edit')} aria-label={t('edit')}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-blue-400 hover:bg-blue-500/10 hover:text-blue-300 transition-colors"
-                style={{ border: '1px dashed rgba(96,165,250,0.3)' }}>
-                <SlidersHorizontal className="w-3.5 h-3.5" />
+          {/* 포맷 토글 (노트) */}
+          {type === 'note' && (
+            <div className="flex items-center gap-1 px-3 py-1.5 shrink-0"
+              style={{ borderBottom: '1px solid rgba(99,102,241,0.1)' }}>
+              {FORMATS.map(({ value, label, icon: Icon }) => (
+                <button key={value} onClick={() => setFormat(value)}
+                  className={`overlay-tab flex items-center gap-1 px-2.5 py-1 rounded-md text-xs transition-all ${
+                    format === value
+                      ? 'text-violet-300 bg-violet-500/15 border border-violet-500/30'
+                      : 'text-slate-500 hover:text-slate-400 border border-transparent'
+                  }`}>
+                  <Icon className="w-3 h-3" />
+                  {value === 'html' ? label : t(label as 'text' | 'markdown' | 'code')}
+                </button>
+              ))}
+              <button type="button" onClick={() => setIsSecret(value => !value)} aria-pressed={isSecret}
+                className={`ml-auto flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs transition-colors ${isSecret ? 'border-violet-500/50 bg-violet-500/15 text-violet-300' : 'text-slate-400 hover:text-slate-200'}`}
+                style={!isSecret ? { borderColor: 'var(--soft-border)', background: 'var(--side-panel-bg)', color: 'var(--title-text)' } : undefined}>
+                <Lock className="h-3.5 w-3.5" />
+                {t('secret')}
               </button>
             </div>
           )}
 
-          {type === 'video' && !previewUrl && (
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={recording ? stopRecording : () => startRecording()}
-                className={`flex flex-1 items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-bold transition-colors ${
-                  recording
-                    ? 'text-red-400 hover:text-red-300 hover:bg-red-500/10 animate-pulse'
-                    : 'text-orange-400 hover:text-orange-300 hover:bg-orange-500/10'
-                }`}
-                style={{ border: `1px dashed ${recording ? 'rgba(239,68,68,0.38)' : 'rgba(251,146,60,0.38)'}`, fontWeight: 800 }}
-              >
-                {recording ? <StopCircle className="w-3.5 h-3.5" /> : <Video className="w-3.5 h-3.5" />}
-                {recording ? `${t('stopRecording')} · ${fmt(recordingTime)}` : t('startRecording')}
-              </button>
-              {!recording && (
-                <button onClick={() => startRecording(true)} title={t('edit')} aria-label={t('edit')}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-orange-400 hover:bg-orange-500/10 hover:text-orange-300 transition-colors"
-                  style={{ border: '1px dashed rgba(251,146,60,0.38)' }}>
+          {/* 입력 영역 */}
+          <div className="flex-1 flex flex-col overflow-y-auto px-3 pt-2.5 pb-2 gap-2 min-h-0">
+            <input type="text" className="input py-1.5 text-sm shrink-0" placeholder={t('titleOptional')}
+              value={title} onChange={e => setTitle(e.target.value)} />
+
+            <textarea ref={contentRef}
+              className={`input resize-none text-sm flex-1 min-h-0 ${
+                format === 'code' && type === 'note' ? 'code-input font-mono text-emerald-400 bg-gray-950' :
+                format === 'html' && type === 'note' ? 'code-input font-mono text-sky-300 bg-gray-950' : ''
+              }`}
+              style={{ minHeight: previewUrl ? '36px' : '80px' }}
+              placeholder={
+                format === 'code' ? t('codeInput') :
+                format === 'html' ? t('htmlInput') :
+                type === 'note' ? t('overlayContent') : t('descriptionOptional')
+              }
+              value={content} onChange={e => setContent(e.target.value)} />
+
+            <div className="space-y-1.5 shrink-0">
+              <div className="flex items-center gap-1.5 text-xs font-medium text-gray-400"><Paperclip className="h-3.5 w-3.5" /><span>{t('attachmentFiles')}</span></div>
+              {attachmentPicker.input}
+              {attachmentPicker.dialog}
+              {attachments.length > 0 && <div className="flex max-h-40 flex-col gap-1.5 overflow-y-auto">
+                {attachments.map((attachment, index) => <AttachmentFileRow key={`${attachment.path}-${index}`} reference={attachment.path}
+                  name={attachment.name} url={attachment.url} size={attachment.size} compact onRemove={() => removeAttachment(index)} />)}
+              </div>}
+              <FileDropZone onSelect={attachmentPicker.selectFiles} busy={importingFiles} dragging={draggingFiles} compact />
+            </div>
+            {attachmentError && <p className="shrink-0 text-right text-[11px] text-red-400">{t('fileImportFailed')}</p>}
+
+            {/* 스크린샷 캡처 버튼 */}
+            {type === 'screenshot' && (
+              <div className="flex items-center gap-2 shrink-0">
+                <button onClick={() => handleScreenshot()}
+                  className="flex flex-1 items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-bold text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 transition-colors"
+                  style={{ border: '1px dashed rgba(96,165,250,0.3)', fontWeight: 800 }}>
+                  <Camera className="w-3.5 h-3.5" />
+                  {t('captureScreen')}
+                </button>
+                <button onClick={() => handleScreenshot(true)} title={t('edit')} aria-label={t('edit')}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-blue-400 hover:bg-blue-500/10 hover:text-blue-300 transition-colors"
+                  style={{ border: '1px dashed rgba(96,165,250,0.3)' }}>
                   <SlidersHorizontal className="w-3.5 h-3.5" />
                 </button>
-              )}
-            </div>
-          )}
+              </div>
+            )}
 
-          {/* 스크린샷 미리보기 (screenshot 타입) */}
-          {previewUrl && type !== 'video' && (
-            <div className="relative group h-28 rounded-lg overflow-hidden shrink-0" style={{ border: '1px solid rgba(99,102,241,0.2)' }}>
-              <img src={previewUrl} alt="preview" className="w-full h-full object-contain bg-black/20" />
-              <button
-                onClick={() => { setPreviewUrl(null); setFilePath(null) }}
-                className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                style={{ background: 'rgba(0,0,0,0.7)', border: '1px solid rgba(255,255,255,0.2)' }}>
-                <X className="w-3 h-3 text-white" />
-              </button>
-            </div>
-          )}
-          {previewUrl && type === 'video' && (
-            <div className="relative group h-28 rounded-lg overflow-hidden shrink-0" style={{ border: '1px solid rgba(99,102,241,0.2)' }}>
-              <video src={previewUrl} className="w-full h-full object-cover" />
-              <button
-                onClick={() => { setPreviewUrl(null); setFilePath(null) }}
-                className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                style={{ background: 'rgba(0,0,0,0.7)', border: '1px solid rgba(255,255,255,0.2)' }}>
-                <X className="w-3 h-3 text-white" />
-              </button>
-            </div>
-          )}
-
-          {/* 첨부 파일 */}
-          {attachments.length > 0 && (
-            <div className="flex flex-col gap-1.5 shrink-0 overflow-y-auto" style={{ maxHeight: '160px' }}>
-              {attachments.map((att, i) => (
-                <div key={`${att.path}-${i}`} className="group flex items-center gap-2 rounded-lg p-1.5"
-                  style={{ border: '1px solid rgba(99,102,241,0.2)', background: 'var(--side-panel-bg)' }}>
-                  {att.url
-                    ? <img src={att.url} alt="" className="h-9 w-11 shrink-0 rounded object-cover bg-black/20" />
-                    : <span className="flex h-9 w-11 shrink-0 items-center justify-center rounded bg-violet-500/10"><FileIcon className="h-4 w-4 text-violet-400" /></span>}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs" style={{ color: 'var(--title-text)' }}>{att.name}</p>
-                    {!!att.size && <p className="text-[10px] text-slate-500">{formatFileSize(att.size)}</p>}
-                  </div>
-                  <AttachmentModeBadge reference={att.path} />
-                  <button
-                    onClick={() => removeAttachment(i)}
-                    className="h-6 w-6 shrink-0 rounded-md flex items-center justify-center opacity-60 hover:opacity-100 hover:bg-red-500/15 transition-all">
-                    <X className="w-3 h-3 text-red-400" />
+            {type === 'video' && !previewUrl && (
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={recording ? stopRecording : () => startRecording()}
+                  className={`flex flex-1 items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-bold transition-colors ${
+                    recording
+                      ? 'text-red-400 hover:text-red-300 hover:bg-red-500/10 animate-pulse'
+                      : 'text-orange-400 hover:text-orange-300 hover:bg-orange-500/10'
+                  }`}
+                  style={{ border: `1px dashed ${recording ? 'rgba(239,68,68,0.38)' : 'rgba(251,146,60,0.38)'}`, fontWeight: 800 }}
+                >
+                  {recording ? <StopCircle className="w-3.5 h-3.5" /> : <Video className="w-3.5 h-3.5" />}
+                  {recording ? `${t('stopRecording')} · ${fmt(recordingTime)}` : t('startRecording')}
+                </button>
+                {!recording && (
+                  <button onClick={() => startRecording(true)} title={t('edit')} aria-label={t('edit')}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-orange-400 hover:bg-orange-500/10 hover:text-orange-300 transition-colors"
+                    style={{ border: '1px dashed rgba(251,146,60,0.38)' }}>
+                    <SlidersHorizontal className="w-3.5 h-3.5" />
                   </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                )}
+              </div>
+            )}
 
-        {/* 하단 툴바 */}
-        <div className="flex items-center gap-2 px-3 py-2 shrink-0"
-          style={{ borderTop: '1px solid rgba(99,102,241,0.1)' }}>
+            {/* 스크린샷 미리보기 (screenshot 타입) */}
+            {previewUrl && type !== 'video' && (
+              <div className="relative group h-28 rounded-lg overflow-hidden shrink-0" style={{ border: '1px solid rgba(99,102,241,0.2)' }}>
+                <img src={previewUrl} alt="preview" className="w-full h-full object-contain bg-black/20" />
+                <button
+                  onClick={() => { setPreviewUrl(null); setFilePath(null) }}
+                  className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  style={{ background: 'rgba(0,0,0,0.7)', border: '1px solid rgba(255,255,255,0.2)' }}>
+                  <X className="w-3 h-3 text-white" />
+                </button>
+              </div>
+            )}
+            {previewUrl && type === 'video' && (
+              <div className="relative group h-28 rounded-lg overflow-hidden shrink-0" style={{ border: '1px solid rgba(99,102,241,0.2)' }}>
+                <video src={previewUrl} className="w-full h-full object-cover" />
+                <button
+                  onClick={() => { setPreviewUrl(null); setFilePath(null) }}
+                  className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  style={{ background: 'rgba(0,0,0,0.7)', border: '1px solid rgba(255,255,255,0.2)' }}>
+                  <X className="w-3 h-3 text-white" />
+                </button>
+              </div>
+            )}
 
-          {/* 노트 타입: 스니핑 캡처 버튼 */}
-          {type === 'note' && (
-            <button onClick={handleSnip} title={t('regionCapture')}
-              className="p-1.5 text-indigo-800 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors">
-              <Camera className="w-3.5 h-3.5" />
+
+          </div>
+
+          {/* 하단 툴바 */}
+          <div className="flex items-center gap-2 px-3 py-2 shrink-0"
+            style={{ borderTop: '1px solid rgba(99,102,241,0.1)' }}>
+
+            {/* 노트 타입: 스니핑 캡처 버튼 */}
+            {type === 'note' && (
+              <button onClick={handleSnip} title={t('regionCapture')}
+                className="p-1.5 text-indigo-800 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors">
+                <Camera className="w-3.5 h-3.5" />
+              </button>
+            )}
+
+            <div className="flex-1" />
+            <span className="text-xs font-medium" style={{ color: 'var(--title-text)' }}>Ctrl+Enter</span>
+
+            <button onClick={handleSave} disabled={saving || saved || recording}
+              className="overlay-save flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-all disabled:opacity-50"
+              style={saved ? {
+                background: 'linear-gradient(135deg, #10b981, #059669)',
+                boxShadow: '0 0 10px rgba(16,185,129,0.3)'
+              } : {
+                background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
+                boxShadow: '0 0 10px rgba(79,70,229,0.3)'
+              }}>
+              {saving
+                ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                : null
+              }
+              {saved ? t('saved') : t('save')}
             </button>
-          )}
-
-          <div className="flex-1" />
-          <span className="text-xs font-medium" style={{ color: 'var(--title-text)' }}>Ctrl+Enter</span>
-
-          <button onClick={handleSave} disabled={saving || saved || recording}
-            className="overlay-save flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-all disabled:opacity-50"
-            style={saved ? {
-              background: 'linear-gradient(135deg, #10b981, #059669)',
-              boxShadow: '0 0 10px rgba(16,185,129,0.3)'
-            } : {
-              background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
-              boxShadow: '0 0 10px rgba(79,70,229,0.3)'
-            }}>
-            {saving
-              ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              : null
-            }
-            {saved ? t('saved') : t('save')}
-          </button>
+          </div>
         </div>
       </div>
     </div>

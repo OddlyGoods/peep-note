@@ -6,7 +6,7 @@ import { format } from 'date-fns'
 import { ko, ja, zhCN } from 'date-fns/locale'
 import {
   ArrowLeft, Save, Trash2, Pin, X, Camera,
-  Image as ImageIcon, Video, FileText, Text as TextIcon, BookOpen, Code2, Globe, Hash, Clock, Tag, Maximize2, Sparkles, Layers, Pencil, SquarePen, Copy, Check, ArrowUp, Lock, Play, MessageCircle, FolderOpen, Download, File as FileIcon, Paperclip, Loader2
+  Video, FileText, Text as TextIcon, BookOpen, Code2, Globe, Hash, Clock, Tag, Maximize2, Sparkles, Layers, Pencil, SquarePen, Copy, Check, ArrowUp, Lock, Play, MessageCircle, Paperclip
 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -18,7 +18,8 @@ import WorkspaceMoveButton from '../components/WorkspaceMoveButton'
 import MarkdownCodeBlock from '../components/MarkdownCodeBlock'
 import TagInput from '../components/TagInput'
 import TagBadge from '../components/TagBadge'
-import AttachmentModeBadge from '../components/AttachmentModeBadge'
+import AttachmentFileRow from '../components/AttachmentFileRow'
+import FileDropZone from '../components/FileDropZone'
 import { useAttachmentPicker } from '../lib/useAttachmentPicker'
 import type { AttachmentMode } from '../../shared/attachments'
 import ConfirmModal from '../components/ConfirmModal'
@@ -28,7 +29,7 @@ import { useTheme } from '../theme'
 import { getAiSummaryContent, getAiSummaryTitle } from '../lib/aiSummary'
 import { useOpenLog } from '../components/LogNavigationProvider'
 import { hasActiveSecretUnlock, rememberSecretUnlock } from '../lib/secretUnlock'
-import { attachmentFilename, attachmentMimeType, isImageAttachment } from '../../shared/attachments'
+import { attachmentMimeType, isImageAttachment } from '../../shared/attachments'
 
 const TYPE_CONFIG = {
   screenshot: { icon: Camera,   label: 'screenshot', color: 'text-blue-400',   border: 'border-blue-500/30' },
@@ -306,7 +307,7 @@ export default function LogDetail() {
     }
   }
 
-  const attachmentPicker = useAttachmentPicker(addFiles, addingFiles)
+  const attachmentPicker = useAttachmentPicker(addFiles, addingFiles, { topInset: 40 })
 
   const handleDragEnter = (event: React.DragEvent) => {
     if (!event.dataTransfer.types.includes('Files') || log?.log_type === 'summary') return
@@ -417,19 +418,13 @@ export default function LogDetail() {
       <div
         ref={contentScrollRef}
         data-screen-scroll="main" data-screen-scroll-key={id}
-        className={`detail-scroll-area relative flex-1 overflow-y-auto ${draggingFiles ? 'ring-2 ring-inset ring-violet-500/60' : ''}`}
+        className="detail-scroll-area relative flex-1 overflow-y-auto"
         onScroll={event => setShowScrollTop(event.currentTarget.scrollTop > 240)}
         onDragEnter={handleDragEnter}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
-        {draggingFiles && (
-          <div className="pointer-events-none sticky top-3 z-40 mx-[84px] -mb-14 flex h-14 items-center justify-center gap-2 rounded-xl border-2 border-dashed border-violet-400 bg-violet-950/90 text-sm font-medium text-violet-100 shadow-xl">
-            <Paperclip className="h-4 w-4" />
-            {t('dropFilesActive')}
-          </div>
-        )}
         <div className="w-full px-[84px] pt-6 pb-40 space-y-6">
 
           {/* 메타 정보 */}
@@ -582,7 +577,7 @@ export default function LogDetail() {
 
             {editing ? (
               <textarea
-                className={`input resize-none h-96 ${
+                className={`input resize-none h-96 ${form.content_format === 'code' || form.content_format === 'html' ? 'code-input' : ''} ${
                   form.content_format === 'code' ? 'font-mono text-emerald-400 bg-gray-950' :
                   form.content_format === 'html' ? 'font-mono text-sky-300 bg-gray-950' : ''
                 }`}
@@ -633,77 +628,23 @@ export default function LogDetail() {
           </div>
 
           {/* 첨부 파일 */}
-          {secretGate === 'open' && attachmentUrls.length > 0 && (
-            <div>
-              <label className="block text-xs font-medium text-gray-400 mb-2">{t('attachmentFiles')}</label>
+          {secretGate === 'open' && (!isAiSummary || log.attachments.length > 0) && (
+            <section className="space-y-2" aria-label={t('attachmentFiles')}>
+              <div className="flex items-center gap-1.5 text-xs font-medium text-gray-400"><Paperclip className="h-3.5 w-3.5" /><span>{t('attachmentFiles')}</span></div>
               <div className="flex flex-col gap-2">
-                {log.attachments.map((filePath, i) => {
-                  const removed = removedAttachments.includes(i)
-                  if (removed) return null
-                  const url = attachmentUrls[i]
-                  const image = isImageAttachment(filePath)
-                  return (
-                    <div key={`${filePath}-${i}`} className="group flex min-h-16 items-center gap-3 rounded-xl border border-gray-700 bg-gray-800/40 p-2 transition-colors hover:border-gray-600 hover:bg-gray-800/60">
-                      <button
-                        type="button"
-                        onClick={() => void window.electronAPI?.openAttachment(filePath)}
-                        className="flex h-14 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
-                        style={{ background: 'var(--attachment-thumbnail-bg)', color: 'var(--attachment-thumbnail-text)' }}
-                        title={t('openFile')}
-                      >
-                        {image && url
-                          ? <img src={url} alt={attachmentFilename(filePath)} className="h-full w-full object-cover" />
-                          : image
-                            ? <ImageIcon className="h-5 w-5" />
-                            : <FileIcon className="h-5 w-5" />}
-                      </button>
-                      <span className="min-w-0 flex-1 truncate text-sm text-gray-200" title={attachmentFilename(filePath)}>{attachmentFilename(filePath)}</span>
-                      <AttachmentModeBadge reference={filePath} />
-                      <div className="flex shrink-0 items-center gap-1">
-                        {editing ? (
-                          <button type="button"
-                            onClick={() => setRemovedAttachments(prev => [...prev, i])}
-                            className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-red-400 hover:bg-red-500/15 transition-colors">
-                            <Trash2 className="h-3.5 w-3.5" />{t('delete')}
-                          </button>
-                        ) : (
-                        <>
-                        <button type="button" onClick={() => void window.electronAPI?.openAttachment(filePath)}
-                          className="flex items-center gap-1 rounded-md px-2 py-1.5 text-xs text-gray-400 hover:bg-violet-500/10 hover:text-violet-300 transition-colors">
-                          <FolderOpen className="h-3.5 w-3.5" />{t('openFile')}
-                        </button>
-                        <button type="button" onClick={() => void window.electronAPI?.downloadAttachment(filePath)}
-                          className="flex items-center gap-1 rounded-md px-2 py-1.5 text-xs text-gray-400 hover:bg-violet-500/10 hover:text-violet-300 transition-colors">
-                          <Download className="h-3.5 w-3.5" />{t('downloadFile')}
-                        </button>
-                        </>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
+                {log.attachments.map((reference, index) => removedAttachments.includes(index) ? null : (
+                  <AttachmentFileRow key={`${reference}-${index}`} reference={reference} url={attachmentUrls[index]}
+                    onRemove={editing ? () => setRemovedAttachments(previous => [...previous, index]) : undefined} />
+                ))}
               </div>
-            </div>
-
-          )}
-
-          {secretGate === 'open' && !isAiSummary && (
-            <div className="space-y-2">
-              {attachmentPicker.input}
-              {attachmentPicker.dialog}
-              <button
-                type="button"
-                onClick={attachmentPicker.selectFiles}
-                disabled={addingFiles}
-                aria-busy={addingFiles}
-                className="ml-auto flex w-fit items-center gap-1.5 rounded px-1 py-1 text-xs text-violet-400 transition-colors hover:bg-violet-500/10 hover:text-violet-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:cursor-wait disabled:opacity-60"
-              >
-                {addingFiles ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Paperclip className="h-3.5 w-3.5" />}
-                {t('addFiles')}
-              </button>
-              {fileAddFailed && <p className="mt-1 text-right text-xs text-red-400">{t('fileImportFailed')}</p>}
-              {!editing && !log.is_secret && log.log_type !== 'screenshot' && !!log.attachments?.length && <OcrText key={log.id} log={log} />}
-            </div>
+              {!isAiSummary && <>
+                {attachmentPicker.input}
+                {attachmentPicker.dialog}
+                <FileDropZone onSelect={attachmentPicker.selectFiles} busy={addingFiles} dragging={draggingFiles} />
+                {fileAddFailed && <p className="text-xs text-red-400">{t('fileImportFailed')}</p>}
+                {!editing && !log.is_secret && log.log_type !== 'screenshot' && !!log.attachments.length && <OcrText key={log.id} log={log} />}
+              </>}
+            </section>
           )}
 
           {/* 같은 그룹의 다른 기록 */}

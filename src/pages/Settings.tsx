@@ -441,9 +441,11 @@ export default function Settings() {
                 <Lock className="w-4 h-4 shrink-0 text-violet-400" />
                 <h2 className="text-sm font-semibold text-white">{secretSettingsCopy.title}</h2>
               </div>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <p className="text-xs text-gray-400">{secretPasswordSet ? secretSettingsCopy.active : secretSettingsCopy.set}</p>
               <button type="button" onClick={() => setShowSecretPasswordModal(true)} className="btn-secondary shrink-0 text-xs">{secretPasswordSet ? secretSettingsCopy.actionChange : secretSettingsCopy.actionSet}</button>
             </div>
-            <p className="text-xs text-gray-400">{secretPasswordSet ? secretSettingsCopy.active : secretSettingsCopy.set}</p>
           </section>
 
           {/* 단축키 설정 */}
@@ -455,7 +457,7 @@ export default function Settings() {
               </div>
               <button
                 onClick={resetHotkeys}
-                className="settings-ghost-button btn-ghost flex items-center gap-1.5 text-xs"
+                className="btn-secondary flex shrink-0 items-center gap-1.5 text-xs"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 {t('resetDefaults')}

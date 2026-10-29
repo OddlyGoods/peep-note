@@ -1,11 +1,12 @@
 import { useScreenActive } from './screenActivity'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import { Copy, Link2, X } from 'lucide-react'
 import { useI18n } from '../i18n'
 import type { AttachmentMode } from '../../shared/attachments'
 
-export function useAttachmentPicker(onFiles: (files: File[], mode: AttachmentMode) => void | Promise<void>, disabled = false) {
+export function useAttachmentPicker(onFiles: (files: File[], mode: AttachmentMode) => void | Promise<void>, disabled = false,
+  options: { containerRef?: RefObject<HTMLElement>; topInset?: number } = {}) {
   const { t } = useI18n()
   const active = useScreenActive()
   const [open, setOpen] = useState(false)
@@ -30,6 +31,7 @@ export function useAttachmentPicker(onFiles: (files: File[], mode: AttachmentMod
     if (files) void onFiles(files, mode)
     else inputRef.current?.click()
   }
+  const host = options.containerRef?.current
   return {
     selectFiles: () => { if (!disabled) { pending.current = null; setOpen(true) } },
     dropFiles: (files: File[]) => { if (!disabled && files.length) { pending.current = files; setOpen(true) } },
@@ -39,8 +41,9 @@ export function useAttachmentPicker(onFiles: (files: File[], mode: AttachmentMod
       if (files.length && !disabled) void onFiles(files, modeRef.current)
     }} />,
     dialog: active && open ? createPortal(
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={event => event.stopPropagation()}>
-        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={close} />
+      <div className={`${host ? 'absolute' : 'fixed'} inset-0 z-[100] flex items-center justify-center p-4`}
+        style={!host && options.topInset ? { top: options.topInset } : undefined} onClick={event => event.stopPropagation()}>
+        <div className="absolute inset-0 bg-black/25 backdrop-blur-[1px]" onClick={close} />
         <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={t('attachmentModeTitle')}
           className="relative w-full max-w-sm rounded-xl border p-4 shadow-xl"
           style={{ background: 'var(--modal-bg)', borderColor: 'var(--medium-border)' }}
@@ -70,6 +73,6 @@ export function useAttachmentPicker(onFiles: (files: File[], mode: AttachmentMod
             })}
           </div>
         </div>
-      </div>, document.body) : null,
+      </div>, host ?? document.body) : null,
   }
 }

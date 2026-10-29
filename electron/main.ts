@@ -1207,6 +1207,14 @@ function setupIPC() {
     return (await shell.openPath(resolved)) === ''
   })
 
+  ipcMain.handle('show-attachment-in-folder', (_e, filepath: unknown) => {
+    if (typeof filepath !== 'string') return false
+    const resolved = readableAttachmentFile(filepath)
+    if (!resolved) return false
+    try { shell.showItemInFolder(resolved); return true }
+    catch { return false }
+  })
+
   ipcMain.handle('download-attachment', async (_e, filepath: unknown) => {
     if (typeof filepath !== 'string') return false
     const resolved = readableAttachmentFile(filepath)

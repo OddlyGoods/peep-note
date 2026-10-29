@@ -3,7 +3,7 @@ import { useOpenLog } from './LogNavigationProvider'
 import { format, isToday } from 'date-fns'
 import { ko, ja, zhCN } from 'date-fns/locale'
 import {
-  Image as ImageIcon, Video, FileText, Code2, Globe, Hash,
+  Image as ImageIcon, Video, Text as TextIcon, Code2, Globe, Hash,
   Pin, Trash2, ChevronRight, Clock, Check, Sparkles, Loader2, Lock, MessageCircle, LocateFixed, File as FileIcon
 } from 'lucide-react'
 import { Log } from '../lib/api'
@@ -15,7 +15,7 @@ import { useI18n } from '../i18n'
 import { getAiSummaryContent, getAiSummaryTitle } from '../lib/aiSummary'
 
 const TYPE_CONFIG = {
-  note:       { icon: FileText, label: 'note',     color: 'text-violet-400', bg: 'bg-violet-500/10 border-violet-500/20' },
+  note:       { icon: TextIcon, label: 'note',     color: 'text-violet-400', bg: 'bg-violet-500/10 border-violet-500/20' },
   screenshot: { icon: ImageIcon,   label: 'screenshot', color: 'text-blue-400',   bg: 'bg-blue-500/10 border-blue-500/20' },
   video:      { icon: Video,    label: 'video',    color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-500/20' },
   summary:    { icon: Sparkles, label: 'summary', color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' }

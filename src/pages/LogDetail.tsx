@@ -385,7 +385,8 @@ export default function LogDetail() {
         <div className="w-full px-[84px] pt-6 pb-40 space-y-6">
 
           {/* 메타 정보 */}
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
             {isAiSummary ? (
               <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg border bg-amber-500/10 border-amber-500/30">
                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />
@@ -403,15 +404,18 @@ export default function LogDetail() {
                 <span className="text-xs font-medium text-gray-400">{fmtCfg.label === 'html' ? 'HTML' : t(fmtCfg.label as 'text' | 'markdown' | 'code')}</span>
               </div>
             )}
-            <div className="flex items-center gap-1.5 text-xs text-gray-400">
-              <Clock className="w-3.5 h-3.5" />
-              {format(new Date(log.created_at * 1000), detailDateFormat, dateLocale ? { locale: dateLocale } : undefined)}
             </div>
-            {log.updated_at !== log.created_at && (
-              <span className="text-xs text-gray-400">
-                ({t('updated')} {format(new Date(log.updated_at * 1000), 'HH:mm')})
-              </span>
-            )}
+            <div className="ml-auto flex shrink-0 flex-col items-end gap-1 pt-1 text-right text-xs text-gray-400">
+              <div className="flex items-center gap-1.5 whitespace-nowrap">
+                <Clock className="h-3.5 w-3.5 shrink-0" />
+                {format(new Date(log.created_at * 1000), detailDateFormat, dateLocale ? { locale: dateLocale } : undefined)}
+              </div>
+              {log.updated_at !== log.created_at && (
+                <span className="whitespace-nowrap">
+                  ({t('updated')} {format(new Date(log.updated_at * 1000), 'HH:mm')})
+                </span>
+              )}
+            </div>
           </div>
 
           {/* 제목 */}

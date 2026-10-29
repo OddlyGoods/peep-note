@@ -22,7 +22,7 @@ export default function TagInput({ value, onChange, disabled = false }: {
     <div className="input tag-input" onClick={() => inputRef.current?.focus()} data-disabled={disabled}>
       {value.map((tag, index) => (
         <span className="tag-input-badge" key={`${tag}-${index}`}>
-          <span className="min-w-0 truncate" title={tag}>{tag}</span>
+          <span className="min-w-0 truncate" title={tag}>#{tag}</span>
           <button type="button" disabled={disabled} aria-label={t('removeTag', { tag })}
             className="tag-input-remove" onMouseDown={event => event.preventDefault()}
             onClick={() => {

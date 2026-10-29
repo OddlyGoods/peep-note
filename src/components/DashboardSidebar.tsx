@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
-  Image as ImageIcon, Video, FileText, LayoutGrid, Sparkles,
+  Camera, Video, FileText, LayoutGrid, Sparkles,
   SlidersHorizontal, FolderOpen, Pencil, Trash2, Check, X as XIcon
 } from 'lucide-react'
 import { useLogStore } from '../stores/logStore'
@@ -23,7 +23,7 @@ const TYPE_FILTERS = [
     badgeClass: 'bg-sky-400/15 text-sky-200'
   },
   {
-    value: 'screenshot', label: 'screenshot', icon: ImageIcon,
+    value: 'screenshot', label: 'screenshot', icon: Camera,
     activeClass: 'bg-amber-500/12 text-amber-300 border-amber-400/20',
     badgeClass: 'bg-amber-400/15 text-amber-200'
   },

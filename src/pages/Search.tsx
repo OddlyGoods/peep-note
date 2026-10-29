@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { Search as SearchIcon, Image as ImageIcon, Video, FileText, LayoutGrid, SlidersHorizontal, FolderOpen, X, Sparkles } from 'lucide-react'
+import { Search as SearchIcon, Camera, Video, FileText, LayoutGrid, SlidersHorizontal, FolderOpen, X, Sparkles } from 'lucide-react'
 import { api, Log } from '../lib/api'
 import { useWorkspaceStore } from '../stores/workspaceStore'
 import { useSearchStore } from '../stores/searchStore'
@@ -10,7 +10,7 @@ import { useTheme } from '../theme'
 const TYPE_FILTERS = [
   { value: '', label: 'all', icon: LayoutGrid },
   { value: 'note', label: 'note', icon: FileText },
-  { value: 'screenshot', label: 'screenshot', icon: ImageIcon },
+  { value: 'screenshot', label: 'screenshot', icon: Camera },
   { value: 'video', label: 'video', icon: Video },
   { value: 'summary', label: 'summary', icon: Sparkles }
 ] as const

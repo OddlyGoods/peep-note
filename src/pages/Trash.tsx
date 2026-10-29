@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Trash2, RotateCcw, Image as ImageIcon, Video, Text as TextIcon, Hash, Code2, Globe, Sparkles, Clock, Check, Search, FolderOpen } from 'lucide-react'
+import { Trash2, RotateCcw, Camera, Video, Text as TextIcon, Hash, Code2, Globe, Sparkles, Clock, Check, Search, FolderOpen } from 'lucide-react'
 import { api, TrashItem } from '../lib/api'
 import { useI18n } from '../i18n'
 import { useLogStore } from '../stores/logStore'
@@ -9,7 +9,7 @@ import type { TrashRetentionDays } from '../../shared/trashRetention'
 
 const TYPE_CONFIG = {
   note: { icon: TextIcon, color: 'text-violet-400', bg: 'bg-violet-500/10 border-violet-500/20' },
-  screenshot: { icon: ImageIcon, color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/20' },
+  screenshot: { icon: Camera, color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/20' },
   video: { icon: Video, color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-500/20' },
   summary: { icon: Sparkles, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' }
 }

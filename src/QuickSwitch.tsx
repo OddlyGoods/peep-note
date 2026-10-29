@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Image as ImageIcon, FileText, Video, X, Lock, File as FileIcon } from 'lucide-react'
+import { Camera, FileText, Video, X, Lock, File as FileIcon } from 'lucide-react'
 import { format } from 'date-fns'
 import { ko, ja, zhCN } from 'date-fns/locale'
 import { api, Log } from './lib/api'
@@ -8,7 +8,7 @@ import { QUICK_LIST_RANGE_KEY, readQuickListRange, type QuickListRange } from '.
 
 const TYPE = {
   note: { label: 'note', icon: FileText, color: 'var(--quick-note-icon)' },
-  screenshot: { label: 'screenshot', icon: ImageIcon, color: 'var(--quick-screenshot-icon)' },
+  screenshot: { label: 'screenshot', icon: Camera, color: 'var(--quick-screenshot-icon)' },
   video: { label: 'video', icon: Video, color: 'var(--quick-video-icon)' },
   summary: { label: 'summary', icon: FileText, color: 'var(--quick-summary-icon)' }
 }

@@ -3,7 +3,7 @@ import { useOpenLog } from './LogNavigationProvider'
 import { format, isToday } from 'date-fns'
 import { ko, ja, zhCN } from 'date-fns/locale'
 import {
-  Image as ImageIcon, Video, Text as TextIcon, Code2, Globe, Hash,
+  Camera, Video, Text as TextIcon, Code2, Globe, Hash,
   Pin, Trash2, ChevronRight, Clock, Check, Sparkles, Loader2, MessageCircle, LocateFixed, File as FileIcon
 } from 'lucide-react'
 import { Log } from '../lib/api'
@@ -18,7 +18,7 @@ import SecretIconBadge from './SecretIconBadge'
 
 const TYPE_CONFIG = {
   note:       { icon: TextIcon, label: 'note',     color: 'text-violet-400', bg: 'bg-violet-500/10 border-violet-500/20' },
-  screenshot: { icon: ImageIcon,   label: 'screenshot', color: 'text-blue-400',   bg: 'bg-blue-500/10 border-blue-500/20' },
+  screenshot: { icon: Camera,   label: 'screenshot', color: 'text-blue-400',   bg: 'bg-blue-500/10 border-blue-500/20' },
   video:      { icon: Video,    label: 'video',    color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-500/20' },
   summary:    { icon: Sparkles, label: 'summary', color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' }
 }
@@ -66,7 +66,7 @@ function MediaThumbnail({ log }: { log: Log }) {
     return () => { cancelled = true }
   }, [visible, log.file_path, isVideo])
 
-  const Icon = isVideo ? Video : ImageIcon
+  const Icon = isVideo ? Video : Camera
   return (
     <div ref={containerRef} className="h-16 w-24 shrink-0 overflow-hidden rounded-lg border border-gray-700 bg-gray-800/70">
       {source ? (
@@ -199,7 +199,7 @@ export default function LogCard({ log, basePath = '/log', showCheckbox = false, 
           {log.tags?.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2">
               {log.tags.map(tag => (
-                <span key={tag} className="tag bg-gray-800 text-gray-400 border border-gray-700">{tag}</span>
+                <span key={tag} className="tag bg-gray-800 text-gray-400 border border-gray-700">#{tag}</span>
               ))}
             </div>
           )}

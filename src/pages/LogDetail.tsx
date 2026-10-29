@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { format } from 'date-fns'
 import { ko, ja, zhCN } from 'date-fns/locale'
 import {
-  ArrowLeft, Save, Trash2, Pin, X,
+  ArrowLeft, Save, Trash2, Pin, X, Camera,
   Image as ImageIcon, Video, FileText, Text as TextIcon, BookOpen, Code2, Globe, Hash, Clock, Tag, Maximize2, Sparkles, Layers, Pencil, SquarePen, Copy, Check, ArrowUp, Lock, Play, MessageCircle, FolderOpen, Download, File as FileIcon, Paperclip, Loader2
 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
@@ -25,7 +25,7 @@ import { hasActiveSecretUnlock, rememberSecretUnlock } from '../lib/secretUnlock
 import { attachmentFilename, attachmentMimeType, isImageAttachment } from '../../shared/attachments'
 
 const TYPE_CONFIG = {
-  screenshot: { icon: ImageIcon,   label: 'screenshot', color: 'text-blue-400',   border: 'border-blue-500/30' },
+  screenshot: { icon: Camera,   label: 'screenshot', color: 'text-blue-400',   border: 'border-blue-500/30' },
   video:      { icon: Video,    label: 'video',    color: 'text-orange-400', border: 'border-orange-500/30' },
   note:       { icon: FileText, label: 'note',     color: 'text-violet-400', border: 'border-violet-500/30' },
   summary:    { icon: Sparkles, label: 'summary', color: 'text-amber-400', border: 'border-amber-500/30' }
@@ -707,7 +707,7 @@ export default function LogDetail() {
               <div className="flex flex-wrap gap-1.5">
                 {log.tags.map(tag => (
                   <span key={tag} className="tag bg-gray-800 text-gray-400 border border-gray-700 px-2.5 py-1">
-                    {tag}
+                    #{tag}
                   </span>
                 ))}
               </div>

@@ -607,6 +607,14 @@ export default function LogDetail() {
                       </button>
                       <span className="min-w-0 flex-1 truncate text-sm text-gray-200" title={attachmentFilename(filePath)}>{attachmentFilename(filePath)}</span>
                       <div className="flex shrink-0 items-center gap-1">
+                        {editing ? (
+                          <button type="button"
+                            onClick={() => setRemovedAttachments(prev => [...prev, i])}
+                            className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-red-400 hover:bg-red-500/15 transition-colors">
+                            <Trash2 className="h-3.5 w-3.5" />{t('delete')}
+                          </button>
+                        ) : (
+                        <>
                         <button type="button" onClick={() => void window.electronAPI?.openAttachment(filePath)}
                           className="flex items-center gap-1 rounded-md px-2 py-1.5 text-xs text-gray-400 hover:bg-violet-500/10 hover:text-violet-300 transition-colors">
                           <FolderOpen className="h-3.5 w-3.5" />{t('openFile')}
@@ -615,13 +623,7 @@ export default function LogDetail() {
                           className="flex items-center gap-1 rounded-md px-2 py-1.5 text-xs text-gray-400 hover:bg-violet-500/10 hover:text-violet-300 transition-colors">
                           <Download className="h-3.5 w-3.5" />{t('downloadFile')}
                         </button>
-                        {editing && (
-                        <button
-                          onClick={() => setRemovedAttachments(prev => [...prev, i])}
-                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-red-400 hover:bg-red-500/15 transition-colors"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
+                        </>
                         )}
                       </div>
                     </div>

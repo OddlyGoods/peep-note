@@ -17,10 +17,10 @@ settings.get('/', async (c) => {
   if (!row) return c.json({
     hotkeys: { openOverlay: 'Alt+1', takeScreenshot: 'Alt+2', startRecording: 'Alt+3', stopRecording: 'Alt+4', quickSwitch: 'Alt+Q', quickSwitchPrevious: 'Alt+E' },
     backup_enabled: false, backup_url: null, theme: 'light', trash_retention_days: DEFAULT_TRASH_RETENTION_DAYS,
-    ai_provider: 'openai', ai_model: DEFAULT_AI_MODELS.openai, openai_api_key: null, anthropic_api_key: null, gemini_api_key: null, qwen_api_key: null, qwen_base_url: 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1', language: 'en', auto_advance_date_range: true, secret_password_set: false
+    ai_provider: 'openai', ai_model: DEFAULT_AI_MODELS.openai, openai_api_key: null, anthropic_api_key: null, gemini_api_key: null, qwen_api_key: null, qwen_base_url: 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1', language: 'en', auto_advance_date_range: true, fixed_start_date: false, secret_password_set: false
   })
   const { secret_password_hash: _secretPasswordHash, ...safeRow } = row
-  return c.json({ ...safeRow, trash_retention_days: normalizeTrashRetentionDays(row.trash_retention_days), secret_password_set: !!_secretPasswordHash, hotkeys: JSON.parse(row.hotkeys || '{}'), backup_enabled: !!row.backup_enabled, auto_advance_date_range: row.auto_advance_date_range !== 0 })
+  return c.json({ ...safeRow, trash_retention_days: normalizeTrashRetentionDays(row.trash_retention_days), secret_password_set: !!_secretPasswordHash, hotkeys: JSON.parse(row.hotkeys || '{}'), backup_enabled: !!row.backup_enabled, auto_advance_date_range: row.auto_advance_date_range !== 0, fixed_start_date: !!row.fixed_start_date })
 })
 
 const isPin = (value: unknown): value is string => typeof value === 'string' && /^\d{4}$/.test(value)
@@ -64,7 +64,10 @@ settings.put('/secret-password', async (c) => {
 settings.put('/', async (c) => {
   const userId = LOCAL_PROFILE_ID
 
-  const { hotkeys, backup_enabled, backup_url, theme, ai_provider, ai_model, openai_api_key, anthropic_api_key, gemini_api_key, qwen_api_key, qwen_base_url, language, auto_advance_date_range, trash_retention_days } = await c.req.json()
+  const { hotkeys, backup_enabled, backup_url, theme, ai_provider, ai_model, openai_api_key, anthropic_api_key, gemini_api_key, qwen_api_key, qwen_base_url, language, auto_advance_date_range, fixed_start_date, trash_retention_days } = await c.req.json()
+  if (fixed_start_date !== undefined && typeof fixed_start_date !== 'boolean') {
+    return c.json({ error: 'INVALID_FIXED_START_DATE' }, 400)
+  }
   if (ai_provider !== undefined && !Object.prototype.hasOwnProperty.call(DEFAULT_AI_MODELS, ai_provider)) {
     return c.json({ error: 'INVALID_AI_PROVIDER' }, 400)
   }
@@ -85,7 +88,7 @@ settings.put('/', async (c) => {
 
   if (cur) {
     run(
-      'UPDATE settings SET hotkeys=?, backup_enabled=?, backup_url=?, theme=?, ai_provider=?, ai_model=?, openai_api_key=?, anthropic_api_key=?, gemini_api_key=?, qwen_api_key=?, qwen_base_url=?, language=?, auto_advance_date_range=?, trash_retention_days=?, updated_at=? WHERE user_id=?',
+      'UPDATE settings SET hotkeys=?, backup_enabled=?, backup_url=?, theme=?, ai_provider=?, ai_model=?, openai_api_key=?, anthropic_api_key=?, gemini_api_key=?, qwen_api_key=?, qwen_base_url=?, language=?, auto_advance_date_range=?, fixed_start_date=?, trash_retention_days=?, updated_at=? WHERE user_id=?',
       [
         hotkeys ? JSON.stringify(hotkeys) : cur.hotkeys,
         backup_enabled !== undefined ? (backup_enabled ? 1 : 0) : cur.backup_enabled,
@@ -100,23 +103,24 @@ settings.put('/', async (c) => {
         qwen_base_url !== undefined ? qwen_base_url : (cur.qwen_base_url ?? 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1'),
         isSupportedLanguage(language) ? language : (cur.language ?? 'en'),
         auto_advance_date_range !== undefined ? (auto_advance_date_range ? 1 : 0) : (cur.auto_advance_date_range ?? 1),
+        fixed_start_date !== undefined ? (fixed_start_date ? 1 : 0) : (cur.fixed_start_date ?? 0),
         trash_retention_days ?? normalizeTrashRetentionDays(cur.trash_retention_days),
         now, userId
       ]
     )
   } else {
     run(
-      'INSERT INTO settings (user_id, hotkeys, backup_enabled, backup_url, theme, ai_provider, ai_model, openai_api_key, anthropic_api_key, gemini_api_key, qwen_api_key, qwen_base_url, language, auto_advance_date_range, trash_retention_days, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO settings (user_id, hotkeys, backup_enabled, backup_url, theme, ai_provider, ai_model, openai_api_key, anthropic_api_key, gemini_api_key, qwen_api_key, qwen_base_url, language, auto_advance_date_range, fixed_start_date, trash_retention_days, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [userId,
        JSON.stringify(hotkeys ?? { openOverlay: 'Alt+1', takeScreenshot: 'Alt+2', startRecording: 'Alt+3', stopRecording: 'Alt+4', quickSwitch: 'Alt+Q', quickSwitchPrevious: 'Alt+E' }),
        backup_enabled ? 1 : 0, backup_url ?? null, theme ?? 'light',
-       provider, model, openai_api_key ?? null, anthropic_api_key ?? null, gemini_api_key ?? null, qwen_api_key ?? null, qwen_base_url ?? 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1', isSupportedLanguage(language) ? language : 'en', auto_advance_date_range === false ? 0 : 1, trash_retention_days ?? DEFAULT_TRASH_RETENTION_DAYS, now]
+       provider, model, openai_api_key ?? null, anthropic_api_key ?? null, gemini_api_key ?? null, qwen_api_key ?? null, qwen_base_url ?? 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1', isSupportedLanguage(language) ? language : 'en', auto_advance_date_range === false ? 0 : 1, fixed_start_date ? 1 : 0, trash_retention_days ?? DEFAULT_TRASH_RETENTION_DAYS, now]
     )
   }
 
   const row = queryOne<any>('SELECT * FROM settings WHERE user_id = ?', [userId])!
   const { secret_password_hash: _secretPasswordHash, ...safeRow } = row
-  return c.json({ ...safeRow, trash_retention_days: normalizeTrashRetentionDays(row.trash_retention_days), secret_password_set: !!_secretPasswordHash, hotkeys: JSON.parse(row.hotkeys || '{}'), backup_enabled: !!row.backup_enabled, auto_advance_date_range: row.auto_advance_date_range !== 0 })
+  return c.json({ ...safeRow, trash_retention_days: normalizeTrashRetentionDays(row.trash_retention_days), secret_password_set: !!_secretPasswordHash, hotkeys: JSON.parse(row.hotkeys || '{}'), backup_enabled: !!row.backup_enabled, auto_advance_date_range: row.auto_advance_date_range !== 0, fixed_start_date: !!row.fixed_start_date })
 })
 
 export default settings

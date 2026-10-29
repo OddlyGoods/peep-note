@@ -55,7 +55,7 @@ export default function App() {
   useEffect(subscribeToUpdates, [])
   const { setLanguage } = useI18n()
   const { setTheme } = useTheme()
-  const setAutoAdvanceDateRange = useLogStore(s => s.setAutoAdvanceDateRange)
+  const setDateNavigation = useLogStore(s => s.setDateNavigation)
 
   useEffect(() => {
     const handleStorage = (event: StorageEvent) => {
@@ -79,9 +79,9 @@ export default function App() {
     api.settings.get().then(settings => {
       setLanguage(settings.language ?? 'en')
       setTheme(settings.theme === 'dark' ? 'dark' : 'light')
-      setAutoAdvanceDateRange(settings.auto_advance_date_range ?? true)
+      setDateNavigation({ autoAdvanceDateRange: settings.auto_advance_date_range ?? true, fixedStartDate: settings.fixed_start_date ?? false })
     }).catch(() => {})
-  }, [setLanguage, setTheme, setAutoAdvanceDateRange])
+  }, [setLanguage, setTheme, setDateNavigation])
 
   return (
     <BrowserRouter>

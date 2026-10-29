@@ -112,10 +112,11 @@ export default function Settings() {
   const [modelMenuOpen, setModelMenuOpen] = useState(false)
   const modelMenuRef = useRef<HTMLDivElement>(null)
   const [autoAdvanceDateRange, setAutoAdvanceDateRange] = useState(true)
+  const [fixedStartDate, setFixedStartDate] = useState(false)
   const [trashRetentionDays, setTrashRetentionDays] = useState(DEFAULT_TRASH_RETENTION_DAYS)
   const [secretPasswordSet, setSecretPasswordSet] = useState(false)
   const [showSecretPasswordModal, setShowSecretPasswordModal] = useState(false)
-  const setStoreAutoAdvanceDateRange = useLogStore(s => s.setAutoAdvanceDateRange)
+  const setStoreDateNavigation = useLogStore(s => s.setDateNavigation)
 
   useEffect(() => {
     api.settings.get().then(s => {
@@ -136,8 +137,10 @@ export default function Settings() {
       setSelectedLanguage(s.language ?? 'en')
       setLanguage(s.language ?? 'en')
       const autoAdvance = s.auto_advance_date_range ?? true
+      const fixedStart = s.fixed_start_date ?? false
       setAutoAdvanceDateRange(autoAdvance)
-      setStoreAutoAdvanceDateRange(autoAdvance)
+      setFixedStartDate(fixedStart)
+      setStoreDateNavigation({ autoAdvanceDateRange: autoAdvance, fixedStartDate: fixedStart })
       setTrashRetentionDays(normalizeTrashRetentionDays(s.trash_retention_days))
       setSecretPasswordSet(!!s.secret_password_set)
       setLoading(false)
@@ -188,13 +191,14 @@ export default function Settings() {
         qwen_base_url: qwenBaseUrl.trim() || 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
         language: selectedLanguage,
         auto_advance_date_range: autoAdvanceDateRange,
+        fixed_start_date: fixedStartDate,
         trash_retention_days: trashRetentionDays
       })
       // Electron에도 단축키 업데이트
       const localSettings = await window.electronAPI?.getSettings()
       await window.electronAPI?.saveSettings({ ...(localSettings ?? {}), hotkeys, language: selectedLanguage })
       setLanguage(selectedLanguage)
-      setStoreAutoAdvanceDateRange(autoAdvanceDateRange)
+      setStoreDateNavigation({ autoAdvanceDateRange, fixedStartDate })
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch (e) {
@@ -331,17 +335,30 @@ export default function Settings() {
               </div>
               <div className="border-t border-gray-800 pt-4 flex items-center justify-between gap-5">
                 <div className="min-w-0">
-                  <h3 className="text-sm font-medium text-gray-200">{t('autoAdvanceDateRange')}</h3>
-                  <p className="text-xs text-gray-400 mt-1">{t('autoAdvanceDateRangeDescription')}</p>
+                  <h3 id="auto-advance-date-range-label" className="text-sm font-medium text-gray-200">{t('autoAdvanceDateRange')}</h3>
+                  <p id="auto-advance-date-range-description" className="text-xs text-gray-400 mt-1">{t('autoAdvanceDateRangeDescription')}</p>
                 </div>
                 <button
                   type="button"
                   role="switch"
+                  aria-labelledby="auto-advance-date-range-label"
+                  aria-describedby="auto-advance-date-range-description"
                   aria-checked={autoAdvanceDateRange}
                   onClick={() => setAutoAdvanceDateRange(value => !value)}
                   className={`settings-date-toggle relative shrink-0 w-12 h-6 rounded-full transition-all ${autoAdvanceDateRange ? 'bg-violet-500 ring-1 ring-violet-300/50 shadow-[0_0_10px_rgba(139,92,246,0.28)]' : 'bg-gray-700 ring-1 ring-gray-600'}`}
                 >
                   <span className={`absolute top-0.5 w-5 h-5 rounded-full shadow-sm transition-[left] ${autoAdvanceDateRange ? 'left-6 bg-white' : 'left-0.5 bg-gray-300'}`} />
+                </button>
+              </div>
+              <div className="border-t border-gray-800 pt-4 flex items-center justify-between gap-5">
+                <div className="min-w-0">
+                  <h3 id="fixed-start-date-label" className="text-sm font-medium text-gray-200">{t('fixedStartDate')}</h3>
+                  <p id="fixed-start-date-description" className="text-xs text-gray-400 mt-1">{t('fixedStartDateDescription')}</p>
+                </div>
+                <button type="button" role="switch" aria-labelledby="fixed-start-date-label" aria-describedby="fixed-start-date-description"
+                  aria-checked={fixedStartDate} onClick={() => setFixedStartDate(value => !value)}
+                  className={`settings-date-toggle relative shrink-0 w-12 h-6 rounded-full transition-all ${fixedStartDate ? 'bg-violet-500 ring-1 ring-violet-300/50 shadow-[0_0_10px_rgba(139,92,246,0.28)]' : 'bg-gray-700 ring-1 ring-gray-600'}`}>
+                  <span className={`absolute top-0.5 w-5 h-5 rounded-full shadow-sm transition-[left] ${fixedStartDate ? 'left-6 bg-white' : 'left-0.5 bg-gray-300'}`} />
                 </button>
               </div>
             </div>

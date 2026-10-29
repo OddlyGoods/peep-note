@@ -29,6 +29,7 @@ interface LogState {
   rangeTarget: RangeTarget
   followToday: boolean
   autoAdvanceDateRange: boolean
+  fixedStartDate: boolean
   filterType: string
   searchQuery: string
   loading: boolean
@@ -46,7 +47,7 @@ interface LogState {
   deleteLogs: (ids: string[]) => Promise<void>
   setDateRange: (dateFrom: string, dateTo: string) => void
   setRangeTarget: (target: RangeTarget) => void
-  setAutoAdvanceDateRange: (enabled: boolean) => void
+  setDateNavigation: (options: { autoAdvanceDateRange: boolean; fixedStartDate: boolean }) => void
   setFilterType: (type: string) => void
   setSearchQuery: (q: string) => void
   syncToday: () => void
@@ -62,6 +63,7 @@ export const useLogStore = create<LogState>((set, get) => ({
   followToday: savedRange.dateTo === today(),
   // 서버 설정을 불러오기 전에는 날짜를 임의로 바꾸지 않는다.
   autoAdvanceDateRange: false,
+  fixedStartDate: false,
   filterType: '',
   searchQuery: '',
   loading: false,
@@ -182,9 +184,11 @@ export const useLogStore = create<LogState>((set, get) => ({
 
   setRangeTarget: (rangeTarget) => set({ rangeTarget }),
 
-  setAutoAdvanceDateRange: (autoAdvanceDateRange) => {
-    set({ autoAdvanceDateRange })
-    if (autoAdvanceDateRange) get().syncToday()
+  setDateNavigation: (options) => {
+    // Apply both saved options together before any date is advanced. Otherwise
+    // loading an enabled fixed start could first shift that start date once.
+    set(options)
+    if (options.autoAdvanceDateRange) get().syncToday()
   },
 
   setFilterType: (type) => {
@@ -201,11 +205,13 @@ export const useLogStore = create<LogState>((set, get) => ({
 
   syncToday: () => {
     const currentToday = today()
-    const { dateFrom, dateTo, autoAdvanceDateRange } = get()
+    const { dateFrom, dateTo, autoAdvanceDateRange, fixedStartDate } = get()
     // 자동 넘김이 켜져 있으면 저장된 기간도 앱 재실행 시 오늘을 종료일로 맞춘다.
     if (!autoAdvanceDateRange || dateTo === currentToday) return
+    // Preserve an explicitly selected future start until today reaches it.
+    if (fixedStartDate && dateFrom > currentToday) return
     const length = Math.round((new Date(dateTo).getTime() - new Date(dateFrom).getTime()) / 86400000)
-    const range = { dateFrom: format(subDays(new Date(), length), 'yyyy-MM-dd'), dateTo: currentToday }
+    const range = { dateFrom: fixedStartDate ? dateFrom : format(subDays(new Date(), length), 'yyyy-MM-dd'), dateTo: currentToday }
     saveRange(range)
     set({ ...range, followToday: true })
     get().fetchLogs()

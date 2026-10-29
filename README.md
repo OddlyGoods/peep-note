@@ -154,6 +154,10 @@ Choose **Download**, then **Restart and install** when you are ready. Ubuntu may
 
 ## Usage guide
 
+### Date navigation
+
+In **Settings → General**, **Automatically advance dates** updates the main list's end date to today when you reopen or refocus the app. By default, the start date moves with it to preserve the selected range length. Enable the separate **Fix start date** option to keep the selected start date and advance only the end date. Both options are saved independently; with automatic advancement off, the selected dates remain unchanged. You can still change dates manually. The separate Search screen uses its own date range.
+
 ### Trash
 
 **Trash** is in the left navigation, below **Favorites**. Deleting a record, selected records, or a group moves its records to Trash and removes them from normal lists, search, Quick List, and calendar counts. Select records to restore them or permanently delete them. **Empty** permanently deletes all of the current user's trashed records after confirmation.

@@ -222,6 +222,7 @@ export interface Settings {
   qwen_base_url: string | null
   language: 'en' | 'ko' | 'ja' | 'zh'
   auto_advance_date_range: boolean
+  fixed_start_date: boolean
   trash_retention_days: TrashRetentionDays
   secret_password_set?: boolean
 }

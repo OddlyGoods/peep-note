@@ -100,6 +100,7 @@ export async function initDb(appDataPath: string) {
   try { db.run('ALTER TABLE settings ADD COLUMN ai_model TEXT') } catch {}
   try { db.run("ALTER TABLE settings ADD COLUMN language TEXT NOT NULL DEFAULT 'en'") } catch {}
   try { db.run('ALTER TABLE settings ADD COLUMN auto_advance_date_range INTEGER NOT NULL DEFAULT 1') } catch {}
+  try { db.run('ALTER TABLE settings ADD COLUMN fixed_start_date INTEGER NOT NULL DEFAULT 0') } catch {}
   try { db.run('ALTER TABLE settings ADD COLUMN trash_retention_days INTEGER NOT NULL DEFAULT 10') } catch {}
   try { db.run('ALTER TABLE settings ADD COLUMN secret_password_hash TEXT') } catch {}
   try { db.run('ALTER TABLE logs ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0') } catch {}

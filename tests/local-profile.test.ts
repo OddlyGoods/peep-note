@@ -24,6 +24,7 @@ before(async () => { await initDb(root) })
 after(() => { getDb().close(); fs.rmSync(root, { recursive: true, force: true }) })
 
 test('notes, workspaces, comments and settings work immediately without a login', async () => {
+  assert.equal((await json('/api/settings')).fixed_start_date, false)
   assert.equal((await call('/api/auth/me')).status, 404)
   assert.equal(queryOne("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'sessions'"), null)
   assert.equal(queryOne("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'users'"), null)
@@ -46,6 +47,27 @@ test('notes, workspaces, comments and settings work immediately without a login'
   await json(`/api/logs/${first.id}`, 'DELETE')
   assert.ok((await json('/api/trash')).some((row: any) => row.id === first.id))
   assert.equal((await json('/api/trash/restore', 'POST', { ids: [first.id] })).restored, 1)
+})
+
+test('the fixed start option persists independently of automatic dates and survives partial updates', async () => {
+  try {
+    for (const autoAdvance of [false, true]) {
+      for (const fixedStart of [false, true]) {
+        const saved = await json('/api/settings', 'PUT', { auto_advance_date_range: autoAdvance, fixed_start_date: fixedStart })
+        assert.equal(saved.auto_advance_date_range, autoAdvance)
+        assert.equal(saved.fixed_start_date, fixedStart)
+        await initDb(root)
+        const reloaded = await json('/api/settings')
+        assert.equal(reloaded.auto_advance_date_range, autoAdvance)
+        assert.equal(reloaded.fixed_start_date, fixedStart)
+        const unrelatedUpdate = await json('/api/settings', 'PUT', { trash_retention_days: 30 })
+        assert.equal(unrelatedUpdate.fixed_start_date, fixedStart)
+      }
+    }
+    assert.equal((await call('/api/settings', 'PUT', { fixed_start_date: 'false' })).status, 400)
+  } finally {
+    await json('/api/settings', 'PUT', { auto_advance_date_range: true, fixed_start_date: false })
+  }
 })
 
 test('changing or clearing old account headers cannot select a different data space', async () => {

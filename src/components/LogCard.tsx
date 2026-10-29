@@ -214,6 +214,9 @@ export default function LogCard({ log, basePath = '/log', showCheckbox = false, 
               ? <span className="ai-summary-badge tag border bg-amber-500/10 border-amber-500/20 text-amber-400">AI</span>
               : <span className={`tag border ${cfg.bg} ${cfg.color}`}>{t(cfg.label as 'note' | 'screenshot' | 'video')}</span>
             }
+            {log.is_secret && (
+              <span className="tag border border-violet-500/30 bg-violet-500/10 text-violet-400">{t('secret')}</span>
+            )}
             {(log.attachments?.length ?? 0) > 0 && (
               <span className="tag flex items-center gap-1 border border-gray-700 bg-gray-800 text-gray-400" title={t('attachmentFiles')}>
                 <FileIcon className="h-3 w-3" />

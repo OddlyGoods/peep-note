@@ -275,8 +275,10 @@ test('trash retains media/comments, hides normal views, checks ownership, and re
 })
 
 test('bulk and group deletion can be restored with group membership', async () => {
-  insert('g1'); insert('g2'); insert('foreign', { user_id: 'bob' })
+  insert('g1'); insert('g2', { is_secret: 1 }); insert('foreign', { user_id: 'bob' })
   const group = await json('/api/groups', 'POST', { name: 'Example', log_ids: ['g1', 'g2'] })
+  assert.equal(group.logs.find((item: any) => item.id === 'g1').is_secret, false)
+  assert.equal(group.logs.find((item: any) => item.id === 'g2').is_secret, true)
   await json(`/api/groups/${group.id}`, 'DELETE')
   assert.equal((await json('/api/groups')).length, 0)
   assert.equal((await json('/api/trash/restore', 'POST', { ids: ['g1', 'g2'] })).restored, 2)
@@ -286,6 +288,8 @@ test('bulk and group deletion can be restored with group membership', async () =
   assert.equal(row('foreign').deleted_at, null)
   restoreTrash('local', ['g1'])
   insert('summary', { group_id: group.id, log_type: 'summary' })
+  const groupedLogs = (await json('/api/groups')).find((item: any) => item.id === group.id).logs
+  assert.equal(groupedLogs.find((item: any) => item.id === 'summary').is_secret, false)
   await json(`/api/groups/${group.id}/ungroup`, 'POST')
   assert.ok(row('summary').deleted_at)
   assert.equal(row('g1').deleted_at, null)

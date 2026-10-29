@@ -11,7 +11,8 @@ function parseLog(r: any) {
     ...r,
     tags: JSON.parse(r.tags || '[]'),
     attachments: JSON.parse(r.attachments || '[]'),
-    pinned: !!r.pinned
+    pinned: !!r.pinned,
+    is_secret: !!r.is_secret
   }
 }
 

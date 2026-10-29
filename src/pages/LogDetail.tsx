@@ -428,7 +428,7 @@ export default function LogDetail() {
               placeholder={t('title')}
             />
           ) : (
-            <div className="flex items-center gap-2"><h1 className="text-xl font-semibold text-white break-words">{displayTitle || t('untitled')}</h1>{log.is_secret && <span className="flex shrink-0 items-center gap-1 rounded-md border border-violet-500/30 bg-violet-500/10 px-1.5 py-0.5 text-xs text-violet-300"><Lock className="h-3 w-3" />{t('secret')}</span>}</div>
+            <div className="flex items-center gap-2"><h1 className="text-xl font-semibold text-white break-words">{displayTitle || t('untitled')}</h1>{!!log.is_secret && <span className="secret-label-badge flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs"><Lock className="h-3 w-3" />{t('secret')}</span>}</div>
           )}
 
           {/* 미디어 */}

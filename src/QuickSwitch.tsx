@@ -239,7 +239,7 @@ function QuickItem({ log, language, t, onClick, selected = false, faded = false,
       <div style={{ ...iconStyle, color: config.color }}><Icon size={selected ? 20 : 16} /></div>
       <div style={{ minWidth: 0, flex: 1 }}>
         <div style={metaStyle}>{t(config.label)} · {format(new Date(log.created_at * 1000), listDateFormat, dateLocale ? { locale: dateLocale } : undefined)}</div>
-        <div style={{ ...titleStyle, fontSize: selected ? 15 : 13, display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{log.title || t('untitled')}</span>{log.is_secret && <Lock size={selected ? 14 : 12} style={{ flexShrink: 0 }} />}</div>
+        <div style={{ ...titleStyle, fontSize: selected ? 15 : 13, display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{log.title || t('untitled')}</span>{!!log.is_secret && <Lock size={selected ? 14 : 12} style={{ flexShrink: 0 }} />}</div>
         <div style={{ ...excerptStyle, WebkitLineClamp: 2 }}>{excerpt(log, t('noContent'))}</div>
         {(log.attachments?.length ?? 0) > 0 && (
           <div style={quickFooterStyle}>

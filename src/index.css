@@ -26,6 +26,22 @@ html[data-theme='light'] .favorite-button:focus-visible {
   color: #c4b5fd;
 }
 
+.secret-icon-badge rect {
+  fill: currentColor;
+}
+
+.secret-label-badge {
+  background: #12342f;
+  border-color: #2dd4bf4d;
+  color: #5eead4;
+}
+
+html[data-theme='light'] .secret-label-badge {
+  background: #f0fdfa;
+  border-color: #99f6e4;
+  color: #0f766e;
+}
+
 html[data-theme='light'] .secret-icon-badge {
   background: #ede9fe;
   border-color: #c4b5fd;

@@ -1,3 +1,4 @@
+import { useScreenActive } from '../lib/screenActivity'
 import { useEffect, useRef, useState } from 'react'
 import { Save, Keyboard, Cloud, User, RotateCcw, Sparkles, Eye, EyeOff, Check, ChevronDown, Lock, Loader2, MoreHorizontal, Settings2 } from 'lucide-react'
 import { api, Settings as SettingsType } from '../lib/api'
@@ -20,18 +21,23 @@ function HotkeyInput({ value, label, disabled, onChange, onDisabledChange }: {
   onDisabledChange: (disabled: boolean) => void
 }) {
   const { t } = useI18n()
+  const active = useScreenActive()
   const [listening, setListening] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const menuTriggerRef = useRef<HTMLButtonElement>(null)
   const menuItemRef = useRef<HTMLButtonElement>(null)
 
+  useEffect(() => {
+    if (!active) { setListening(false); setMenuOpen(false); void window.electronAPI?.setHotkeysEnabled(true) }
+  }, [active])
+
   useEffect(() => () => {
     window.electronAPI?.setHotkeysEnabled(true)
   }, [])
 
   useEffect(() => {
-    if (!menuOpen) return
+    if (!active || !menuOpen) return
     menuItemRef.current?.focus()
     const closeOutside = (event: PointerEvent) => {
       if (!containerRef.current?.contains(event.target as Node)) setMenuOpen(false)
@@ -48,7 +54,7 @@ function HotkeyInput({ value, label, disabled, onChange, onDisabledChange }: {
       document.removeEventListener('pointerdown', closeOutside)
       document.removeEventListener('keydown', closeOnEscape)
     }
-  }, [menuOpen])
+  }, [active, menuOpen])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     e.preventDefault()
@@ -125,6 +131,7 @@ function HotkeyInput({ value, label, disabled, onChange, onDisabledChange }: {
 }
 
 export default function Settings() {
+  const active = useScreenActive()
   const { language, setLanguage, t } = useI18n()
   const secretSettingsCopy = {
     en: { title: 'Secret note lock', set: 'Set a 4-digit password to protect secret notes.', active: 'A 4-digit password is set.', actionSet: 'Set password', actionChange: 'Reset password' },
@@ -195,12 +202,20 @@ export default function Settings() {
       setSecretPasswordSet(!!s.secret_password_set)
       setLoading(false)
     }).catch(() => setLoading(false))
+  }, [])
+
+  useEffect(() => {
+    if (!active) return
     window.electronAPI?.getAppVersion?.().then((v: string) => setAppVersion(v))
     window.electronAPI?.getUserDataPath?.().then((path: string) => setDataPath(path))
     const usage = window.electronAPI?.getDataUsage?.()
     if (usage) void usage.then(setDataUsage).catch(() => setDataUsageError(true))
     else setDataUsageError(true)
-  }, [])
+  }, [active])
+
+  useEffect(() => {
+    if (!active) { setLanguageMenuOpen(false); setModelMenuOpen(false) }
+  }, [active])
 
   useEffect(() => {
     if (!languageMenuOpen && !modelMenuOpen) return
@@ -309,7 +324,7 @@ export default function Settings() {
         </button>
       </div>
 
-      <div className="settings-scroll-area flex-1 overflow-y-auto">
+      <div className="settings-scroll-area flex-1 overflow-y-auto" data-screen-scroll="main">
         <div className="max-w-2xl mx-auto px-6 py-6 space-y-6">
 
           <section className="card p-5">

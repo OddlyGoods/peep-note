@@ -1,3 +1,4 @@
+import { useScreenActive } from './screenActivity'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Copy, Link2, X } from 'lucide-react'
@@ -6,6 +7,7 @@ import type { AttachmentMode } from '../../shared/attachments'
 
 export function useAttachmentPicker(onFiles: (files: File[], mode: AttachmentMode) => void | Promise<void>, disabled = false) {
   const { t } = useI18n()
+  const active = useScreenActive()
   const [open, setOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const pending = useRef<File[] | null>(null)
@@ -14,13 +16,13 @@ export function useAttachmentPicker(onFiles: (files: File[], mode: AttachmentMod
   const previousFocus = useRef<HTMLElement | null>(null)
   const close = () => { pending.current = null; setOpen(false) }
   useEffect(() => {
-    if (!open) return
+    if (!active || !open) return
     previousFocus.current = document.activeElement as HTMLElement
     dialogRef.current?.querySelector<HTMLButtonElement>('[data-mode]')?.focus()
     const hide = () => { if (document.hidden) close() }
     document.addEventListener('visibilitychange', hide)
     return () => { document.removeEventListener('visibilitychange', hide); previousFocus.current?.focus() }
-  }, [open])
+  }, [active, open])
   const choose = (mode: AttachmentMode) => {
     const files = pending.current
     modeRef.current = mode
@@ -36,7 +38,7 @@ export function useAttachmentPicker(onFiles: (files: File[], mode: AttachmentMod
       event.currentTarget.value = ''
       if (files.length && !disabled) void onFiles(files, modeRef.current)
     }} />,
-    dialog: open ? createPortal(
+    dialog: active && open ? createPortal(
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={event => event.stopPropagation()}>
         <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={close} />
         <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={t('attachmentModeTitle')}

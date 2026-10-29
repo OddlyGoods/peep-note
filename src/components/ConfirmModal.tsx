@@ -1,3 +1,4 @@
+import { useScreenActive } from '../lib/screenActivity'
 import { useEffect } from 'react'
 import { AlertTriangle, X } from 'lucide-react'
 import { useI18n } from '../i18n'
@@ -23,6 +24,7 @@ export default function ConfirmModal({
   onConfirm,
   onCancel
 }: Props) {
+  const active = useScreenActive()
   const { t } = useI18n()
   const resolvedConfirmLabel = confirmLabel ?? (danger ? t('delete') : t('confirm'))
   const resolvedCancelLabel = cancelLabel ?? t('cancel')
@@ -31,13 +33,14 @@ export default function ConfirmModal({
   const secondaryMessage = questionMatch?.[2] ?? ''
   // Esc 키로 닫기
   useEffect(() => {
+    if (!active) return
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onCancel()
       if (e.key === 'Enter') onConfirm()
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [onConfirm, onCancel])
+  }, [active, onConfirm, onCancel])
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={e => e.stopPropagation()}>

@@ -6,12 +6,15 @@ import { useI18n } from '../i18n'
 import UpdatePanel from './UpdatePanel'
 import { api } from '../lib/api'
 import { useLogStore } from '../stores/logStore'
+import { useMenuMemoryStore } from '../stores/menuMemoryStore'
+import type { MenuPath } from '../lib/menuMemory'
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { t } = useI18n()
   const location = useLocation()
   const [collapsed, setCollapsed] = useState(true)
   const logs = useLogStore(state => state.logs)
+  const remembered = useMenuMemoryStore(state => state.targets)
   const [favoriteCount, setFavoriteCount] = useState(0)
   const [trashCount, setTrashCount] = useState(0)
 
@@ -65,7 +68,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               return (
                 <div key={to} className={`relative group ${to === '/settings' ? 'mt-auto' : ''}`}>
                   <Link
-                    to={to}
+                    to={active ? to : remembered[to as MenuPath] ?? to}
                     aria-label={label}
                     aria-current={active ? 'page' : undefined}
                     title={count === undefined ? label : `${label} (${count})`}

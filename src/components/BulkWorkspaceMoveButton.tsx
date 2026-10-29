@@ -1,3 +1,4 @@
+import { useScreenActive } from '../lib/screenActivity'
 import { useEffect, useRef, useState } from 'react'
 import { FolderInput, FolderOpen, Loader2 } from 'lucide-react'
 import { api } from '../lib/api'
@@ -13,9 +14,11 @@ type Props = {
 
 export default function BulkWorkspaceMoveButton({ logIds, groupIds, currentWorkspaceId, onMoved }: Props) {
   const { t } = useI18n()
+  const active = useScreenActive()
   const workspaces = useWorkspaceStore(state => state.workspaces)
   const wrapperRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
+  useEffect(() => { if (!active) setOpen(false) }, [active])
   const [busyId, setBusyId] = useState<string | null>(null)
   const [error, setError] = useState(false)
   const destinations = workspaces.filter(workspace => workspace.id !== currentWorkspaceId)
@@ -66,7 +69,7 @@ export default function BulkWorkspaceMoveButton({ logIds, groupIds, currentWorks
         {t('move')}
       </button>
 
-      {open && (
+      {active && open && (
         <div
           role="menu"
           aria-label={t('moveToWorkspace')}

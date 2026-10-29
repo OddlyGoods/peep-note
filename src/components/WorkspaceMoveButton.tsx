@@ -1,3 +1,4 @@
+import { useScreenActive } from '../lib/screenActivity'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { FolderInput, FolderOpen, Loader2 } from 'lucide-react'
@@ -14,12 +15,14 @@ type Props = {
 
 export default function WorkspaceMoveButton({ log, variant = 'compact', onMoved }: Props) {
   const { t } = useI18n()
+  const active = useScreenActive()
   const workspaces = useWorkspaceStore(state => state.workspaces)
   const fetchWorkspaces = useWorkspaceStore(state => state.fetchWorkspaces)
   const moveLog = useLogStore(state => state.moveLog)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
+  useEffect(() => { if (!active) setOpen(false) }, [active])
   const [busyId, setBusyId] = useState<string | null>(null)
   const [error, setError] = useState(false)
   const [position, setPosition] = useState({ top: 0, left: 0 })
@@ -107,7 +110,7 @@ export default function WorkspaceMoveButton({ log, variant = 'compact', onMoved 
       {variant === 'detail' && t('move')}
     </button>
 
-    {open && createPortal(
+    {active && open && createPortal(
       <div
         ref={menuRef}
         role="menu"

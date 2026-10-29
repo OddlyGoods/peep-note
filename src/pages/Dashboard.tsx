@@ -1,3 +1,4 @@
+import { useScreenActive } from '../lib/screenActivity'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { format } from 'date-fns'
 import { ko, ja, zhCN } from 'date-fns/locale'
@@ -14,6 +15,7 @@ import { useI18n } from '../i18n'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 export default function Dashboard() {
+  const active = useScreenActive()
   const { language, t } = useI18n()
   const location = useLocation()
   const navigate = useNavigate()
@@ -25,7 +27,7 @@ export default function Dashboard() {
   const { selectedId: selectedWorkspaceId, workspaces } = useWorkspaceStore()
 
   const [showNewLog, setShowNewLog] = useState(false)
-  const [searchInput, setSearchInput] = useState('')
+  const [searchInput, setSearchInput] = useState(searchQuery)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const [tagOptions, setTagOptions] = useState<{ tag: string; count: number }[]>([])
   const [tagMenuOpen, setTagMenuOpen] = useState(false)
@@ -59,6 +61,7 @@ export default function Dashboard() {
   }, [location.pathname, location.state, navigate])
 
   useEffect(() => {
+    if (!active) return
     let focusFrame: number | undefined
     const handler = (action: unknown) => {
       if (action === 'openOverlay') setShowNewLog(true)
@@ -75,7 +78,10 @@ export default function Dashboard() {
       window.electronAPI?.off('hotkey-triggered', handler)
       if (focusFrame !== undefined) cancelAnimationFrame(focusFrame)
     }
-  }, [showNewLog, showBulkDeleteConfirm])
+  }, [active, showNewLog, showBulkDeleteConfirm])
+
+  useEffect(() => { setSearchInput(searchQuery) }, [searchQuery])
+  useEffect(() => { if (revealLogId) setSearchInput('') }, [revealLogId])
 
   useEffect(() => {
     const t = setTimeout(() => setSearchQuery(searchInput), 1000)
@@ -214,31 +220,9 @@ export default function Dashboard() {
   }
 
   const scrollRef = useRef<HTMLDivElement>(null)
-  const didFetch = useRef(false)
-
-  // 스크롤 위치 복원 — 첫 fetch 완료 후 복원
-  useEffect(() => {
-    if (revealLogId) return
-    if (loading || groupLoading) {
-      didFetch.current = true
-      return
-    }
-    if (!didFetch.current) return
-    const saved = sessionStorage.getItem('dashboard_scroll')
-    if (!saved) return
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        if (scrollRef.current) {
-          scrollRef.current.scrollTop = parseInt(saved)
-          sessionStorage.removeItem('dashboard_scroll')
-        }
-      })
-    })
-  }, [loading, groupLoading, revealLogId])
-
   useEffect(() => {
     const container = scrollRef.current
-    if (!revealLogId || !container || loading || groupLoading) return
+    if (!active || !revealLogId || !container || loading || groupLoading) return
     let frame = 0
     let timer: ReturnType<typeof setTimeout> | undefined
     let revealed: HTMLElement | undefined
@@ -270,7 +254,7 @@ export default function Dashboard() {
       clearTimeout(timer)
       if (revealed) delete revealed.dataset.revealed
     }
-  }, [revealLogId, loading, groupLoading, logs, groups, location.pathname, location.state, navigate])
+  }, [active, revealLogId, loading, groupLoading, logs, groups, location.pathname, location.state, navigate])
 
   const pinnedLogs = logs.filter(l => l.pinned && !groupedLogIds.has(l.id))
   const normalLogs = logs.filter(l => !l.pinned && !groupedLogIds.has(l.id))
@@ -430,9 +414,9 @@ export default function Dashboard() {
       <div
         ref={scrollRef}
         className="dashboard-scroll-area flex-1 overflow-y-auto px-6 pt-6 pb-40"
+        data-screen-scroll="main" data-screen-scroll-restore={revealLogId ? 'skip' : undefined} data-screen-scroll-key={JSON.stringify([dateFrom, dateTo, filterType, searchQuery, selectedWorkspaceId])} aria-busy={loading || groupLoading || deleteTransitionLoading}
         onScroll={e => {
           const target = e.target as HTMLDivElement
-          sessionStorage.setItem('dashboard_scroll', String(target.scrollTop))
           setShowScrollTop(target.scrollTop > 240)
         }}
       >

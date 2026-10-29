@@ -1,3 +1,4 @@
+import { useScreenActive } from '../lib/screenActivity'
 import { useEffect, useRef, useState } from 'react'
 import { Lock, X } from 'lucide-react'
 import { api } from '../lib/api'
@@ -11,6 +12,7 @@ type Props = {
 }
 
 export default function SecretPasswordModal({ mode, requireCurrent = false, onSuccess, onCancel }: Props) {
+  const active = useScreenActive()
   const { t, language } = useI18n()
   const [current, setCurrent] = useState('')
   const [password, setPassword] = useState('')
@@ -28,12 +30,13 @@ export default function SecretPasswordModal({ mode, requireCurrent = false, onSu
     mountedRef.current = true
     return () => { mountedRef.current = false }
   }, [])
-  useEffect(() => { inputRef.current?.focus() }, [step])
+  useEffect(() => { if (active) inputRef.current?.focus() }, [active, step])
   useEffect(() => {
+    if (!active) return
     const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') onCancel() }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [onCancel])
+  }, [active, onCancel])
 
   const activePin = isUnlock ? password : requireCurrent && step === 0 ? current : step === (requireCurrent ? 1 : 0) ? password : confirm
   const activeLabel = isUnlock ? t('enterSecretPassword') : requireCurrent && step === 0 ? t('currentSecretPassword') : step === (requireCurrent ? 1 : 0) ? t('newSecretPassword') : t('confirmSecretPassword')

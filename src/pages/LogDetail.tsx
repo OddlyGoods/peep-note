@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useScreenActive } from '../lib/screenActivity'
+import { menuForPath } from '../lib/menuMemory'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { format } from 'date-fns'
 import { ko, ja, zhCN } from 'date-fns/locale'
@@ -69,15 +71,22 @@ function MarkdownContent({ content }: { content: string }) {
 }
 
 export default function LogDetail() {
+  const active = useScreenActive()
+  const activeRef = useRef(active)
+  activeRef.current = active
   const { language, t } = useI18n()
   const { theme } = useTheme()
   const { id } = useParams<{ id: string }>()
+  const recordIdRef = useRef(id)
+  recordIdRef.current = id
   const navigate = useNavigate()
   const openLog = useOpenLog()
   const location = useLocation()
   const { updateLog, deleteLog } = useLogStore()
   const [log, setLog] = useState<Log | null>(null)
   const [editing, setEditing] = useState(false)
+  const editingRef = useRef(editing)
+  editingRef.current = editing
   const [form, setForm] = useState({ title: '', content: '', tags: [] as string[], content_format: 'text' as Log['content_format'], is_secret: false })
   const [mediaUrl, setMediaUrl] = useState<string | null>(null)
   const [attachmentUrls, setAttachmentUrls] = useState<Array<string | null>>([])
@@ -133,9 +142,42 @@ export default function LogDetail() {
       setSecretGate(gate)
       setForm({ title: data.title, content: data.content, tags: data.tags, content_format: data.content_format ?? 'text', is_secret: !!data.is_secret })
       setLoading(false)
-    }).catch(() => { if (!cancelled) navigate('/') })
+    }).catch(() => {
+      if (cancelled) return
+      setLoading(false)
+      if (activeRef.current) navigate(menuForPath(location.pathname) ?? '/')
+    })
     return () => { cancelled = true }
   }, [id, navigate])
+
+  // Restoring a cached screen must not bypass an expired secret-note unlock.
+  useLayoutEffect(() => {
+    if (!active || loading || log?.id !== id || !log?.is_secret) return
+    if (hasActiveSecretUnlock()) { if (secretGate !== 'open') setSecretGate('open'); return }
+    if (secretGate === 'unlock' || secretGate === 'missing') return
+    let cancelled = false
+    setSecretGate('loading')
+    api.settings.secretPasswordStatus().then(status => {
+      if (!cancelled) setSecretGate(status.is_set ? 'unlock' : 'missing')
+    }).catch(() => { if (!cancelled) setSecretGate('unlock') })
+    return () => { cancelled = true }
+  }, [active, loading, id, log?.id, log?.is_secret])
+
+  const wasActive = useRef(active)
+  useEffect(() => {
+    const resuming = active && !wasActive.current
+    wasActive.current = active
+    if (!resuming || !id || editing) return
+    let cancelled = false
+    api.logs.get(id).then(data => {
+      if (cancelled || editingRef.current) return
+      setLog(data)
+      setForm({ title: data.title, content: data.content, tags: data.tags, content_format: data.content_format ?? 'text', is_secret: !!data.is_secret })
+    }).catch(error => {
+      if (!cancelled && error.status === 404) navigate(menuForPath(location.pathname) ?? '/')
+    })
+    return () => { cancelled = true }
+  }, [active, id])
 
   // Direct URLs and browser history must also wait for the PIN before loading
   // attachments, media, comments, or other detail-only data.
@@ -179,10 +221,13 @@ export default function LogDetail() {
     try {
       const newAttachments = log.attachments.filter((_, i) => !removedAttachments.includes(i))
       await updateLog(log.id, { title: form.title, content: form.content, tags: form.tags, content_format: form.content_format, attachments: newAttachments, is_secret: form.is_secret })
-      setLog(await api.logs.get(log.id))
-      setAttachmentUrls(prev => prev.filter((_, i) => !removedAttachments.includes(i)))
-      setRemovedAttachments([])
-      setEditing(false)
+      const updated = await api.logs.get(log.id)
+      if (recordIdRef.current === log.id) {
+        setLog(updated)
+        setAttachmentUrls(prev => prev.filter((_, i) => !removedAttachments.includes(i)))
+        setRemovedAttachments([])
+        setEditing(false)
+      }
     } catch {}
     setSaving(false)
   }
@@ -194,7 +239,7 @@ export default function LogDetail() {
     setShowConfirm(false)
     try {
       await deleteLog(log.id)
-      navigate('/', { state: { deletionTransition: true } })
+      if (activeRef.current && recordIdRef.current === log.id) navigate(menuForPath(location.pathname) ?? '/', { state: { deletionTransition: true } })
     } catch {}
   }
 
@@ -205,8 +250,7 @@ export default function LogDetail() {
   }
 
   const handleBack = () => {
-    if (location.state?.fromQuickSwitch || window.history.length <= 1) navigate('/')
-    else navigate(-1)
+    navigate(menuForPath(location.pathname) ?? '/')
   }
 
   const handleCopyContent = async () => {
@@ -223,9 +267,11 @@ export default function LogDetail() {
     setAddingComment(true)
     try {
       const comment = await api.logs.addComment(log.id, commentDraft)
-      setComments(previous => [...previous, comment])
-      setCommentDraft('')
-      setLog(previous => previous ? { ...previous, comment_count: (previous.comment_count ?? 0) + 1 } : previous)
+      if (recordIdRef.current === log.id) {
+        setComments(previous => [...previous, comment])
+        setCommentDraft(current => current === commentDraft ? '' : current)
+        setLog(previous => previous ? { ...previous, comment_count: (previous.comment_count ?? 0) + 1 } : previous)
+      }
     } catch (error) {
       console.error('Failed to add comment:', error)
     } finally {
@@ -247,8 +293,10 @@ export default function LogDetail() {
       const updated = await updateLog(log.id, {
         attachments: [...log.attachments, ...imported.map(file => file.path)]
       })
-      setLog(updated)
-      setFileAddFailed(imported.length !== files.length)
+      if (recordIdRef.current === log.id) {
+        setLog(updated)
+        setFileAddFailed(imported.length !== files.length)
+      }
     } catch (error) {
       imported.forEach(file => void window.electronAPI?.deleteAttachmentFile(file.path))
       setFileAddFailed(true)
@@ -328,8 +376,8 @@ export default function LogDetail() {
           {t('back')}
         </button>
         <div className="flex-1" />
-        {!editing && <FavoriteButton variant="detail" log={log} onChange={favorite => setLog(current => current ? { ...current, favorite } : current)} />}
-        {!editing && <WorkspaceMoveButton variant="detail" log={log} onMoved={setLog} />}
+        {!editing && <FavoriteButton variant="detail" log={log} onChange={favorite => setLog(current => current?.id === log.id ? { ...current, favorite } : current)} />}
+        {!editing && <WorkspaceMoveButton variant="detail" log={log} onMoved={updated => setLog(current => current?.id === updated.id ? updated : current)} />}
         {isAiSummary ? (
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-amber-500/30 bg-amber-500/10">
             <Sparkles className="w-3.5 h-3.5 text-amber-400" />
@@ -339,7 +387,7 @@ export default function LogDetail() {
           <>
             {editing ? (
               <>
-                <button onClick={() => { setEditing(false); setRemovedAttachments([]) }} className="btn-secondary flex items-center gap-1.5">
+                <button onClick={() => { setEditing(false); setRemovedAttachments([]); setForm({ title: log.title, content: log.content, tags: log.tags, content_format: log.content_format ?? 'text', is_secret: !!log.is_secret }) }} className="btn-secondary flex items-center gap-1.5">
                   <X className="w-4 h-4" />
                   {t('cancel')}
                 </button>
@@ -368,6 +416,7 @@ export default function LogDetail() {
       {/* 콘텐츠 */}
       <div
         ref={contentScrollRef}
+        data-screen-scroll="main" data-screen-scroll-key={id}
         className={`detail-scroll-area relative flex-1 overflow-y-auto ${draggingFiles ? 'ring-2 ring-inset ring-violet-500/60' : ''}`}
         onScroll={event => setShowScrollTop(event.currentTarget.scrollTop > 240)}
         onDragEnter={handleDragEnter}

@@ -1,3 +1,4 @@
+import { useScreenActive } from '../lib/screenActivity'
 import { useEffect, useRef, useState } from 'react'
 import { Trash2, RotateCcw, Camera, Video, Text as TextIcon, Hash, Code2, Globe, Sparkles, Clock, Check, Search, FolderOpen } from 'lucide-react'
 import { api, TrashItem } from '../lib/api'
@@ -19,6 +20,7 @@ const NOTE_ICONS = { text: TextIcon, markdown: Hash, code: Code2, html: Globe }
 type Confirmation = { kind: 'selected' | 'all'; ids: string[] }
 
 export default function Trash() {
+  const active = useScreenActive()
   const { t, language } = useI18n()
   const [retentionDays, setRetentionDays] = useState<TrashRetentionDays | null>(null)
   const [items, setItems] = useState<TrashItem[]>([])
@@ -35,7 +37,7 @@ export default function Trash() {
     setItems(rows)
     setSelected(prev => prev.filter(id => rows.some(row => row.id === id)))
   }
-  useEffect(() => { refresh().catch(() => setError(true)).finally(() => setLoading(false)) }, [])
+  useEffect(() => { if (active) void refresh().catch(() => setError(true)).finally(() => setLoading(false)) }, [active])
   const perform = async (action: 'restore' | 'selected' | 'all', ids = selected) => {
     if (working.current) return
     working.current = true
@@ -77,7 +79,7 @@ export default function Trash() {
           <input className="input pl-8 w-full py-1.5" type="text" value={query} placeholder={t('searchTrash')} aria-label={t('searchTrash')} disabled={busy} onChange={event => { setQuery(event.target.value); setSelected([]) }} />
         </div>
       </div>
-      <div className="dashboard-scroll-area flex-1 overflow-y-auto px-6 pt-6 pb-40" aria-busy={busy || loading}>
+      <div className="dashboard-scroll-area flex-1 overflow-y-auto px-6 pt-6 pb-40" data-screen-scroll="main" data-screen-scroll-key={query} aria-busy={busy || loading}>
         {retentionDays !== null && <p className="text-xs text-gray-400 mb-4">{t('trashHint', { days: retentionDays })}</p>}
         {error && <p role="alert" className="text-red-400 text-sm mb-4">{t('operationFailed')} <button className="underline" onClick={() => { setError(false); refresh().catch(() => setError(true)) }}>{t('retry')}</button></p>}
         {loading ? (

@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { BrowserRouter, useLocation, useNavigate } from 'react-router-dom'
 import Dashboard from './pages/Dashboard'
 import Trash from './pages/Trash'
 import Favorites from './pages/Favorites'
@@ -7,6 +7,7 @@ import LogDetail from './pages/LogDetail'
 import Settings from './pages/Settings'
 import Search from './pages/Search'
 import Layout from './components/Layout'
+import ScreenCache from './components/ScreenCache'
 import DashboardSidebar from './components/DashboardSidebar'
 import { useLogStore } from './stores/logStore'
 import { api } from './lib/api'
@@ -95,56 +96,18 @@ export default function App() {
     <BrowserRouter>
       <LogNavigationProvider>
       <ElectronNavigation />
-      <Routes>
-        <Route path="/" element={
-
-            <Layout>
-              <div className="flex h-full">
-                <DashboardSidebar />
-                <Dashboard />
-              </div>
-            </Layout>
-
-        } />
-        <Route path="/favorites" element={<Layout><Favorites /></Layout>} />
-        <Route path="/favorites/log/:id" element={<Layout><LogDetail /></Layout>} />
-        <Route path="/trash" element={<Layout><Trash /></Layout>} />
-        <Route path="/log/:id" element={
-
-            <Layout>
-              <div className="flex h-full">
-                <DashboardSidebar />
-                <LogDetail />
-              </div>
-            </Layout>
-
-        } />
-        <Route path="/search" element={
-
-            <Layout>
-              <Search />
-            </Layout>
-
-        } />
-        <Route path="/search/log/:id" element={
-
-            <Layout>
-              <div className="flex h-full">
-                <Search sidebarOnly />
-                <LogDetail />
-              </div>
-            </Layout>
-
-        } />
-        <Route path="/settings" element={
-
-            <Layout>
-              <Settings />
-            </Layout>
-
-        } />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <Layout>
+        <ScreenCache screens={[
+          { key: 'explore-list', path: '/', element: <div className="flex h-full"><DashboardSidebar /><Dashboard /></div> },
+          { key: 'explore-detail', path: '/log/:id', element: <div className="flex h-full"><DashboardSidebar /><LogDetail /></div> },
+          { key: 'search-list', path: '/search', element: <Search /> },
+          { key: 'search-detail', path: '/search/log/:id', element: <div className="flex h-full"><Search sidebarOnly /><LogDetail /></div> },
+          { key: 'favorites-list', path: '/favorites', element: <Favorites /> },
+          { key: 'favorites-detail', path: '/favorites/log/:id', element: <LogDetail /> },
+          { key: 'trash', path: '/trash', element: <Trash /> },
+          { key: 'settings', path: '/settings', element: <Settings /> },
+        ]} />
+      </Layout>
       </LogNavigationProvider>
     </BrowserRouter>
   )

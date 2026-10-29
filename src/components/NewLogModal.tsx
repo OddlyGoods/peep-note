@@ -1,3 +1,4 @@
+import { useScreenActive } from '../lib/screenActivity'
 import { useEffect, useState, useRef } from 'react'
 import { X, Camera, Video, FileText, Text as TextIcon, Code2, Globe, StopCircle, Hash, SlidersHorizontal, Lock } from 'lucide-react'
 import { useLogStore } from '../stores/logStore'
@@ -23,6 +24,7 @@ const FORMATS: { value: ContentFormat; label: string; icon: React.ElementType }[
 ]
 
 export default function NewLogModal({ onClose, workspaceId, workspaceName }: { onClose: () => void; workspaceId?: string | null; workspaceName?: string }) {
+  const active = useScreenActive()
   const { t } = useI18n()
   const { createLog } = useLogStore()
   const [type, setType] = useState<LogType>('note')
@@ -136,6 +138,7 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
   }
 
   useEffect(() => {
+    if (!active) return
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || event.isComposing || event.defaultPrevented) return
       event.preventDefault()
@@ -143,7 +146,11 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleClose])
+  }, [active, handleClose])
+
+  useEffect(() => {
+    if (!active) stopRecording()
+  }, [active])
 
   useEffect(() => () => {
     discardUnsavedVideo()

@@ -1,3 +1,6 @@
+import { useScreenActive } from '../lib/screenActivity'
+import { useLogStore } from '../stores/logStore'
+import { refreshLoadedPages } from '../lib/loadedPages'
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Search as SearchIcon, Camera, Video, FileText, LayoutGrid, SlidersHorizontal, FolderOpen, X, Sparkles } from 'lucide-react'
 import { api, Log } from '../lib/api'
@@ -16,6 +19,10 @@ const TYPE_FILTERS = [
 ] as const
 
 export default function Search({ sidebarOnly }: { sidebarOnly?: boolean }) {
+  const active = useScreenActive()
+  const storeLogs = useLogStore(state => state.logs)
+  const observedLogs = useRef(storeLogs)
+  const pageRef = useRef(1)
   const { language, t } = useI18n()
   const { theme } = useTheme()
   const { workspaces, fetchWorkspaces } = useWorkspaceStore()
@@ -37,25 +44,29 @@ export default function Search({ sidebarOnly }: { sidebarOnly?: boolean }) {
   const requestVersion = useRef(0)
   const previousPending = useRef(0)
 
-  const doSearch = useCallback(async (nextPage = 1) => {
+  const doSearch = useCallback(async (nextPage = 1, refreshLoaded = false) => {
     const version = ++requestVersion.current
+    observedLogs.current = useLogStore.getState().logs
     setLoading(true)
     setSearched(true)
     setError(false)
-    if (nextPage === 1) setResults([])
+    if (nextPage === 1 && !refreshLoaded) setResults([])
     try {
-      const data = await api.logs.list({
+      const fetchPage = (page: number) => api.logs.list({
         search: query || undefined,
         type: typeFilter || undefined,
         workspace_id: workspaceFilter || undefined,
         date_from: dateFrom || undefined,
         date_to: dateTo || undefined,
-        page: nextPage, limit: 50, sort: 'recent'
+        page, limit: 50, sort: 'recent'
       })
+      const refreshed = refreshLoaded ? await refreshLoadedPages(pageRef.current, 50, fetchPage) : null
+      const data = refreshed?.items ?? await fetchPage(nextPage)
       if (version !== requestVersion.current) return
-      setResults(prev => nextPage === 1 ? data : [...prev, ...data.filter(row => !prev.some(item => item.id === row.id))])
-      setPage(nextPage)
-      setHasMore(data.length === 50)
+      setResults(prev => refreshLoaded || nextPage === 1 ? data : [...prev, ...data.filter(row => !prev.some(item => item.id === row.id))])
+      pageRef.current = refreshed?.page ?? nextPage
+      setPage(pageRef.current)
+      setHasMore(refreshed?.hasMore ?? data.length === 50)
     } catch {
       if (version === requestVersion.current) setError(true)
     } finally {
@@ -64,16 +75,23 @@ export default function Search({ sidebarOnly }: { sidebarOnly?: boolean }) {
   }, [query, typeFilter, workspaceFilter, dateFrom, dateTo])
 
   useEffect(() => {
+    if (sidebarOnly) return
     ++requestVersion.current
     const timer = setTimeout(() => {
       if (query || searched) void doSearch()
       else { setResults([]); setLoading(false) }
     }, 300)
     return () => { clearTimeout(timer); ++requestVersion.current }
-  }, [doSearch])
+  }, [doSearch, sidebarOnly])
 
   useEffect(() => {
-    if (sidebarOnly) return
+    if (!active || sidebarOnly || observedLogs.current === storeLogs) return
+    observedLogs.current = storeLogs
+    if (searched) void doSearch(1, true)
+  }, [active, storeLogs, searched, sidebarOnly, doSearch])
+
+  useEffect(() => {
+    if (!active || sidebarOnly) return
     let cancelled = false
     const refresh = async () => {
       try {
@@ -81,14 +99,14 @@ export default function Search({ sidebarOnly }: { sidebarOnly?: boolean }) {
         if (cancelled) return
         const pending = (status.pending || 0) + (status.processing || 0)
         setOcrPending(pending)
-        if (previousPending.current > 0 && pending === 0 && searched) void doSearch()
+        if (previousPending.current > 0 && pending === 0 && searched) void doSearch(1, true)
         previousPending.current = pending
       } catch { /* Search remains available if indexing status is unavailable. */ }
     }
     void refresh()
     const timer = setInterval(refresh, 4000)
     return () => { cancelled = true; clearInterval(timer) }
-  }, [doSearch, searched, sidebarOnly])
+  }, [active, doSearch, searched, sidebarOnly])
 
   const hasFilters = typeFilter || workspaceFilter || dateFrom || dateTo
 
@@ -242,7 +260,7 @@ export default function Search({ sidebarOnly }: { sidebarOnly?: boolean }) {
         </div>
 
         {/* 결과 */}
-        <div className="search-results-scroll-area flex-1 overflow-y-auto px-6 pt-6 pb-40">
+        <div className="search-results-scroll-area flex-1 overflow-y-auto px-6 pt-6 pb-40" data-screen-scroll="main" data-screen-scroll-key={JSON.stringify([query, typeFilter, workspaceFilter, dateFrom, dateTo])} aria-busy={loading}>
           <p className="text-xs text-gray-400 mb-4">{t('ocrHint')}{ocrPending > 0 && <span className="block mt-1" role="status">{t('ocrWorking')} ({ocrPending})</span>}</p>
           {error && <p role="alert" className="text-sm text-red-400 mb-3">{t('operationFailed')} <button className="underline" onClick={() => doSearch()}>{t('retry')}</button></p>}
           {loading && !results.length ? (

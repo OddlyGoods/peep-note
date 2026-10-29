@@ -1,3 +1,4 @@
+import { useScreenActive } from '../lib/screenActivity'
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
@@ -54,6 +55,7 @@ function workspaceActiveClass(id: string, isDefault: boolean) {
 }
 
 export default function DashboardSidebar() {
+  const active = useScreenActive()
   const { t } = useI18n()
   const navigate = useNavigate()
   const location = useLocation()
@@ -88,6 +90,7 @@ export default function DashboardSidebar() {
   const newInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
+    if (!active) return
     fetchWorkspaces().then(() => {
       fetchLogs()
       fetchActiveDates()
@@ -99,7 +102,7 @@ export default function DashboardSidebar() {
     }
     window.electronAPI?.on('log-created', handler)
     return () => window.electronAPI?.off('log-created', handler)
-  }, [])
+  }, [active])
 
   useEffect(() => {
     if (selectedWorkspaceId) fetchLogs()

@@ -9,14 +9,15 @@
 }
 
 html[data-theme='light'] .favorite-button[aria-pressed='true'] {
-  color: #92400e !important;
-  background: #fef3c7;
+  color: #6d28d9 !important;
+  background: #ede9fe !important;
+  border-color: #c4b5fd;
 }
 
 html[data-theme='light'] .favorite-button:hover,
 html[data-theme='light'] .favorite-button:focus-visible {
-  color: #92400e !important;
-  background: #fde68a;
+  color: #5b21b6 !important;
+  background: #ddd6fe !important;
 }
 
 @font-face {

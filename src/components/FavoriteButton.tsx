@@ -39,7 +39,7 @@ export default function FavoriteButton({ log, onChange, variant = 'compact' }: {
         } catch { setError(true) }
         finally { working.current = false; setBusy(false) }
       }}
-      className={`favorite-button ${variant === 'detail' ? 'btn-secondary inline-flex h-[38px] w-[38px] items-center justify-center p-0' : 'p-1.5 rounded-lg'} transition-colors disabled:opacity-40 ${favorite ? 'text-amber-400 bg-amber-500/10' : 'text-gray-400'} hover:text-amber-400 hover:bg-amber-500/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500`}
+      className={`favorite-button ${variant === 'detail' ? 'btn-secondary inline-flex h-[38px] w-[38px] items-center justify-center p-0' : 'p-1.5 rounded-lg'} transition-colors disabled:opacity-40 ${favorite ? 'text-violet-300 bg-violet-500/15' : 'text-gray-400'} hover:text-violet-200 hover:bg-violet-500/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500`}
     >
       <Star className={variant === 'detail' ? 'w-4 h-4' : 'w-3.5 h-3.5'} fill={favorite ? 'currentColor' : 'none'} />
     </button>

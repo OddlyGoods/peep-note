@@ -85,7 +85,7 @@ export default function BulkWorkspaceMoveButton({ logIds, groupIds, currentWorks
                 role="menuitem"
                 disabled={busyId !== null}
                 onClick={() => void move(workspace.id)}
-                className="workspace-move-option flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition-colors disabled:opacity-50"
+                className="workspace-move-option flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] transition-colors disabled:opacity-50"
                 style={{ color: 'var(--title-text)' }}
               >
                 <FolderOpen className="h-3.5 w-3.5 shrink-0 text-indigo-400" />

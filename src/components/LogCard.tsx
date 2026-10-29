@@ -4,7 +4,7 @@ import { format, isToday } from 'date-fns'
 import { ko, ja, zhCN } from 'date-fns/locale'
 import {
   Image as ImageIcon, Video, Text as TextIcon, Code2, Globe, Hash,
-  Pin, Trash2, ChevronRight, Clock, Check, Sparkles, Loader2, Lock, MessageCircle, LocateFixed, File as FileIcon
+  Pin, Trash2, ChevronRight, Clock, Check, Sparkles, Loader2, MessageCircle, LocateFixed, File as FileIcon
 } from 'lucide-react'
 import { Log } from '../lib/api'
 import { useLogStore } from '../stores/logStore'
@@ -14,6 +14,7 @@ import WorkspaceMoveButton from './WorkspaceMoveButton'
 import { useI18n } from '../i18n'
 import { getAiSummaryContent, getAiSummaryTitle } from '../lib/aiSummary'
 import NoteExcerpt from './NoteExcerpt'
+import SecretIconBadge from './SecretIconBadge'
 
 const TYPE_CONFIG = {
   note:       { icon: TextIcon, label: 'note',     color: 'text-violet-400', bg: 'bg-violet-500/10 border-violet-500/20' },
@@ -165,7 +166,7 @@ export default function LogCard({ log, basePath = '/log', showCheckbox = false, 
           </div>
         )}
         {/* 타입 아이콘 */}
-        <div className={`shrink-0 w-8 h-8 rounded-lg border flex items-center justify-center ${
+        <div className={`relative shrink-0 w-8 h-8 rounded-lg border flex items-center justify-center ${
           isAiSummary ? 'bg-amber-500/10 border-amber-500/20' : cfg.bg
         }`}>
           {isAiSummary
@@ -174,6 +175,7 @@ export default function LogCard({ log, basePath = '/log', showCheckbox = false, 
               ? <fmtBadge.icon className={`w-4 h-4 ${fmtBadge.color}`} />
               : <Icon className={`w-4 h-4 ${cfg.color}`} />
           }
+          {log.is_secret && <SecretIconBadge />}
         </div>
 
         {/* 내용 */}
@@ -187,7 +189,7 @@ export default function LogCard({ log, basePath = '/log', showCheckbox = false, 
             </div>
           )}
           {log.is_secret ? (
-            <div className="mt-1 flex items-center gap-1.5 text-xs text-gray-500"><Lock className="h-3 w-3" /><span>••••••••••••</span></div>
+            <div className="mt-1 text-xs text-gray-500">••••••••••••</div>
           ) : displayContent && (log.log_type === 'note' ? (
             <NoteExcerpt content={displayContent} code={log.content_format === 'code'} markdown={log.content_format === 'markdown'} />
           ) : (

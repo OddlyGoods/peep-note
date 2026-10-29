@@ -6,8 +6,8 @@ PeepNote is a local-first desktop app for saving useful LLM responses, recording
 
 ## News
 
+- **2026-10-29 — v1.0.18** — Improved shortcuts, tags, Markdown previews, and the app interface.
 - **2026-10-29** — Fixed Linux update restarts after the executable rename. Older installations retain a compatible launch path when updating to v1.0.17.
-- **2026-10-28** — Added manual data folder selection in **Settings → App information → Data location → Change folder**. Choose an empty folder and restart to copy your notes, attachments, and settings there. Original files are kept as a backup. Thanks for the suggestion in [#1](https://github.com/OddlyGoods/peep-note/issues/1)!
 
 ## See it in action
 

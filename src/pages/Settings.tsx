@@ -159,7 +159,7 @@ export default function Settings() {
   const [modelMenuOpen, setModelMenuOpen] = useState(false)
   const modelMenuRef = useRef<HTMLDivElement>(null)
   const [autoAdvanceDateRange, setAutoAdvanceDateRange] = useState(true)
-  const [fixedStartDate, setFixedStartDate] = useState(false)
+  const [fixedStartDate, setFixedStartDate] = useState(true)
   const [trashRetentionDays, setTrashRetentionDays] = useState(DEFAULT_TRASH_RETENTION_DAYS)
   const [secretPasswordSet, setSecretPasswordSet] = useState(false)
   const [showSecretPasswordModal, setShowSecretPasswordModal] = useState(false)
@@ -184,7 +184,7 @@ export default function Settings() {
       setSelectedLanguage(s.language ?? 'en')
       setLanguage(s.language ?? 'en')
       const autoAdvance = s.auto_advance_date_range ?? true
-      const fixedStart = s.fixed_start_date ?? false
+      const fixedStart = s.fixed_start_date ?? true
       setAutoAdvanceDateRange(autoAdvance)
       setFixedStartDate(fixedStart)
       setStoreDateNavigation({ autoAdvanceDateRange: autoAdvance, fixedStartDate: fixedStart })

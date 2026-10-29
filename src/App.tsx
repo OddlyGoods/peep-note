@@ -87,7 +87,7 @@ export default function App() {
     api.settings.get().then(settings => {
       setLanguage(settings.language ?? 'en')
       setTheme(settings.theme === 'dark' ? 'dark' : 'light')
-      setDateNavigation({ autoAdvanceDateRange: settings.auto_advance_date_range ?? true, fixedStartDate: settings.fixed_start_date ?? false })
+      setDateNavigation({ autoAdvanceDateRange: settings.auto_advance_date_range ?? true, fixedStartDate: settings.fixed_start_date ?? true })
     }).catch(() => {})
   }, [setLanguage, setTheme, setDateNavigation])
 

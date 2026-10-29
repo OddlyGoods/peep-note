@@ -63,7 +63,7 @@ export const useLogStore = create<LogState>((set, get) => ({
   followToday: savedRange.dateTo === today(),
   // 서버 설정을 불러오기 전에는 날짜를 임의로 바꾸지 않는다.
   autoAdvanceDateRange: false,
-  fixedStartDate: false,
+  fixedStartDate: true,
   filterType: '',
   searchQuery: '',
   loading: false,

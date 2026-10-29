@@ -6,7 +6,7 @@ export type Language = 'en' | 'ko' | 'ja' | 'zh'
 
 const messages = {
   en: {
-    showInDashboard: 'Show in dashboard',
+    showInDashboard: 'Show in Explore',
     customAiModel: 'Enter manually', customAiModelId: 'Model ID', customAiModelHint: 'Enter the exact model ID provided by your AI provider.', customAiModelRequired: 'Enter a model ID before saving.',
     ...updateMessages.en,
     ...dataStorageMessages.en,
@@ -48,7 +48,7 @@ const messages = {
 
     months3: '3 months', months6: '6 months', year1: '1 year',
     manage: 'Manage',
-    loading: 'Loading...', dashboard: 'Dashboard', search: 'Search', settings: 'Settings',
+    loading: 'Loading...', dashboard: 'Explore', search: 'Search', settings: 'Settings',
     smartRecords: 'Fast, smarter work records', save: 'Save', saved: 'Saved ✓', settingsSaved: 'Saved', cancel: 'Cancel', delete: 'Delete', edit: 'Edit', move: 'Move', back: 'Back',
     add: 'Add', group: 'Group', records: 'records', record: 'Record', all: 'All', note: 'Note', screenshot: 'Capture', video: 'Video', summary: 'AI Summary', pinned: 'Pinned', selectAll: 'Select all', clearSelection: 'Clear selection', markdown: 'MD',
     text: 'Text', code: 'Code', secret: 'Secret', secretPassword: 'Secret password', secretPasswordNotSet: 'Set a 4-digit secret password in Settings before opening this note.', setSecretPassword: 'Set secret password', changeSecretPassword: 'Change secret password', currentSecretPassword: 'Current password', newSecretPassword: 'New 4-digit password', confirmSecretPassword: 'Confirm password', enterSecretPassword: 'Enter the 4-digit password to open this note.', unlock: 'Unlock', goToSettings: 'Go to Settings', passwordMismatch: 'Passwords do not match.', passwordIncorrect: 'Incorrect password.', untitled: '(Untitled)', noContent: 'No content', noRecords: 'No records', createRecord: 'Create a new record',
@@ -69,7 +69,7 @@ const messages = {
     keyStorage: 'Used for AI group summaries. Keys are saved in the local database.', content: 'Content', title: 'Title', attachments: 'Attachments', includedRecords: 'Grouped records ({count})', noTags: 'No tags', noTagsInRange: 'No tags in this date range', preview: 'Preview', viewSource: 'View source', enlarge: 'Enlarge', copy: 'Copy', copied: 'Copied', deleteRecordMessage: 'Delete this log? Deleted items cannot be recovered.', dateRange: 'Date range', reset: 'Reset', startDate: 'Start', endDate: 'End', days3: '3 days', week1: '1 week', month1: '1 month', searchPlaceholder: 'Search title, content, or filename...', enterSearch: 'Enter a search term', noSearchResults: 'No search results', results: '{count} results', apiKey: '{provider} API Key', qwenEndpoint: 'Qwen API endpoint', qwenEndpointHint: 'Use your Alibaba Model Studio region or workspace endpoint.', backToTop: 'Back to top', comments: 'Comments', commentPlaceholder: 'Add a comment...', addComment: 'Add comment',
   },
   ko: {
-    showInDashboard: '대시보드에서 보기',
+    showInDashboard: '탐색에서 보기',
     customAiModel: '직접 입력', customAiModelId: '모델 ID', customAiModelHint: 'AI 공급처에서 제공하는 정확한 모델 ID를 입력하세요.', customAiModelRequired: '저장하려면 모델 ID를 입력하세요.',
     ...updateMessages.ko,
     ...dataStorageMessages.ko,
@@ -111,7 +111,7 @@ const messages = {
 
     months3: '3개월', months6: '6개월', year1: '1년',
     manage: '관리',
-    loading: '로딩 중...', dashboard: '대시보드', search: '검색', settings: '설정',
+    loading: '로딩 중...', dashboard: '탐색', search: '검색', settings: '설정',
     smartRecords: '업무 기록의 가장 간단한 방법', save: '저장', saved: '저장됨 ✓', settingsSaved: '저장됨', cancel: '취소', delete: '삭제', edit: '편집', move: '이동', back: '뒤로',
     add: '추가', group: '그룹', records: '개의 기록', record: '기록', all: '전체', note: '노트', screenshot: '캡쳐', video: '동영상', summary: 'AI 요약', pinned: '고정됨', selectAll: '전체 선택', clearSelection: '전체 해제', markdown: '마크다운',
     text: '텍스트', code: '코드', secret: '시크릿', secretPassword: '시크릿 비밀번호', secretPasswordNotSet: '이 노트를 열기 전에 설정에서 4자리 시크릿 비밀번호를 설정하세요.', setSecretPassword: '시크릿 비밀번호 설정', changeSecretPassword: '시크릿 비밀번호 변경', currentSecretPassword: '현재 비밀번호', newSecretPassword: '새 4자리 비밀번호', confirmSecretPassword: '비밀번호 확인', enterSecretPassword: '이 노트를 열려면 4자리 비밀번호를 입력하세요.', unlock: '잠금 해제', goToSettings: '설정으로 이동', passwordMismatch: '비밀번호가 일치하지 않습니다.', passwordIncorrect: '비밀번호가 올바르지 않습니다.', untitled: '(제목 없음)', noContent: '내용 없음', noRecords: '기록이 없습니다', createRecord: '새로운 기록을 생성하세요',
@@ -132,7 +132,7 @@ const messages = {
     keyStorage: '그룹 AI 정리 기능에 사용됩니다. 키는 로컬 DB에 저장됩니다.', content: '내용', title: '제목', attachments: '첨부 이미지', includedRecords: '함께 그룹된 목록 ({count})', noTags: '태그 없음', noTagsInRange: '현재 조회 기간에 태그가 없습니다', preview: '미리보기', viewSource: '소스 보기', enlarge: '크게 보기', copy: '복사', copied: '복사됨', deleteRecordMessage: '이 로그를 삭제하시겠습니까? 삭제된 항목은 복구할 수 없습니다.', dateRange: '날짜 범위', reset: '초기화', startDate: '시작', endDate: '종료', days3: '3일', week1: '1주일', month1: '1개월', searchPlaceholder: '제목, 내용 또는 파일명으로 검색...', enterSearch: '검색어를 입력하세요', noSearchResults: '검색 결과가 없습니다', results: '{count}개의 결과', apiKey: '{provider} API 키', qwenEndpoint: 'Qwen API 엔드포인트', qwenEndpointHint: 'Alibaba Model Studio의 지역 또는 워크스페이스 엔드포인트를 입력하세요.', backToTop: '맨 위로', comments: '댓글', commentPlaceholder: '댓글을 입력하세요...', addComment: '댓글 추가',
   },
   ja: {
-    showInDashboard: 'ダッシュボードで表示',
+    showInDashboard: '探索で表示',
     customAiModel: '直接入力', customAiModelId: 'モデルID', customAiModelHint: 'AIプロバイダーが指定する正確なモデルIDを入力してください。', customAiModelRequired: '保存するにはモデルIDを入力してください。',
     ...updateMessages.ja,
     ...dataStorageMessages.ja,
@@ -174,7 +174,7 @@ const messages = {
 
     months3: '3か月', months6: '6か月', year1: '1年',
     manage: '管理',
-    loading: '読み込み中...', dashboard: 'ダッシュボード', search: '検索', settings: '設定',
+    loading: '読み込み中...', dashboard: '探索', search: '検索', settings: '設定',
     smartRecords: '仕事の記録をもっとスマートに', save: '保存', saved: '保存済み ✓', settingsSaved: '保存済み', cancel: 'キャンセル', delete: '削除', edit: '編集', move: '移動', back: '戻る',
     add: '追加', group: 'グループ', records: '件の記録', record: '記録', all: 'すべて', note: 'ノート', screenshot: 'キャプチャ', video: '動画', summary: 'AI要約', pinned: '固定', selectAll: 'すべて選択', clearSelection: '選択解除', markdown: 'マークダウン',
     text: 'テキスト', code: 'コード', secret: 'シークレット', secretPassword: 'シークレットパスワード', secretPasswordNotSet: 'このノートを開く前に、設定で4桁のシークレットパスワードを設定してください。', setSecretPassword: 'シークレットパスワードを設定', changeSecretPassword: 'シークレットパスワードを変更', currentSecretPassword: '現在のパスワード', newSecretPassword: '新しい4桁のパスワード', confirmSecretPassword: 'パスワードを確認', enterSecretPassword: 'このノートを開くには4桁のパスワードを入力してください。', unlock: 'ロック解除', goToSettings: '設定へ', passwordMismatch: 'パスワードが一致しません。', passwordIncorrect: 'パスワードが正しくありません。', untitled: '（無題）', noContent: '内容なし', noRecords: '記録がありません', createRecord: '新しい記録を作成してください',
@@ -195,7 +195,7 @@ const messages = {
     keyStorage: 'グループAI要約に使用します。キーはローカルデータベースに保存されます。', content: '内容', title: 'タイトル', attachments: '添付画像', includedRecords: '同じグループの記録（{count}）', noTags: 'タグなし', noTagsInRange: '現在の期間にタグはありません', preview: 'プレビュー', viewSource: 'ソースを表示', enlarge: '拡大', copy: 'コピー', copied: 'コピーしました', deleteRecordMessage: 'この記録を削除しますか？削除した項目は復元できません。', dateRange: '日付範囲', reset: 'リセット', startDate: '開始', endDate: '終了', days3: '3日', week1: '1週間', month1: '1か月', searchPlaceholder: 'タイトル、内容、ファイル名を検索...', enterSearch: '検索語を入力してください', noSearchResults: '検索結果がありません', results: '{count}件の結果', apiKey: '{provider} APIキー', qwenEndpoint: 'Qwen APIエンドポイント', qwenEndpointHint: 'Alibaba Model Studioのリージョンまたはワークスペースのエンドポイントを入力してください。', backToTop: '一番上へ', comments: 'コメント', commentPlaceholder: 'コメントを入力...', addComment: 'コメントを追加',
   },
   zh: {
-    showInDashboard: '在仪表板中查看',
+    showInDashboard: '在探索中查看',
     customAiModel: '手动输入', customAiModelId: '模型 ID', customAiModelHint: '请输入 AI 提供商指定的准确模型 ID。', customAiModelRequired: '请先输入模型 ID 再保存。',
     ...updateMessages.zh,
     ...dataStorageMessages.zh,
@@ -237,7 +237,7 @@ const messages = {
 
     months3: '3个月', months6: '6个月', year1: '1年',
     manage: '管理',
-    loading: '加载中...', dashboard: '仪表盘', search: '搜索', settings: '设置',
+    loading: '加载中...', dashboard: '探索', search: '搜索', settings: '设置',
     smartRecords: '更快速、更智能地记录工作', save: '保存', saved: '已保存 ✓', settingsSaved: '已保存', cancel: '取消', delete: '删除', edit: '编辑', move: '移动', back: '返回',
     add: '添加', group: '分组', records: '条记录', record: '记录', all: '全部', note: '笔记', screenshot: '截图', video: '视频', summary: 'AI 摘要', pinned: '已置顶', selectAll: '全选', clearSelection: '取消全选', markdown: 'Markdown',
     text: '文本', code: '代码', secret: '私密', secretPassword: '私密密码', secretPasswordNotSet: '打开此笔记前，请先在设置中设定 4 位私密密码。', setSecretPassword: '设置私密密码', changeSecretPassword: '更改私密密码', currentSecretPassword: '当前密码', newSecretPassword: '新的 4 位密码', confirmSecretPassword: '确认密码', enterSecretPassword: '请输入 4 位密码以打开此笔记。', unlock: '解锁', goToSettings: '前往设置', passwordMismatch: '密码不一致。', passwordIncorrect: '密码不正确。', untitled: '（无标题）', noContent: '暂无内容', noRecords: '暂无记录', createRecord: '创建一条新记录',

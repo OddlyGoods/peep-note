@@ -17,7 +17,6 @@ const NoteExcerpt = memo(function NoteExcerpt({ content, code, markdown = false,
   const [overflowing, setOverflowing] = useState(false)
 
   useEffect(() => {
-    if (markdown) return
     const element = contentRef.current
     if (!element) return
     const checkOverflow = () => setOverflowing(element.scrollHeight > element.clientHeight + 1)
@@ -35,11 +34,11 @@ const NoteExcerpt = memo(function NoteExcerpt({ content, code, markdown = false,
           maxHeight: `${maxLines * 1.25}rem`,
           overflow: 'hidden',
           overflowWrap: 'anywhere',
-          ...(markdown ? { display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: maxLines } : { whiteSpace: 'pre-wrap' })
+          whiteSpace: markdown ? 'normal' : 'pre-wrap'
         }}>
         {markdown ? <ReactMarkdown remarkPlugins={[remarkGfm]} components={PREVIEW_COMPONENTS}>{content}</ReactMarkdown> : content}
       </div>
-      {overflowing && !markdown && <p className="text-xs leading-4 text-gray-500">...</p>}
+      {overflowing && <p className="text-xs leading-4 text-gray-500">...</p>}
     </div>
   )
 })

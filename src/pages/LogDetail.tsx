@@ -712,7 +712,7 @@ export default function LogDetail() {
                 ))}
               </div>
             ) : (
-              <p className="text-gray-400 text-sm italic">{t('noTags')}</p>
+              <p className="text-xs text-gray-400">{t('noTags')}</p>
             )}
           </div>
 

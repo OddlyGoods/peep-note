@@ -20,6 +20,18 @@ html[data-theme='light'] .favorite-button:focus-visible {
   background: #ddd6fe !important;
 }
 
+.secret-icon-badge {
+  background: #221b42;
+  border-color: #8b5cf680;
+  color: #c4b5fd;
+}
+
+html[data-theme='light'] .secret-icon-badge {
+  background: #ede9fe;
+  border-color: #c4b5fd;
+  color: #7c3aed;
+}
+
 @font-face {
   font-family: 'NanumSquare';
   src: url('/fonts/NanumSquareL.ttf') format('truetype');

@@ -15,6 +15,7 @@ import FavoriteButton from '../components/FavoriteButton'
 import WorkspaceMoveButton from '../components/WorkspaceMoveButton'
 import MarkdownCodeBlock from '../components/MarkdownCodeBlock'
 import TagInput from '../components/TagInput'
+import TagBadge from '../components/TagBadge'
 import ConfirmModal from '../components/ConfirmModal'
 import SecretPasswordModal from '../components/SecretPasswordModal'
 import { useI18n } from '../i18n'
@@ -405,7 +406,7 @@ export default function LogDetail() {
               </div>
             )}
             </div>
-            <div className="ml-auto flex shrink-0 flex-col items-end gap-1 pt-1 text-right text-xs text-gray-400">
+            <div className="ml-auto flex shrink-0 items-center gap-2 pt-1 text-right text-xs text-gray-400">
               <div className="flex items-center gap-1.5 whitespace-nowrap">
                 <Clock className="h-3.5 w-3.5 shrink-0" />
                 {format(new Date(log.created_at * 1000), detailDateFormat, dateLocale ? { locale: dateLocale } : undefined)}
@@ -706,9 +707,7 @@ export default function LogDetail() {
             ) : log.tags?.length > 0 ? (
               <div className="flex flex-wrap gap-1.5">
                 {log.tags.map(tag => (
-                  <span key={tag} className="tag bg-gray-800 text-gray-400 border border-gray-700 px-2.5 py-1">
-                    #{tag}
-                  </span>
+                  <TagBadge key={tag} tag={tag} className="px-2.5 py-1" />
                 ))}
               </div>
             ) : (

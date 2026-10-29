@@ -130,6 +130,24 @@ html[data-theme='light'] .secret-icon-badge {
   font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
 }
 
+.tag-search-button {
+  transition: background-color 150ms, border-color 150ms, color 150ms;
+}
+
+.tag-search-button:hover,
+.tag-search-button:focus-visible {
+  background: #8b5cf626 !important;
+  border-color: #8b5cf680 !important;
+  color: #c4b5fd !important;
+}
+
+html[data-theme='light'] .tag-search-button:hover,
+html[data-theme='light'] .tag-search-button:focus-visible {
+  background: #ede9fe !important;
+  border-color: #c4b5fd !important;
+  color: #6d28d9 !important;
+}
+
 .tag-input {
   display: flex;
   flex-wrap: wrap;

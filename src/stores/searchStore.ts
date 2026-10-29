@@ -13,6 +13,7 @@ interface SearchState {
   dateFrom: string
   dateTo: string
   setQuery: (v: string) => void
+  searchTag: (tag: string) => void
   setTypeFilter: (v: string) => void
   setWorkspaceFilter: (v: string) => void
   setDateFrom: (v: string) => void
@@ -27,6 +28,7 @@ export const useSearchStore = create<SearchState>((set) => ({
   workspaceFilter: '',
   ...monthRange(),
   setQuery: (v) => set({ query: v }),
+  searchTag: (tag) => set({ query: `#${tag}`, typeFilter: '', workspaceFilter: '', dateFrom: '', dateTo: '' }),
   setTypeFilter: (v) => set({ typeFilter: v }),
   setWorkspaceFilter: (v) => set({ workspaceFilter: v }),
   setDateFrom: (v) => set({ dateFrom: v }),

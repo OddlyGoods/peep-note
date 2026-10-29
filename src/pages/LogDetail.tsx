@@ -476,7 +476,10 @@ export default function LogDetail() {
           {/* 내용 */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-medium text-gray-400">{t('content')}</label>
+              <label className="flex items-center gap-1.5 text-xs font-medium text-gray-400">
+                <FileText className="h-3.5 w-3.5" aria-hidden="true" />
+                {t('content')}
+              </label>
               {!editing && log.content && (!log.is_secret || secretGate === 'open') && (
                 <button
                   onClick={handleCopyContent}

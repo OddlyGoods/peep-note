@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { format } from 'date-fns'
 import { ko, ja, zhCN } from 'date-fns/locale'
-import { Plus, Search, FileText, Layers, X, ArrowUp, Trash2, SlidersHorizontal } from 'lucide-react'
+import { Plus, Search, FileText, Layers, X, ArrowUp, Trash2, SquareMousePointer } from 'lucide-react'
 import { useLogStore } from '../stores/logStore'
 import { useWorkspaceStore } from '../stores/workspaceStore'
 import { api, LogGroup } from '../lib/api'
@@ -349,7 +349,7 @@ export default function Dashboard() {
                 disabled={ungroupedTotal === 0}
                 className="group-mode-button flex h-9 items-center justify-center gap-1.5 px-4 py-0 text-sm font-medium text-gray-300 hover:text-white ring-1 ring-inset ring-gray-700 hover:ring-gray-600 rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-gray-300 disabled:hover:ring-gray-700 disabled:hover:bg-transparent"
               >
-                <SlidersHorizontal className="w-4 h-4" />
+                <SquareMousePointer className="w-4 h-4" />
                 {t('manage')}
               </button>
               <button onClick={() => setShowNewLog(true)} className="btn-primary flex items-center gap-1.5">

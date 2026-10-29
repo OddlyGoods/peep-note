@@ -537,7 +537,7 @@ html[data-theme='light'] .settings-date-toggle:hover {
   z-index: 50;
   right: 0;
   top: calc(100% + 6px);
-  min-width: 140px;
+  width: 100%;
   padding: 4px;
   border: 1px solid var(--medium-border);
   border-radius: 8px;

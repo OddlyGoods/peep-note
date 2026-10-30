@@ -59,7 +59,7 @@ export default defineConfig({
       },
       {
         // 프리로드
-        entry: 'electron/preload.ts',
+        entry: ['electron/preload.ts', 'electron/noteToastPreload.ts'],
         onstart(options) {
           options.reload()
         },

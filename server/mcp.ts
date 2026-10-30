@@ -1,3 +1,4 @@
+import type { McpChangeListener } from '../shared/mcpEvents'
 import { Hono } from 'hono'
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
 import { createPeepNoteMcp } from './mcpTools'
@@ -26,7 +27,7 @@ export function mcpControl(access: McpAccess, port: number) {
   return app
 }
 
-export function mcpEndpoint(access: McpAccess, onChanged: () => void) {
+export function mcpEndpoint(access: McpAccess, onChanged: McpChangeListener) {
   const app = new Hono()
   app.all('/', async c => {
     c.header('Cache-Control', 'no-store')

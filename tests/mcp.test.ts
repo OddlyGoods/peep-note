@@ -11,12 +11,14 @@ import { initDb, getDb, run, queryOne } from '../server/db'
 import { createApiApp } from '../server/index'
 import { createMcpAccess } from '../server/mcpAccess'
 import { restoreTrash } from '../server/trash'
+import type { McpSavedNote } from '../shared/mcpEvents'
 import { MCP_CLIENTS } from '../shared/mcpClients'
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'peepnote-mcp-test-'))
 const access = createMcpAccess(root)
 let endpoint: string, client: Client, app: ReturnType<typeof createApiApp>, server: ReturnType<typeof serve>
 let changes = 0
+const savedNotes: McpSavedNote[] = []
 function seed(id: string, extra: Record<string, unknown> = {}) {
   const row = { id, user_id: 'local', title: id, content: 'reference content', ...extra }
   const keys = Object.keys(row)
@@ -33,7 +35,7 @@ before(async () => {
   await once(server, 'listening')
   const port = (server.address() as { port: number }).port
   endpoint = `http://127.0.0.1:${port}/mcp`
-  app = createApiApp(port, access, () => { changes++ })
+  app = createApiApp(port, access, change => { changes++; if (change?.noteSaved) savedNotes.push(change.noteSaved) })
   run("INSERT INTO workspaces (id,user_id,name,is_default) VALUES ('general','local','General',1), ('other','local','Research',0), ('foreign-ws','legacy','Foreign',1)")
   run("INSERT INTO settings (user_id,openai_api_key,qwen_api_key,secret_password_hash) VALUES ('local','provider-fixture-only','another-provider-fixture','password-fixture-only')")
   seed('visible', { tags: '["rag"]', attachments: '["/private/path.txt"]', ocr_text: 'searchable OCR' })
@@ -153,6 +155,26 @@ test('write tools create and edit public notes, append Markdown and retain state
   assert.equal(row('foreign').content, 'foreign-content-marker')
   assert.ok((await call('create_note', { content: 'invalid', workspace_id: 'foreign-ws' })).isError)
   assert.ok(changes >= 4)
+})
+
+test('only successful MCP note saves publish a bounded public-note notification', async () => {
+  const before = savedNotes.length
+  const workspace = output(await call('create_workspace', { name: 'Notification test' }))
+  assert.equal(savedNotes.length, before)
+  const note = output(await call('create_note', { title: 'Saved from MCP', content: 'a'.repeat(800), workspace_id: workspace.id }))
+  assert.deepEqual(savedNotes.at(-1), { id: note.id, title: note.title, preview: 'a'.repeat(600), savedAt: note.updated_at || note.created_at })
+  const edited = output(await call('update_note', { id: note.id, content: '# Updated' }))
+  assert.equal(row(note.id).content, '# Updated')
+  assert.deepEqual(savedNotes.at(-1), { id: note.id, title: note.title, preview: edited.content, savedAt: edited.updated_at })
+  output(await call('set_favorite', { id: note.id, favorite: true }))
+  output(await call('get_note', { id: note.id }))
+  output(await call('search_notes', { query: 'Updated' }))
+  assert.ok((await call('update_note', { id: 'secret', content: 'Forbidden' })).isError)
+  assert.ok((await call('update_note', { id: note.id })).isError)
+  assert.ok((await call('create_note', { content: 'Invalid', workspace_id: 'missing' })).isError)
+  output(await call('trash_notes', { note_ids: [note.id] }))
+  assert.equal(savedNotes.length, before + 2)
+  assert.deepEqual(Object.keys(savedNotes.at(-1)!).sort(), ['id', 'preview', 'savedAt', 'title'])
 })
 
 test('group tools omit secret members and reject mixed groups or secret IDs without partial mutation', async () => {

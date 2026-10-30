@@ -1,3 +1,4 @@
+import { NoteNotification } from './noteNotification'
 import {
   app,
   BrowserWindow,
@@ -173,6 +174,11 @@ function loadSettings() {
 function saveSettings(settings: object) {
   fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2))
 }
+
+const noteNotifications = new NoteNotification(loadSettings, id => {
+  showMainWindow()
+  mainWindow?.webContents.send('open-log', { id })
+})
 
 // ── 메인 윈도우 ────────────────────────────────────────────────────────
 function createMainWindow() {
@@ -963,6 +969,7 @@ function registerHotkeys() {
 
 // ── IPC 핸들러 ─────────────────────────────────────────────────────────
 function setupIPC() {
+  noteNotifications.registerIPC()
   ipcMain.handle('open-html-preview', async (event, source: unknown, title: unknown) => {
     if (event.sender !== mainWindow?.webContents || typeof source !== 'string' || source.length > 5_000_000) return false
     const windowTitle = typeof title === 'string' ? title.slice(0, 200) : 'HTML Preview'
@@ -1347,6 +1354,7 @@ function setupAutoUpdater() {
     }
   })
   app.on('before-quit', () => {
+    noteNotifications.dismiss()
     if (updateController.snapshot().status !== 'installing') return
     for (const win of BrowserWindow.getAllWindows()) win.removeAllListeners('close')
     tray?.destroy()
@@ -1409,11 +1417,12 @@ app.whenReady().then(async () => {
   })
 
   // 로컬 Hono 서버 시작
-  await startServer(APP_PORT, dataDirectory, () => {
+  await startServer(APP_PORT, dataDirectory, change => {
     for (const win of [mainWindow, overlayWindow, quickSwitchWindow]) {
       if (win && !win.isDestroyed()) win.webContents.send('mcp-data-changed')
     }
     mainWindow?.webContents.send('log-created')
+    if (change?.noteSaved) noteNotifications.show(change.noteSaved)
   })
 
   createMainWindow()

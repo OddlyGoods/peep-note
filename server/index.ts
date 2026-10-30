@@ -1,3 +1,4 @@
+import type { McpChangeListener } from '../shared/mcpEvents'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { serve } from '@hono/node-server'
@@ -12,7 +13,7 @@ import { purgeExpiredTrash } from './trash'
 import { createMcpAccess } from './mcpAccess'
 import { mcpControl, mcpEndpoint } from './mcp'
 
-export function createApiApp(port: number, access = createMcpAccess(), onMcpChanged: () => void = () => {}) {
+export function createApiApp(port: number, access = createMcpAccess(), onMcpChanged: McpChangeListener = () => {}) {
   const app = new Hono()
   const origins = ['http://localhost:5173', 'http://localhost:4173', 'http://127.0.0.1:5173', 'http://127.0.0.1:4173', 'app://dist']
   const hosts = [`localhost:${port}`, `127.0.0.1:${port}`]
@@ -49,7 +50,7 @@ export function createApiApp(port: number, access = createMcpAccess(), onMcpChan
   return app
 }
 
-export async function startServer(port: number, userDataPath: string, onMcpChanged: () => void = () => {}) {
+export async function startServer(port: number, userDataPath: string, onMcpChanged: McpChangeListener = () => {}) {
   await initDb(userDataPath)
   purgeExpiredTrash()
   const trashCleanup = setInterval(() => {

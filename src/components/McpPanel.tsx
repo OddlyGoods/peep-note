@@ -14,7 +14,7 @@ const copy = {
     failed: 'Could not update MCP settings or copy the configuration. Please try again.'
   },
   ko: {
-    title: 'MCP 연결', enable: 'MCP 연결 허용',
+    title: 'MCP 연결', enable: '연결 허용',
     description: '코덱스 등 MCP 클라이언트에서 피프노트를 제어할 수 있습니다.',
     limits: '시크릿 메모와 AI 공급처 API 키는 제외됩니다.',
     endpoint: '서버 주소', button: 'Codex 연결 설정 복사',

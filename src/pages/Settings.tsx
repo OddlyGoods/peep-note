@@ -133,12 +133,14 @@ function HotkeyInput({ value, label, disabled, onChange, onDisabledChange }: {
   )
 }
 
-const SETTINGS_SECTIONS = ['general', 'security', 'shortcuts', 'ai', 'mcp', 'app', 'developer'] as const
+const SETTINGS_SECTIONS = ['general', 'shortcuts', 'ai', 'app'] as const
 type SettingsSection = typeof SETTINGS_SECTIONS[number]
 const sectionStorageKey = 'openpeepnote_settings_section'
 function initialSection(): SettingsSection {
   try {
     const saved = localStorage.getItem(sectionStorageKey)
+    if (saved === 'mcp') return 'ai'
+    if (saved === 'developer') return 'app'
     if (SETTINGS_SECTIONS.includes(saved as SettingsSection)) return saved as SettingsSection
   } catch {}
   return 'general'
@@ -173,13 +175,10 @@ export default function Settings() {
   const [section, setSection] = useState<SettingsSection>(initialSection)
   const categoryTabs = useRef<Partial<Record<SettingsSection, HTMLButtonElement>>>({})
   const categories = [
-    { id: 'general' as const, label: t('general') },
-    { id: 'security' as const, label: secretSettingsCopy.title },
-    { id: 'shortcuts' as const, label: t('globalShortcuts') },
-    { id: 'ai' as const, label: t('aiSettings') },
-    { id: 'mcp' as const, label: 'MCP' },
-    { id: 'app' as const, label: t('appInfo') },
-    { id: 'developer' as const, label: t('developerInfo') }
+    { id: 'general' as const, label: t('general'), icon: Settings2 },
+    { id: 'shortcuts' as const, label: t('globalShortcuts'), icon: Keyboard },
+    { id: 'ai' as const, label: t('aiSettings'), icon: Sparkles },
+    { id: 'app' as const, label: t('appInfo'), icon: User }
   ]
   const selectSection = (next: SettingsSection) => {
     setSection(next)
@@ -359,32 +358,18 @@ export default function Settings() {
   )
 
   return (
-    <div className="settings-page flex h-full min-h-0 overflow-hidden">
-      <aside className="settings-category-sidebar w-64 shrink-0 overflow-y-auto border-r"
-        style={{ background: 'var(--side-panel-bg)', borderColor: 'var(--soft-border)' }}>
-        <nav role="tablist" aria-label={t('settings')} aria-orientation="vertical" className="space-y-0.5 p-3 pt-6">
-          {categories.map(({ id, label }, index) => <button key={id} ref={node => { categoryTabs.current[id] = node ?? undefined }}
-            id={`settings-tab-${id}`} type="button" role="tab" aria-selected={section === id} aria-controls={`settings-panel-${id}`}
-            tabIndex={section === id ? 0 : -1} title={label} onClick={() => selectSection(id)}
-            onKeyDown={event => {
-              const next = event.key === 'ArrowDown' ? (index + 1) % categories.length
-                : event.key === 'ArrowUp' ? (index - 1 + categories.length) % categories.length
-                : event.key === 'Home' ? 0 : event.key === 'End' ? categories.length - 1 : -1
-              if (next < 0) return
-              event.preventDefault()
-              selectSection(categories[next].id)
-              categoryTabs.current[categories[next].id]?.focus()
-            }}
-            className={`block w-full truncate rounded-lg border px-3 py-2 text-left text-xs leading-5 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-400 ${section === id ? 'text-indigo-300' : 'workspace-list-item border-transparent text-gray-400 hover:bg-gray-800 hover:text-gray-200'}`}
-            style={section === id ? { background: 'rgba(99,102,241,0.20)', borderColor: 'rgba(99,102,241,0.30)', color: 'var(--workspace-badge-text)' } : undefined}>
-            {label}
-          </button>)}
-        </nav>
-      </aside>
-      <div className="flex min-w-0 min-h-0 flex-1 flex-col">
+    <div className="settings-page flex h-full min-h-0 flex-col overflow-hidden">
       {/* 헤더 */}
       <div className="flex h-20 shrink-0 items-center justify-between px-6 border-b" style={{ borderColor: 'rgba(99,102,241,0.12)' }}>
-        <h1 className="text-lg font-semibold text-white">{t('settings')}</h1>
+        <div>
+          <h1 className="text-lg font-semibold text-white">{t('settings')}</h1>
+          <p className="mt-1 text-xs text-gray-400">{{
+            en: 'Manage your PeepNote preferences and connections.',
+            ko: '피프노트의 사용 환경과 연결 설정을 관리합니다.',
+            ja: 'PeepNote の環境設定や接続設定を管理します。',
+            zh: '管理 PeepNote 的使用偏好和连接设置。'
+          }[language]}</p>
+        </div>
         <button
           onClick={handleSave}
           disabled={saving || saved || !aiModel.trim()}
@@ -398,7 +383,30 @@ export default function Settings() {
         </button>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-hidden">
+      <div className="flex min-h-0 flex-1">
+      <aside className="settings-category-sidebar w-64 shrink-0 overflow-y-auto border-r"
+        style={{ background: 'var(--side-panel-bg)', borderColor: 'var(--soft-border)' }}>
+        <nav role="tablist" aria-label={t('settings')} aria-orientation="vertical" className="space-y-0.5 p-3 pt-6">
+          {categories.map(({ id, label, icon: Icon }, index) => <button key={id} ref={node => { categoryTabs.current[id] = node ?? undefined }}
+            id={`settings-tab-${id}`} type="button" role="tab" aria-selected={section === id} aria-controls={`settings-panel-${id}`}
+            tabIndex={section === id ? 0 : -1} title={label} onClick={() => selectSection(id)}
+            onKeyDown={event => {
+              const next = event.key === 'ArrowDown' ? (index + 1) % categories.length
+                : event.key === 'ArrowUp' ? (index - 1 + categories.length) % categories.length
+                : event.key === 'Home' ? 0 : event.key === 'End' ? categories.length - 1 : -1
+              if (next < 0) return
+              event.preventDefault()
+              selectSection(categories[next].id)
+              categoryTabs.current[categories[next].id]?.focus()
+            }}
+            className={`flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs leading-5 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-400 ${section === id ? 'text-indigo-300' : 'workspace-list-item border-transparent text-gray-400 hover:bg-gray-800 hover:text-gray-200'}`}
+            style={section === id ? { background: 'rgba(99,102,241,0.20)', borderColor: 'rgba(99,102,241,0.30)', color: 'var(--workspace-badge-text)' } : undefined}>
+            <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span className="truncate">{label}</span>
+          </button>)}
+        </nav>
+      </aside>
+      <div className="min-w-0 min-h-0 flex-1 overflow-hidden">
         <SettingsPane section="general" selected={section === 'general'}>
           <section className="card p-5">
             <div className="mb-4 flex items-center gap-2">
@@ -507,8 +515,6 @@ export default function Settings() {
               </div>
             </div>
           </section>
-        </SettingsPane>
-        <SettingsPane section="security" selected={section === 'security'}>
           <section className="card p-5">
             <div className="mb-4 flex items-center justify-between gap-4">
               <div className="flex items-center gap-2 min-w-0">
@@ -754,8 +760,6 @@ export default function Settings() {
                 baseUrl={aiProvider === 'qwen' ? qwenBaseUrl : undefined} />
             </div>
           </section>
-        </SettingsPane>
-        <SettingsPane section="mcp" selected={section === 'mcp'}>
           <McpPanel />
         </SettingsPane>
         <SettingsPane section="app" selected={section === 'app'}>
@@ -786,12 +790,10 @@ export default function Settings() {
             </div>
             <p className="text-sm text-gray-400">{t('backupComingSoonDescription')}</p>
           </section>
-        </SettingsPane>
-        <SettingsPane section="developer" selected={section === 'developer'}>
           <section className="card p-5">
             <div className="mb-4 flex items-center gap-2">
               <Code2 className="h-4 w-4 text-violet-400" />
-              <h2 className="text-sm font-semibold text-white">{t('developerInfo')}</h2>
+              <h2 className="text-sm font-semibold text-white">{t('developer')}</h2>
             </div>
             <div className="space-y-3 text-sm">
               <div className="flex items-center justify-between gap-4">

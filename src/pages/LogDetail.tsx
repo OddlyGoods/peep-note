@@ -64,7 +64,7 @@ const MARKDOWN_COMPONENTS = {
 
 function MarkdownContent({ content }: { content: string }) {
   return (
-    <div className="markdown-content p-4 rounded-xl border border-violet-500/20 bg-gray-800/50 text-sm text-gray-200 max-w-none
+    <div className="markdown-content p-6 rounded-xl border border-violet-500/20 bg-gray-800/50 text-sm text-gray-200 max-w-none
       [&_p]:leading-relaxed [&_p]:text-gray-200 [&_p+p]:mt-3
       [&_h1]:text-xl [&_h1]:font-semibold [&_h1]:text-white [&_h1]:mb-3
       [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:text-white [&_h2]:mb-2 [&_h2]:mt-5

@@ -245,6 +245,10 @@ html[data-theme='light'] .tag-input-remove:focus-visible {
   animation: log-card-enter 360ms cubic-bezier(.2,.8,.2,1) both;
 }
 
+.settings-scroll-area {
+  scrollbar-gutter: stable;
+}
+
 /* 보이는 막대는 얇게 유지하되, 상세 화면에서는 드래그 영역을 넓힌다. */
 .detail-scroll-area::-webkit-scrollbar,
 .dashboard-scroll-area::-webkit-scrollbar,

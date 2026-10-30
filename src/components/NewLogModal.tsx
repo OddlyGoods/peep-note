@@ -6,10 +6,14 @@ import { useI18n } from '../i18n'
 import { startRegionRecording } from '../lib/regionRecording'
 import TagInput from './TagInput'
 import ModalLayer from './ModalLayer'
+import { useAttachmentPicker } from '../lib/useAttachmentPicker'
+import FileDropZone from './FileDropZone'
+import AttachmentFileRow from './AttachmentFileRow'
+import { attachmentFilename, type AttachmentMode, type ImportedAttachment } from '../../shared/attachments'
 
 type LogType = 'note' | 'screenshot' | 'video'
 type ContentFormat = 'text' | 'markdown' | 'code' | 'html'
-type Attachment = { path: string; url: string }
+type Attachment = { path: string; url?: string; name?: string; size?: number }
 
 const TYPES = [
   { value: 'note' as LogType,       label: 'note',     icon: FileText, color: 'text-violet-400' },
@@ -37,6 +41,15 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
   const [filePath, setFilePath] = useState<string | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [attachments, setAttachments] = useState<Attachment[]>([])
+  const [importingFiles, setImportingFiles] = useState(false)
+  const [draggingFiles, setDraggingFiles] = useState(false)
+  const [attachmentError, setAttachmentError] = useState(false)
+  const attachmentsRef = useRef<Attachment[]>([])
+  const attachmentsSaved = useRef(false)
+  const closed = useRef(false)
+  const importing = useRef(false)
+  const savePending = useRef(false)
+  const dragDepth = useRef(0)
   const [saving, setSaving] = useState(false)
   const [recording, setRecording] = useState(false)
   useEffect(() => {
@@ -50,6 +63,66 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
   const recordedVideoPathRef = useRef<string | null>(null)
   const discardRecordedVideoRef = useRef(false)
   const savedVideoLogRef = useRef(false)
+
+  const updateAttachments = (next: Attachment[]) => {
+    attachmentsRef.current = next
+    setAttachments(next)
+  }
+  const discardAttachments = () => {
+    if (attachmentsSaved.current) return
+    for (const file of attachmentsRef.current) void window.electronAPI?.deleteAttachmentFile(file.path)
+    attachmentsRef.current = []
+  }
+  const importFiles = async (files: File[], mode: AttachmentMode) => {
+    if (!files.length || importing.current || savePending.current || closed.current) return
+    importing.current = true
+    setImportingFiles(true); setAttachmentError(false)
+    let imported: ImportedAttachment[] = []
+    try {
+      imported = await window.electronAPI?.importAttachments(files, mode) ?? []
+      const prepared = await Promise.all(imported.map(async file => {
+        const base64 = file.isImage && file.mimeType ? await window.electronAPI?.readFileAsBase64(file.path).catch(() => null) : null
+        return { ...file, url: base64 ? `data:${file.mimeType};base64,${base64}` : undefined }
+      }))
+      if (closed.current) {
+        imported.forEach(file => void window.electronAPI?.deleteAttachmentFile(file.path))
+        return
+      }
+      updateAttachments([...attachmentsRef.current, ...prepared])
+      setAttachmentError(imported.length !== files.length)
+    } catch {
+      imported.forEach(file => void window.electronAPI?.deleteAttachmentFile(file.path))
+      if (!closed.current) setAttachmentError(true)
+    } finally {
+      importing.current = false
+      if (!closed.current) setImportingFiles(false)
+    }
+  }
+  const attachmentPicker = useAttachmentPicker(importFiles, importingFiles || saving)
+  const handleDragEnter = (event: React.DragEvent) => {
+    if (!event.dataTransfer.types.includes('Files')) return
+    event.preventDefault(); event.stopPropagation()
+    dragDepth.current++
+    setDraggingFiles(true)
+  }
+  const handleDragLeave = (event: React.DragEvent) => {
+    if (!event.dataTransfer.types.includes('Files')) return
+    event.preventDefault(); event.stopPropagation()
+    dragDepth.current = Math.max(0, dragDepth.current - 1)
+    if (!dragDepth.current) setDraggingFiles(false)
+  }
+  const handleDragOver = (event: React.DragEvent) => {
+    if (!event.dataTransfer.types.includes('Files')) return
+    event.preventDefault(); event.stopPropagation()
+    event.dataTransfer.dropEffect = 'copy'
+  }
+  const handleDrop = (event: React.DragEvent) => {
+    if (!event.dataTransfer.types.includes('Files')) return
+    event.preventDefault(); event.stopPropagation()
+    dragDepth.current = 0
+    setDraggingFiles(false)
+    attachmentPicker.dropFiles(Array.from(event.dataTransfer.files))
+  }
 
   const discardUnsavedVideo = () => {
     if (savedVideoLogRef.current) return
@@ -68,14 +141,20 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
     if (b64) setPreviewUrl(`data:image/png;base64,${b64}`)
   }
   const handleSnip = async () => {
+    if (savePending.current || closed.current) return
     const path = await window.electronAPI?.startSnipping()
     if (!path) return
     const b64 = await window.electronAPI?.readFileAsBase64(path)
-    if (!b64) return
-    setAttachments(prev => [...prev, { path, url: `data:image/png;base64,${b64}` }])
+    if (!b64 || closed.current || savePending.current) { void window.electronAPI?.deleteAttachmentFile(path); return }
+    updateAttachments([...attachmentsRef.current, { path, name: attachmentFilename(path), url: `data:image/png;base64,${b64}` }])
   }
 
-  const removeAttachment = (i: number) => setAttachments(prev => prev.filter((_, idx) => idx !== i))
+  const removeAttachment = (i: number) => {
+    if (savePending.current) return
+    const file = attachmentsRef.current[i]
+    updateAttachments(attachmentsRef.current.filter((_, index) => index !== i))
+    if (file) void window.electronAPI?.deleteAttachmentFile(file.path)
+  }
 
   const startRecording = async (forceChoose = false) => {
     if (mediaRecorderRef.current?.state === 'recording') return
@@ -133,6 +212,9 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
   }
 
   const handleClose = () => {
+    if (savePending.current) return
+    closed.current = true
+    discardAttachments()
     discardUnsavedVideo()
     stopRecording()
     onClose()
@@ -153,14 +235,20 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
     if (!active) stopRecording()
   }, [active])
 
-  useEffect(() => () => {
-    discardUnsavedVideo()
-    stopRecording()
+  useEffect(() => {
+    closed.current = false
+    return () => {
+      closed.current = true
+      discardAttachments()
+      discardUnsavedVideo()
+      stopRecording()
+    }
   }, [])
 
   const handleSave = async () => {
-    if (recording) return
+    if (recording || importing.current || savePending.current || closed.current) return
     if (!title.trim() && !content.trim() && !filePath && attachments.length === 0) return
+    savePending.current = true
     setSaving(true)
     try {
       await createLog({
@@ -170,15 +258,18 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
         content_format: type === 'note' ? format : 'text',
         file_path: filePath,
         tags,
-        attachments: attachments.map(a => a.path),
+        attachments: attachmentsRef.current.map(a => a.path),
         workspace_id: workspaceId ?? null,
         is_secret: type === 'note' && isSecret
       })
       if (type === 'video') savedVideoLogRef.current = true
+      attachmentsSaved.current = true
+      savePending.current = false
       handleClose()
     } catch (e) {
       console.error(e)
     } finally {
+      savePending.current = false
       setSaving(false)
     }
   }
@@ -204,7 +295,8 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
           <button onClick={handleClose} aria-label={t('cancel')} className="new-log-close-button btn-ghost p-1.5"><X className="w-4 h-4" /></button>
         </div>
 
-        <div className="p-5 flex flex-col gap-4 overflow-y-auto flex-1 [&>*]:shrink-0">
+        <div className="p-5 flex flex-col gap-4 overflow-y-auto flex-1 [&>*]:shrink-0"
+          onDragEnter={handleDragEnter} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
           {/* 타입 선택 */}
           <div className="grid grid-cols-3 gap-2">
             {TYPES.map(({ value, label, icon: Icon, color }) => (
@@ -261,21 +353,6 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
             }
             value={content} onChange={e => setContent(e.target.value)} />
 
-          {/* 첨부 이미지 (노트) */}
-          {attachments.length > 0 && (
-            <div className="flex flex-col gap-2">
-              {attachments.map((att, i) => (
-                <div key={i} className="relative group rounded-lg overflow-hidden border border-gray-700">
-                  <img src={att.url} alt={`attachment-${i}`} className="w-full object-cover max-h-40" />
-                  <button onClick={() => removeAttachment(i)}
-                    className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/70 border border-white/20">
-                    <X className="w-3.5 h-3.5 text-white" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
           {/* 스크린샷 */}
           {type === 'screenshot' && (
             <div>
@@ -313,7 +390,18 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
           )}
 
           {/* 태그 */}
-          <TagInput value={tags} onChange={setTags} disabled={saving} />
+          {attachmentPicker.input}
+          {attachmentPicker.dialog}
+          <div className="space-y-4">
+            <TagInput value={tags} onChange={setTags} disabled={saving} />
+            {attachments.length > 0 && <div className="flex max-h-40 flex-col gap-1.5 overflow-y-auto">
+              {attachments.map((file, index) => <AttachmentFileRow key={`${file.path}-${index}`} reference={file.path}
+                url={file.url} name={file.name} size={file.size} compact disabled={saving}
+                onRemove={() => removeAttachment(index)} />)}
+            </div>}
+            <FileDropZone onSelect={attachmentPicker.selectFiles} busy={importingFiles || saving} dragging={draggingFiles} compact />
+            {attachmentError && <p role="alert" className="text-xs text-red-400">{t('fileImportFailed')}</p>}
+          </div>
         </div>
 
         {/* 푸터 */}
@@ -328,7 +416,7 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
           </div>
           <div className="flex items-center gap-2">
             <button onClick={handleClose} className="new-log-cancel-button btn-secondary">{t('cancel')}</button>
-            <button onClick={handleSave} disabled={saving || recording} className="btn-primary flex items-center gap-2">
+            <button onClick={handleSave} disabled={saving || recording || importingFiles} className="btn-primary flex items-center gap-2">
               {saving && <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
               {t('save')}
             </button>

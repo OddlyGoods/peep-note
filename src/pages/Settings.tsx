@@ -313,7 +313,7 @@ export default function Settings() {
   )
 
   return (
-    <div className="settings-page flex flex-col h-full">
+    <div className="settings-page flex flex-col h-full min-h-0 overflow-hidden">
       {/* 헤더 */}
       <div className="flex h-20 shrink-0 items-center justify-between px-6 border-b" style={{ borderColor: 'rgba(99,102,241,0.12)' }}>
         <h1 className="text-lg font-semibold text-white">{t('settings')}</h1>
@@ -330,7 +330,7 @@ export default function Settings() {
         </button>
       </div>
 
-      <div className="settings-scroll-area flex-1 overflow-y-auto" data-screen-scroll="main">
+      <div className="settings-scroll-area flex-1 min-h-0 overflow-y-auto overscroll-contain" data-screen-scroll="main">
         <div className="max-w-2xl mx-auto px-6 py-6 space-y-6">
 
           <section className="card p-5">

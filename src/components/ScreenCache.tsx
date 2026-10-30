@@ -53,7 +53,7 @@ function CachedScreen({ active, children }: { active: boolean; children: ReactNo
     return () => { save(); observer.disconnect(); cancelAnimationFrame(frame) }
   }, [active])
 
-  return <div ref={container} className="absolute inset-0 min-w-0" style={{ display: active ? 'block' : 'none' }}
+  return <div ref={container} className="absolute inset-0 min-w-0 overflow-hidden" style={{ display: active ? 'block' : 'none' }}
     aria-hidden={!active || undefined}
     onScrollCapture={() => { if (active) save() }}
     onWheelCapture={event => { if ((event.target as Element).closest('[data-screen-scroll],textarea')) restoring.current = false }}

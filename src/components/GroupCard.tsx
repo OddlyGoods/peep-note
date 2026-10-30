@@ -202,34 +202,26 @@ export default function GroupCard({ group, onRefresh, startEditing = false, onSt
             <div className="flex items-center gap-1 flex-1 min-w-0">
               <span className="text-sm font-medium text-violet-200 truncate">{group.name}</span>
             </div>
-            <span className="text-xs text-violet-400/60 shrink-0">{recordCount(nonSummaryLogs.length)}</span>
           </>
         ) : (
           <>
             <div className="flex items-center gap-1 flex-1 min-w-0">
               <span className="text-sm font-medium text-violet-200 truncate">{group.name}</span>
-              <button
-                onClick={() => { setEditing(true); setEditName(group.name) }}
-                className="shrink-0 p-1 rounded text-violet-400 hover:text-violet-200 hover:bg-violet-500/25 transition-colors opacity-0 group-hover:opacity-100"
-                title={t('rename')}
-              >
-                <Pencil className="w-3 h-3" />
-              </button>
             </div>
-            <span className="text-xs text-violet-400/60 shrink-0">{recordCount(nonSummaryLogs.length)}</span>
             <div className="flex items-center gap-0.5 shrink-0">
               {/* AI 요약 버튼 */}
               <button
                 onClick={handleAiSummaryClick}
                 disabled={aiLoading || nonSummaryLogs.length === 0}
-                className="flex items-center gap-1 px-1.5 py-1 rounded text-xs text-amber-400/80 hover:text-amber-300 hover:bg-amber-500/10 transition-colors disabled:opacity-40"
+                className="p-1 rounded text-amber-400/80 hover:text-amber-300 hover:bg-amber-500/10 transition-colors disabled:opacity-40"
                 title={t('summary')}
+                aria-label={t('summary')}
+                aria-busy={aiLoading}
               >
                 {aiLoading
                   ? <Loader2 className="w-3 h-3 animate-spin" />
                   : <Sparkles className="w-3 h-3" />
                 }
-                {t('summary')}
               </button>
               <div className="w-px h-3 bg-violet-500/30 mx-0.5" />
               <button
@@ -238,6 +230,14 @@ export default function GroupCard({ group, onRefresh, startEditing = false, onSt
                 title={t('ungroup')}
               >
                 <Unlink className="w-3 h-3" />
+              </button>
+              <button
+                onClick={() => { setEditing(true); setEditName(group.name) }}
+                className="p-1 rounded text-violet-400/60 hover:text-violet-300 hover:bg-violet-500/20 transition-colors"
+                title={t('rename')}
+                aria-label={t('rename')}
+              >
+                <Pencil className="w-3 h-3" />
               </button>
               <button
                 onClick={() => setConfirmAction('delete')}

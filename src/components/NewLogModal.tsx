@@ -5,6 +5,7 @@ import { useLogStore } from '../stores/logStore'
 import { useI18n } from '../i18n'
 import { startRegionRecording } from '../lib/regionRecording'
 import TagInput from './TagInput'
+import ModalLayer from './ModalLayer'
 
 type LogType = 'note' | 'screenshot' | 'video'
 type ContentFormat = 'text' | 'markdown' | 'code' | 'html'
@@ -185,9 +186,8 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
   const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleClose} />
-      <div className="relative w-full max-w-lg bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl max-h-[90vh] flex flex-col">
+    <ModalLayer className="new-log-overlay p-4" onClose={handleClose}>
+      <div role="dialog" aria-modal="true" aria-label={t('newRecord')} className="relative w-full max-w-lg bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl max-h-[90vh] flex flex-col">
         {/* 헤더 */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800 shrink-0">
           <div className="flex items-center gap-2 min-w-0">
@@ -335,6 +335,6 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
           </div>
         </div>
       </div>
-    </div>
+    </ModalLayer>
   )
 }

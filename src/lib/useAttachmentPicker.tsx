@@ -1,6 +1,6 @@
 import { useScreenActive } from './screenActivity'
 import { useEffect, useRef, useState, type RefObject } from 'react'
-import { createPortal } from 'react-dom'
+import ModalLayer from '../components/ModalLayer'
 import { Copy, Link2, X } from 'lucide-react'
 import { useI18n } from '../i18n'
 import type { AttachmentMode } from '../../shared/attachments'
@@ -40,10 +40,8 @@ export function useAttachmentPicker(onFiles: (files: File[], mode: AttachmentMod
       event.currentTarget.value = ''
       if (files.length && !disabled) void onFiles(files, modeRef.current)
     }} />,
-    dialog: active && open ? createPortal(
-      <div className={`${host ? 'absolute' : 'fixed'} inset-0 z-[100] flex items-center justify-center p-4`}
-        style={!host && options.topInset ? { top: options.topInset } : undefined} onClick={event => event.stopPropagation()}>
-        <div className="absolute inset-0 bg-black/25 backdrop-blur-[1px]" onClick={close} />
+    dialog: active && open ? (
+      <ModalLayer className="attachment-picker-overlay p-4" container={host} topInset={options.topInset} onClose={close}>
         <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={t('attachmentModeTitle')}
           className="relative w-full max-w-sm rounded-xl border p-4 shadow-xl"
           style={{ background: 'var(--modal-bg)', borderColor: 'var(--medium-border)' }}
@@ -73,6 +71,6 @@ export function useAttachmentPicker(onFiles: (files: File[], mode: AttachmentMod
             })}
           </div>
         </div>
-      </div>, host ?? document.body) : null,
+      </ModalLayer>) : null,
   }
 }

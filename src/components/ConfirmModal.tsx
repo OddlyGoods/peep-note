@@ -1,6 +1,6 @@
 import { useScreenActive } from '../lib/screenActivity'
 import { useEffect, useId } from 'react'
-import { createPortal } from 'react-dom'
+import ModalLayer from './ModalLayer'
 import { AlertTriangle, X } from 'lucide-react'
 import { useI18n } from '../i18n'
 
@@ -47,15 +47,8 @@ export default function ConfirmModal({
 
   if (!active) return null
 
-  return createPortal(
-    <div className="confirm-overlay fixed inset-x-0 bottom-0 top-10 z-[100] flex items-center justify-center" onClick={e => e.stopPropagation()}>
-      {/* 백드롭 */}
-      <div
-        className="absolute inset-0"
-        style={{ background: 'rgba(0,0,0,0.25)', backdropFilter: 'blur(1px)' }}
-        onClick={onCancel}
-      />
-
+  return (
+    <ModalLayer className="confirm-overlay" onClose={onCancel}>
       {/* 모달 */}
       <div
         role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={messageId}
@@ -132,6 +125,6 @@ export default function ConfirmModal({
           </button>
         </div>
       </div>
-    </div>, document.body
+    </ModalLayer>
   )
 }

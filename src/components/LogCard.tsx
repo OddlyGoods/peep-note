@@ -26,7 +26,7 @@ const TYPE_CONFIG = {
 const FORMAT_BADGE: Record<string, { icon: React.ElementType; label: string; color: string }> = {
   markdown: { icon: Hash, label: 'markdown', color: 'text-violet-300' },
   code: { icon: Code2, label: 'code', color: 'text-emerald-400' },
-  html: { icon: Globe, label: 'HTML', color: 'text-rose-300' }
+  html: { icon: Globe, label: 'HTML', color: 'text-gray-300' }
 }
 
 interface LogCardProps {

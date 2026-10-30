@@ -479,7 +479,7 @@ function createTray() {
       ? { open: 'PeepNoteを開く', quick: 'クイック記録', screenshot: 'キャプチャ', video: '画面録画を開始', about: 'アプリ情報', quit: '終了' }
       : language === 'zh'
         ? { open: '打开 PeepNote', quick: '快速记录', screenshot: '截图', video: '开始屏幕录制', about: '应用信息', quit: '退出' }
-        : { open: 'Show PeepNote', quick: 'Quick record', screenshot: 'Capture', video: 'Record', about: 'About', quit: 'Quit' }
+        : { open: 'Show PeepNote', quick: 'Quick record', screenshot: 'Capture', video: 'Screen record', about: 'About', quit: 'Quit' }
   const menu = Menu.buildFromTemplate([
     { label: text.open, click: () => showMainWindow() },
     { type: 'separator' },

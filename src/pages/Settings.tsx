@@ -1,5 +1,5 @@
-import { useScreenActive } from '../lib/screenActivity'
-import { useEffect, useRef, useState } from 'react'
+import { ScreenActivity, useScreenActive } from '../lib/screenActivity'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { Save, Keyboard, Cloud, User, RotateCcw, Sparkles, Eye, EyeOff, Check, ChevronDown, Lock, KeyRound, Loader2, MoreHorizontal, Settings2, Code2, ExternalLink } from 'lucide-react'
 import { api, Settings as SettingsType } from '../lib/api'
 import { Language, useI18n } from '../i18n'
@@ -133,6 +133,34 @@ function HotkeyInput({ value, label, disabled, onChange, onDisabledChange }: {
   )
 }
 
+const SETTINGS_SECTIONS = ['general', 'security', 'shortcuts', 'ai', 'mcp', 'app', 'developer'] as const
+type SettingsSection = typeof SETTINGS_SECTIONS[number]
+const sectionStorageKey = 'openpeepnote_settings_section'
+function initialSection(): SettingsSection {
+  try {
+    const saved = localStorage.getItem(sectionStorageKey)
+    if (SETTINGS_SECTIONS.includes(saved as SettingsSection)) return saved as SettingsSection
+  } catch {}
+  return 'general'
+}
+
+function SettingsPane({ section, selected, children }: { section: SettingsSection; selected: boolean; children: ReactNode }) {
+  const screenActive = useScreenActive()
+  const container = useRef<HTMLDivElement>(null)
+  const scrollTop = useRef(0)
+  useLayoutEffect(() => {
+    if (selected && container.current) container.current.scrollTop = scrollTop.current
+  }, [selected])
+  return <ScreenActivity.Provider value={screenActive && selected}>
+    <div ref={container} role="tabpanel" id={`settings-panel-${section}`} aria-labelledby={`settings-tab-${section}`}
+      hidden={!selected} tabIndex={0} className="settings-scroll-area h-full min-h-0 overflow-y-auto overscroll-contain focus:outline-none"
+      data-screen-scroll={selected ? `settings-${section}` : undefined}
+      onScroll={event => { if (selected) scrollTop.current = event.currentTarget.scrollTop }}>
+      <div className="mx-auto w-full max-w-3xl space-y-6 px-6 py-6">{children}</div>
+    </div>
+  </ScreenActivity.Provider>
+}
+
 export default function Settings() {
   const active = useScreenActive()
   const { language, setLanguage, t } = useI18n()
@@ -142,6 +170,21 @@ export default function Settings() {
     ja: { title: 'シークレットノートのロック', set: 'シークレットノートを保護する4桁のパスワードを設定します。', active: '4桁のパスワードが設定されています。', actionSet: 'パスワードを設定', actionChange: 'パスワードを再設定' },
     zh: { title: '私密笔记锁定', set: '设置 4 位密码以保护私密笔记。', active: '已设置 4 位密码。', actionSet: '设置密码', actionChange: '重设密码' }
   }[language]
+  const [section, setSection] = useState<SettingsSection>(initialSection)
+  const categoryTabs = useRef<Partial<Record<SettingsSection, HTMLButtonElement>>>({})
+  const categories = [
+    { id: 'general' as const, label: t('general') },
+    { id: 'security' as const, label: secretSettingsCopy.title },
+    { id: 'shortcuts' as const, label: t('globalShortcuts') },
+    { id: 'ai' as const, label: t('aiSettings') },
+    { id: 'mcp' as const, label: 'MCP' },
+    { id: 'app' as const, label: t('appInfo') },
+    { id: 'developer' as const, label: t('developerInfo') }
+  ]
+  const selectSection = (next: SettingsSection) => {
+    setSection(next)
+    try { localStorage.setItem(sectionStorageKey, next) } catch {}
+  }
   const [settings, setSettings] = useState<SettingsType | null>(null)
   const [hotkeys, setHotkeys] = useState<Hotkeys>(() => resolveHotkeys())
   const [backupEnabled, setBackupEnabled] = useState(false)
@@ -220,8 +263,10 @@ export default function Settings() {
   }, [active])
 
   useEffect(() => {
-    if (!active) { setLanguageMenuOpen(false); setModelMenuOpen(false) }
-  }, [active])
+    setLanguageMenuOpen(false)
+    setModelMenuOpen(false)
+    setShowKey(false)
+  }, [active, section])
 
   useEffect(() => {
     if (!languageMenuOpen && !modelMenuOpen) return
@@ -314,7 +359,29 @@ export default function Settings() {
   )
 
   return (
-    <div className="settings-page flex flex-col h-full min-h-0 overflow-hidden">
+    <div className="settings-page flex h-full min-h-0 overflow-hidden">
+      <aside className="settings-category-sidebar w-44 lg:w-52 max-[640px]:w-36 shrink-0 overflow-y-auto border-r"
+        style={{ background: 'var(--side-panel-bg)', borderColor: 'var(--soft-border)' }}>
+        <nav role="tablist" aria-label={t('settings')} aria-orientation="vertical" className="space-y-0.5 p-3 pt-6">
+          {categories.map(({ id, label }, index) => <button key={id} ref={node => { categoryTabs.current[id] = node ?? undefined }}
+            id={`settings-tab-${id}`} type="button" role="tab" aria-selected={section === id} aria-controls={`settings-panel-${id}`}
+            tabIndex={section === id ? 0 : -1} title={label} onClick={() => selectSection(id)}
+            onKeyDown={event => {
+              const next = event.key === 'ArrowDown' ? (index + 1) % categories.length
+                : event.key === 'ArrowUp' ? (index - 1 + categories.length) % categories.length
+                : event.key === 'Home' ? 0 : event.key === 'End' ? categories.length - 1 : -1
+              if (next < 0) return
+              event.preventDefault()
+              selectSection(categories[next].id)
+              categoryTabs.current[categories[next].id]?.focus()
+            }}
+            className={`block w-full truncate rounded-lg border px-3 py-2 text-left text-xs leading-5 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-400 ${section === id ? 'text-indigo-300' : 'workspace-list-item border-transparent text-gray-400 hover:bg-gray-800 hover:text-gray-200'}`}
+            style={section === id ? { background: 'rgba(99,102,241,0.20)', borderColor: 'rgba(99,102,241,0.30)', color: 'var(--workspace-badge-text)' } : undefined}>
+            {label}
+          </button>)}
+        </nav>
+      </aside>
+      <div className="flex min-w-0 min-h-0 flex-1 flex-col">
       {/* 헤더 */}
       <div className="flex h-20 shrink-0 items-center justify-between px-6 border-b" style={{ borderColor: 'rgba(99,102,241,0.12)' }}>
         <h1 className="text-lg font-semibold text-white">{t('settings')}</h1>
@@ -331,9 +398,8 @@ export default function Settings() {
         </button>
       </div>
 
-      <div className="settings-scroll-area flex-1 min-h-0 overflow-y-auto overscroll-contain" data-screen-scroll="main">
-        <div className="max-w-2xl mx-auto px-6 py-6 space-y-6">
-
+      <div className="min-h-0 flex-1 overflow-hidden">
+        <SettingsPane section="general" selected={section === 'general'}>
           <section className="card p-5">
             <div className="mb-4 flex items-center gap-2">
               <Settings2 className="h-4 w-4 text-violet-400" />
@@ -441,7 +507,8 @@ export default function Settings() {
               </div>
             </div>
           </section>
-
+        </SettingsPane>
+        <SettingsPane section="security" selected={section === 'security'}>
           <section className="card p-5">
             <div className="mb-4 flex items-center justify-between gap-4">
               <div className="flex items-center gap-2 min-w-0">
@@ -457,8 +524,8 @@ export default function Settings() {
               </button>
             </div>
           </section>
-
-          {/* 단축키 설정 */}
+        </SettingsPane>
+        <SettingsPane section="shortcuts" selected={section === 'shortcuts'}>
           <section className="card p-5">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
@@ -503,18 +570,8 @@ export default function Settings() {
               ))}
             </div>
           </section>
-
-          {/* 백업 설정 */}
-          <section className="card p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <Cloud className="w-4 h-4 text-blue-400" />
-              <h2 className="text-sm font-semibold text-white">{t('cloudBackup')}</h2>
-              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium text-blue-300 border border-blue-400/20 bg-blue-400/10">{t('comingSoon')}</span>
-            </div>
-            <p className="text-sm text-gray-400">{t('backupComingSoonDescription')}</p>
-          </section>
-
-          {/* AI 설정 */}
+        </SettingsPane>
+        <SettingsPane section="ai" selected={section === 'ai'}>
           <section className="card p-5">
             <div className="flex items-center gap-2 mb-4">
               <Sparkles className="w-4 h-4 text-amber-400" />
@@ -697,10 +754,11 @@ export default function Settings() {
                 baseUrl={aiProvider === 'qwen' ? qwenBaseUrl : undefined} />
             </div>
           </section>
-
-          {/* 앱 정보 */}
+        </SettingsPane>
+        <SettingsPane section="mcp" selected={section === 'mcp'}>
           <McpPanel />
-
+        </SettingsPane>
+        <SettingsPane section="app" selected={section === 'app'}>
           <section className="card p-5">
             <div className="flex items-center gap-2 mb-4">
               <User className="w-4 h-4 text-gray-400" />
@@ -720,6 +778,16 @@ export default function Settings() {
             </div>
             <UpdatePanel />
           </section>
+          <section className="card p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <Cloud className="w-4 h-4 text-blue-400" />
+              <h2 className="text-sm font-semibold text-white">{t('cloudBackup')}</h2>
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium text-blue-300 border border-blue-400/20 bg-blue-400/10">{t('comingSoon')}</span>
+            </div>
+            <p className="text-sm text-gray-400">{t('backupComingSoonDescription')}</p>
+          </section>
+        </SettingsPane>
+        <SettingsPane section="developer" selected={section === 'developer'}>
           <section className="card p-5">
             <div className="mb-4 flex items-center gap-2">
               <Code2 className="h-4 w-4 text-violet-400" />
@@ -749,7 +817,8 @@ export default function Settings() {
               ))}
             </div>
           </section>
-        </div>
+        </SettingsPane>
+      </div>
       </div>
       {showSecretPasswordModal && (
         <SecretPasswordModal

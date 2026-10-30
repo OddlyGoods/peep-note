@@ -11,6 +11,7 @@ import { initDb, getDb, run, queryOne } from '../server/db'
 import { createApiApp } from '../server/index'
 import { createMcpAccess } from '../server/mcpAccess'
 import { restoreTrash } from '../server/trash'
+import { MCP_CLIENTS } from '../shared/mcpClients'
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'peepnote-mcp-test-'))
 const access = createMcpAccess(root)
@@ -53,6 +54,9 @@ test('MCP is opt-in, requires a private token and refuses browser origins and sp
   assert.equal((await fetch(endpoint, { method: 'POST' })).status, 404)
   assert.deepEqual(await (await fetch(endpoint.replace('/mcp', '/api/mcp'))).json(), { enabled: false, endpoint })
   assert.equal((await fetch(endpoint.replace('/mcp', '/api/mcp/config'))).status, 409)
+  for (const { id } of MCP_CLIENTS) {
+    assert.equal((await fetch(endpoint.replace('/mcp', `/api/mcp/config?client=${id}`))).status, 409)
+  }
   const controlUrl = endpoint.replace('/mcp', '/api/mcp')
   assert.equal((await fetch(controlUrl, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: 'yes' }) })).status, 400)
   assert.equal((await fetch(controlUrl, { method: 'PUT', headers: { 'Content-Type': 'application/json', Origin: 'https://unrelated.example' }, body: JSON.stringify({ enabled: true }) })).status, 403)
@@ -73,6 +77,35 @@ test('MCP is opt-in, requires a private token and refuses browser origins and sp
   assert.equal((await configResponse.json()).config.includes('provider-fixture-only'), false)
   client = new Client({ name: 'peepnote-integration-test', version: '1.0.0' })
   await client.connect(new StreamableHTTPClientTransport(new URL(endpoint), { requestInit: { headers: { Authorization: tokenHeader() } } }))
+})
+
+test('each client receives its matching configuration with the current token and custom port', async () => {
+  for (const { id } of MCP_CLIENTS) {
+    const response = await fetch(endpoint.replace('/mcp', `/api/mcp/config?client=${id}`))
+    assert.equal(response.status, 200)
+    assert.equal(response.headers.get('cache-control'), 'no-store')
+    const { config } = await response.json()
+    assert.ok(config.includes(endpoint))
+    assert.ok(config.includes(tokenHeader()))
+    assert.equal(config.includes('provider-fixture-only'), false)
+    assert.equal(config.includes('password-fixture-only'), false)
+    if (id === 'codex') assert.equal(config, access.codexConfig(endpoint))
+    else {
+      assert.ok(config.startsWith(id === 'claude-code' ? 'claude mcp add --transport http' : 'gemini mcp add --transport http'))
+      assert.ok(config.includes('--scope user'))
+      assert.equal(config.includes('--trust'), false)
+      assert.equal(config.includes('[mcp_servers.'), false)
+      const authorization = JSON.parse(config.match(/--header ("[^"]+")/)![1]).replace(/^Authorization: /, '')
+      const connection = new Client({ name: `peepnote-${id}-test`, version: '1.0.0' })
+      try {
+        await connection.connect(new StreamableHTTPClientTransport(new URL(endpoint), { requestInit: { headers: { Authorization: authorization } } }))
+        assert.ok((await connection.listTools()).tools.some(tool => tool.name === 'search_notes'))
+      } finally { await connection.close() }
+    }
+  }
+  const invalid = await fetch(endpoint.replace('/mcp', '/api/mcp/config?client=unknown'))
+  assert.equal(invalid.status, 400)
+  assert.deepEqual(await invalid.json(), { error: 'INVALID_MCP_CLIENT' })
 })
 
 test('real MCP client discovers only the intended tools, without settings, provider calls or permanent deletion', async () => {
@@ -166,10 +199,15 @@ test('pagination, invalid arguments, request limits and disabled/re-enabled cred
   assert.equal((await app.request(endpoint, { method: 'POST', headers: { Authorization: tokenHeader(), 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' }, body: 'x'.repeat(1_048_577) })).status, 413)
   const oldHeader = tokenHeader()
   access.setEnabled(false)
+  for (const { id } of MCP_CLIENTS) assert.throws(() => access.clientConfig(endpoint, id), /MCP_DISABLED/)
   assert.equal((await fetch(endpoint, { method: 'POST', headers: { Authorization: oldHeader } })).status, 404)
   assert.equal(createMcpAccess(root).enabled, false)
   access.setEnabled(true)
   assert.notEqual(tokenHeader(), oldHeader)
+  for (const { id } of MCP_CLIENTS) {
+    assert.equal(access.clientConfig(endpoint, id).includes(oldHeader), false)
+    assert.ok(access.clientConfig(endpoint, id).includes(tokenHeader()))
+  }
   assert.equal((await fetch(endpoint, { method: 'POST', headers: { Authorization: oldHeader } })).status, 401)
 })
 

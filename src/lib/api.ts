@@ -1,4 +1,5 @@
 import { invalidateExploreCache } from './exploreCache'
+import type { McpClient } from '../../shared/mcpClients'
 import type { TrashRetentionDays } from '../../shared/trashRetention'
 import type { Hotkeys } from '../../shared/hotkeys'
 import type { AiConnectionInput, AiConnectionResult } from '../../shared/aiConnection'
@@ -25,7 +26,7 @@ export const api = {
   mcp: {
     status: () => request<{ enabled: boolean; endpoint: string }>('/api/mcp'),
     setEnabled: (enabled: boolean) => request<{ enabled: boolean; endpoint: string }>('/api/mcp', { method: 'PUT', body: JSON.stringify({ enabled }) }),
-    config: () => request<{ config: string }>('/api/mcp/config')
+    config: (client: McpClient = 'codex') => request<{ config: string }>(`/api/mcp/config?client=${encodeURIComponent(client)}`)
   },
   // Logs
   logs: {

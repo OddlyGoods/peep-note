@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
 import { createPeepNoteMcp } from './mcpTools'
 import type { McpAccess } from './mcpAccess'
+import { isMcpClient } from '../shared/mcpClients'
 
 export function mcpControl(access: McpAccess, port: number) {
   const app = new Hono()
@@ -16,9 +17,11 @@ export function mcpControl(access: McpAccess, port: number) {
     } catch { return c.json({ error: 'MCP_SETTING_FAILED' }, 500) }
   })
   app.get('/config', c => {
-    if (!access.enabled) return c.json({ error: 'MCP_DISABLED' }, 409)
     c.header('Cache-Control', 'no-store')
-    return c.json({ config: access.codexConfig(endpoint) })
+    if (!access.enabled) return c.json({ error: 'MCP_DISABLED' }, 409)
+    const client = c.req.query('client') ?? 'codex'
+    if (!isMcpClient(client)) return c.json({ error: 'INVALID_MCP_CLIENT' }, 400)
+    return c.json({ config: access.clientConfig(endpoint, client) })
   })
   return app
 }

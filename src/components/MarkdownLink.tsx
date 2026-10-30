@@ -7,8 +7,9 @@ export default function MarkdownLink({ href, title, children }: ComponentPropsWi
   const { t } = useI18n()
   const [failed, setFailed] = useState(false)
   const url = externalWebUrl(href)
-  if (!url) return <span className="cursor-help underline decoration-dotted underline-offset-2"
-    title={`${t('localPathLinkHint')}${href ? `\n${href}` : ''}`}>{children}</span>
+  if (!url) return <span className="break-words" title={title}>
+    {href ? <>[{children}]({href})</> : children}
+  </span>
 
   return <>
     <a href={url} title={title} target="_blank" rel="noopener noreferrer"

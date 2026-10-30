@@ -100,13 +100,13 @@ export default function Favorites() {
       <h1 className="text-lg font-semibold text-white">{t('favorites')}</h1>
       <p className="text-xs text-gray-400 mt-0.5">{t('allDatesAndWorkspaces')}</p>
     </header>
-    <div className="px-6 py-3 border-b" style={{ borderColor: 'rgba(99,102,241,0.12)' }}>
+    <div className="px-6 md:px-[84px] py-3 border-b" style={{ borderColor: 'rgba(99,102,241,0.12)' }}>
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
         <input className="input pl-8 w-full py-1.5" value={query} onChange={event => setQuery(event.target.value)} aria-label={t('searchPlaceholder')} placeholder={t('searchPlaceholder')} />
       </div>
     </div>
-    <div className="dashboard-scroll-area flex-1 overflow-y-auto px-6 pt-6 pb-40" data-screen-scroll="main" data-screen-scroll-key={search} aria-busy={loading || loadingMore}>
+    <div className="dashboard-scroll-area flex-1 overflow-y-auto px-6 md:px-[84px] pt-6 pb-40" data-screen-scroll="main" data-screen-scroll-key={search} aria-busy={loading || loadingMore}>
       {error && <p role="alert" className="text-red-400 text-sm mb-4">{t('operationFailed')} <button className="underline" onClick={() => setRefresh(value => value + 1)}>{t('retry')}</button></p>}
       {loading && !items.length ? <div className="flex items-center justify-center h-48" role="status" aria-label={t('loading')}><div className="w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" /></div>
         : !items.length ? <div className="flex flex-col items-center justify-center h-48 text-center">

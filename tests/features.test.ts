@@ -342,10 +342,9 @@ test('bulk and group deletion can be restored with group membership', async () =
   const groupedLogs = (await json('/api/groups')).find((item: any) => item.id === group.id).logs
   assert.equal(groupedLogs.find((item: any) => item.id === 'summary').is_secret, false)
   await json(`/api/groups/${group.id}/ungroup`, 'POST')
-  assert.ok(row('summary').deleted_at)
+  assert.equal(row('summary'), null)
   assert.equal(row('g1').deleted_at, null)
   assert.equal(row('g1').group_id, null)
-  assert.equal(row('summary').group_id, null)
 })
 
 test('permanent cleanup protects shared and unmanaged files; expired trash is purged', async () => {
@@ -604,7 +603,7 @@ test('AI summaries stay in their group workspace', async () => {
 })
 
 
-test('summary provenance follows the actual request and survives deletion and restore', async () => {
+test('summary provenance follows the actual request and is preserved after failed regeneration', async () => {
   insert('summary-info-one')
   insert('summary-info-two')
   const group = await json('/api/groups', 'POST', { name: 'Summary info', log_ids: ['summary-info-one', 'summary-info-two'] })
@@ -643,13 +642,79 @@ test('summary provenance follows the actual request and survives deletion and re
     assert.deepEqual(await json(`/api/logs/${first.id}`), updated)
 
     await json(`/api/logs/${first.id}`, 'DELETE')
-    assert.ok(row(first.id).deleted_at)
+    assert.equal(row(first.id), null)
     assert.equal(row('summary-info-one').deleted_at, null)
     assert.equal(row('summary-info-two').deleted_at, null)
     assert.ok(queryOne('SELECT id FROM log_groups WHERE id = ?', [group.id]))
-    restoreTrash('local', [first.id])
-    assert.equal((await json(`/api/logs/${first.id}`)).summary_model, 'gpt-6.1-sol')
+    assert.equal(restoreTrash('local', [first.id]), 0)
+    assert.equal((await request(`/api/logs/${first.id}`)).status, 404)
   } finally { globalThis.fetch = originalFetch }
+})
+
+test('all deletion paths remove AI summaries immediately while preserving original records and shared files', async () => {
+  for (const mode of ['single', 'bulk', 'group', 'ungroup']) {
+    const first = `delete-summary-original-a-${mode}`
+    const second = `delete-summary-original-b-${mode}`
+    const summary = `delete-summary-${mode}`
+    const foreign = `foreign-summary-${mode}`
+    const privateFile = path.join(root, 'attachments', `${summary}-private.txt`)
+    const sharedFile = path.join(root, 'attachments', `${summary}-shared.txt`)
+    const linkedFile = path.join(root, 'attachments', `${summary}-linked.txt`)
+    const commentFile = path.join(root, 'attachments', `${summary}-comment.txt`)
+    for (const file of [privateFile, sharedFile, linkedFile, commentFile]) fs.writeFileSync(file, 'test-only file')
+    insert(first, { attachments: JSON.stringify([sharedFile]) })
+    insert(second)
+    insert(foreign, { user_id: 'bob', log_type: 'summary' })
+    const group = await json('/api/groups', 'POST', { name: summary, log_ids: [first, second] })
+    insert(summary, { log_type: 'summary', group_id: group.id, attachments: JSON.stringify([privateFile, sharedFile, attachmentReference(linkedFile, 'link')]) })
+    run('INSERT INTO comments (id, log_id, user_id, content, attachments) VALUES (?, ?, ?, ?, ?)', [`${summary}-comment`, summary, 'local', 'test comment', JSON.stringify([commentFile])])
+
+    if (mode === 'single') await json(`/api/logs/${summary}`, 'DELETE')
+    if (mode === 'bulk') {
+      assert.equal((await json('/api/logs/bulk-delete', 'POST', { ids: [summary, summary, first, foreign] })).deleted, 2)
+      assert.ok(row(first).deleted_at)
+      assert.equal(restoreTrash('local', [first]), 1)
+    }
+    if (mode === 'group') {
+      await json(`/api/groups/${group.id}`, 'DELETE')
+      assert.ok(row(first).deleted_at)
+      assert.ok(row(second).deleted_at)
+      assert.equal(restoreTrash('local', [first, second]), 2)
+    }
+    if (mode === 'ungroup') await json(`/api/groups/${group.id}/ungroup`, 'POST')
+
+    assert.equal(row(summary), null)
+    assert.equal((await request(`/api/logs/${summary}`)).status, 404)
+    assert.equal((await json('/api/trash')).some((item: any) => item.id === summary), false)
+    assert.equal((await json('/api/trash/restore', 'POST', { ids: [summary] })).restored, 0)
+    assert.equal(row(first).deleted_at, null)
+    assert.equal(row(second).deleted_at, null)
+    assert.equal(row(first).group_id, mode === 'ungroup' ? null : group.id)
+    assert.equal(row(second).group_id, mode === 'ungroup' ? null : group.id)
+    assert.ok(row(foreign))
+    assert.equal(row(foreign).deleted_at, null)
+    assert.equal(queryAll('SELECT id FROM comments WHERE log_id = ?', [summary]).length, 0)
+    assert.equal(fs.existsSync(privateFile), false)
+    assert.equal(fs.existsSync(commentFile), false)
+    assert.equal(fs.existsSync(sharedFile), true)
+    assert.equal(fs.existsSync(linkedFile), true)
+  }
+})
+
+test('rolling back summary deletion preserves its comment files', async () => {
+  const file = path.join(root, 'attachments', 'summary-rollback-comment.txt')
+  fs.writeFileSync(file, 'test-only rollback file')
+  insert('summary-rollback', { log_type: 'summary' })
+  run('INSERT INTO comments (id, log_id, user_id, content, attachments) VALUES (?, ?, ?, ?, ?)', ['summary-rollback-comment', 'summary-rollback', 'local', 'keep', JSON.stringify([file])])
+  assert.throws(() => transaction(() => {
+    moveToTrash('local', ['summary-rollback'])
+    throw new Error('test-only rollback')
+  }), /test-only rollback/)
+  await Promise.resolve()
+  assert.ok(row('summary-rollback'))
+  assert.equal(row('summary-rollback').deleted_at, null)
+  assert.equal(queryAll('SELECT id FROM comments WHERE log_id = ?', ['summary-rollback']).length, 1)
+  assert.equal(fs.existsSync(file), true)
 })
 
 test('restart cancels old automatic jobs without extracting images', async () => {

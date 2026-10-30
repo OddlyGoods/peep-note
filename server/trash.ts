@@ -12,16 +12,30 @@ export function getTrashRetentionDays(userId: string) {
 export function moveToTrash(userId: string, ids: string[]) {
   if (!ids.length) return 0
   const placeholders = ids.map(() => '?').join(',')
-  const rows = queryAll<{ id: string }>(`SELECT id FROM logs WHERE user_id = ? AND deleted_at IS NULL AND id IN (${placeholders})`, [userId, ...ids])
-  run(`UPDATE logs SET deleted_at = ?, ocr_status = CASE WHEN ocr_status IN ('pending', 'processing') THEN 'idle' ELSE ocr_status END WHERE user_id = ? AND deleted_at IS NULL AND id IN (${placeholders})`, [Math.floor(Date.now() / 1000), userId, ...ids])
+  const rows = queryAll<DeletableLog & { log_type: string }>(`SELECT id, log_type, file_path, attachments FROM logs WHERE user_id = ? AND deleted_at IS NULL AND id IN (${placeholders})`, [userId, ...ids])
+  const files = transaction(() => {
+    run(`UPDATE logs SET deleted_at = ?, ocr_status = CASE WHEN ocr_status IN ('pending', 'processing') THEN 'idle' ELSE ocr_status END WHERE user_id = ? AND deleted_at IS NULL AND log_type != 'summary' AND id IN (${placeholders})`, [Math.floor(Date.now() / 1000), userId, ...ids])
+    return deleteRows(rows.filter(row => row.log_type === 'summary'))
+  })
+  // Ungrouping can wrap this operation in a transaction. Check file references
+  // after that transaction completes so rollback never removes restored files.
+  if (files.length) queueMicrotask(() => cleanupUnreferencedMedia(files))
   return rows.length
 }
 
+type DeletableLog = { id: string; file_path: string | null; attachments: string }
+
 export function permanentlyDelete(where: string, params: unknown[]) {
-  const rows = queryAll<{ id: string; file_path: string | null; attachments: string }>(
+  const rows = queryAll<DeletableLog>(
     `SELECT id, file_path, attachments FROM logs WHERE deleted_at IS NOT NULL AND (${where})`, params
   )
   if (!rows.length) return 0
+  cleanupUnreferencedMedia(deleteRows(rows))
+  return rows.length
+}
+
+function deleteRows(rows: DeletableLog[]): string[] {
+  if (!rows.length) return []
   const files = rows.flatMap(row => [
     ...mediaPaths(row),
     ...queryAll<{ attachments: string }>('SELECT attachments FROM comments WHERE log_id = ?', [row.id]).flatMap(mediaPaths)
@@ -33,8 +47,7 @@ export function permanentlyDelete(where: string, params: unknown[]) {
     }
     run('DELETE FROM log_groups WHERE NOT EXISTS (SELECT 1 FROM logs WHERE logs.group_id = log_groups.id)')
   })
-  cleanupUnreferencedMedia(files)
-  return rows.length
+  return files
 }
 
 export function purgeExpiredTrash(userId?: string) {

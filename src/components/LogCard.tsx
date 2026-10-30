@@ -282,7 +282,7 @@ export default function LogCard({ log, basePath = '/log', showCheckbox = false, 
       {showConfirm && (
         <ConfirmModal
           title={t('deleteLog')}
-          message={t('deleteLogMessage', { title: displayTitle || t('untitled') })}
+          message={isAiSummary ? t('deleteSummaryMessage') : t('deleteLogMessage', { title: displayTitle || t('untitled') })}
           confirmLabel={t('delete')}
           onConfirm={confirmDelete}
           onCancel={() => setShowConfirm(false)}

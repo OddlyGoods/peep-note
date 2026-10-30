@@ -58,7 +58,7 @@ The package and Linux executable are named `peep-note`. The app keeps its existi
 - Capture a selected screen region and record a selected screen region
 - Select and remember a preferred monitor for capture and recording
 - Organize records with workspaces, tags, date ranges, search, and groups
-- Restore deleted records from Trash during a configurable retention period (7, 10, 30, or 90 days; default 10), or permanently delete them
+- Restore deleted records from Trash during a configurable retention period (7, 10, 30, or 90 days; default 10), or permanently delete them. AI summaries are deleted immediately.
 - Search Korean and English text in screenshots and attached images using local OCR
 - Generate AI summaries with OpenAI, Claude, Gemini, or Qwen
 - Use global shortcuts and a recent-record Quick List

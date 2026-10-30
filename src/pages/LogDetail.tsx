@@ -1039,7 +1039,7 @@ export default function LogDetail() {
       {showConfirm && (
         <ConfirmModal
           title={t('deleteLog')}
-          message={t('deleteRecordMessage')}
+          message={t(isAiSummary ? 'deleteSummaryMessage' : 'deleteRecordMessage')}
           onConfirm={confirmDelete}
           onCancel={() => setShowConfirm(false)}
         />

@@ -101,6 +101,13 @@ async function rewriteMediaPaths(databaseFile: string, source: string, destinati
       if (!Array.isArray(parsed)) throw new DataStorageError('failed')
       db.run('UPDATE logs SET file_path = ?, attachments = ? WHERE id = ?', [remap(file), JSON.stringify(parsed.map(remap)), id])
     }
+    if (db.exec('PRAGMA table_info(comments)')[0]?.values.some((column: unknown[]) => column[1] === 'attachments')) {
+      for (const [id, attachments] of db.exec('SELECT id, attachments FROM comments')[0]?.values ?? []) {
+        const parsed = JSON.parse(String(attachments || '[]'))
+        if (!Array.isArray(parsed)) throw new DataStorageError('failed')
+        db.run('UPDATE comments SET attachments = ? WHERE id = ?', [JSON.stringify(parsed.map(remap)), id])
+      }
+    }
     fs.writeFileSync(databaseFile, Buffer.from(db.export()), { mode: 0o600 })
   } finally { db.close() }
 }

@@ -24,6 +24,9 @@ import { useAttachmentPicker } from '../lib/useAttachmentPicker'
 import type { AttachmentMode } from '../../shared/attachments'
 import ConfirmModal from '../components/ConfirmModal'
 import CommentCard from '../components/CommentCard'
+import CommentComposer from '../components/CommentComposer'
+import { hasNoteChanges, noteForm } from '../lib/noteEdit'
+import { discardDraftFiles } from '../lib/draftFiles'
 import SecretPasswordModal from '../components/SecretPasswordModal'
 import { useI18n } from '../i18n'
 import { useTheme } from '../theme'
@@ -93,6 +96,13 @@ export default function LogDetail() {
   const [mediaUrl, setMediaUrl] = useState<string | null>(null)
   const [attachmentUrls, setAttachmentUrls] = useState<Array<string | null>>([])
   const [removedAttachments, setRemovedAttachments] = useState<number[]>([])
+  const [addedNoteFiles, setAddedNoteFiles] = useState<string[]>([])
+  const noteFilesRef = useRef<string[]>([])
+  const newCommentFilesRef = useRef<string[]>([])
+  const editorFilesRef = useRef<string[]>([])
+  const pendingNoteSave = useRef<Promise<unknown> | null>(null)
+  const pendingCommentSave = useRef<Promise<unknown> | null>(null)
+  const [pendingEditExit, setPendingEditExit] = useState<'back' | 'cancel' | null>(null)
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
   const [showConfirm, setShowConfirm] = useState(false)
@@ -104,7 +114,9 @@ export default function LogDetail() {
   const [comments, setComments] = useState<LogComment[]>([])
   const [commentDraft, setCommentDraft] = useState('')
   const [addingComment, setAddingComment] = useState(false)
-  const [commentEditor, setCommentEditor] = useState<{ id: string; content: string } | null>(null)
+  const [newCommentFiles, setNewCommentFiles] = useState<string[]>([])
+  const [commentFileToDelete, setCommentFileToDelete] = useState<{ comment: LogComment; index: number } | null>(null)
+  const [commentEditor, setCommentEditor] = useState<{ id: string; content: string; attachments: string[]; added: string[] } | null>(null)
   const [commentToDelete, setCommentToDelete] = useState<LogComment | null>(null)
   const [commentBusyId, setCommentBusyId] = useState<string | null>(null)
   const [commentErrorId, setCommentErrorId] = useState<string | null>(null)
@@ -123,6 +135,13 @@ export default function LogDetail() {
     void video.play().catch(error => console.error('Video playback failed:', error))
   }
 
+  useEffect(() => () => {
+    discardDraftFiles(noteFilesRef.current, pendingNoteSave.current)
+    discardDraftFiles(newCommentFilesRef.current, pendingCommentSave.current)
+    discardDraftFiles(editorFilesRef.current, pendingCommentSave.current)
+    noteFilesRef.current = []; newCommentFilesRef.current = []; editorFilesRef.current = []
+  }, [id])
+
   useEffect(() => {
     if (!id) return
     let cancelled = false
@@ -132,6 +151,11 @@ export default function LogDetail() {
     setMediaUrl(null)
     setAttachmentUrls([])
     setRemovedAttachments([])
+    setAddedNoteFiles([])
+    setPendingEditExit(null)
+    setSaving(false)
+    setNewCommentFiles([])
+    setCommentFileToDelete(null)
     setGroupLogs([])
     setComments([])
     setCommentDraft('')
@@ -202,9 +226,10 @@ export default function LogDetail() {
         if (!cancelled && b64) setMediaUrl(`data:${log.log_type === 'video' ? 'video/webm' : 'image/png'};base64,${b64}`)
       }).catch(() => {})
     }
-    if (log.attachments?.length) {
-      setAttachmentUrls(new Array(log.attachments.length).fill(null))
-      void Promise.all(log.attachments.map(async path => {
+    if (log.attachments?.length || addedNoteFiles.length) {
+      const files = [...log.attachments, ...addedNoteFiles]
+      setAttachmentUrls(new Array(files.length).fill(null))
+      void Promise.all(files.map(async path => {
         if (!isImageAttachment(path)) return null
         const b64 = await window.electronAPI?.readFileAsBase64(path)
         const mimeType = attachmentMimeType(path)
@@ -212,7 +237,7 @@ export default function LogDetail() {
       })).then(urls => {
         if (!cancelled) setAttachmentUrls(urls)
       }).catch(() => {})
-    }
+    } else setAttachmentUrls([])
     if (log.group_id) {
       void api.groups.list({}).then(groups => {
         if (cancelled) return
@@ -223,23 +248,56 @@ export default function LogDetail() {
       }).catch(() => {})
     }
     return () => { cancelled = true }
-  }, [id, log?.id, log?.file_path, log?.attachments, log?.group_id, log?.log_type, secretGate, loading])
+  }, [id, log?.id, log?.file_path, log?.attachments, log?.group_id, log?.log_type, secretGate, loading, addedNoteFiles])
+
+  const resetNoteEditor = () => {
+    discardDraftFiles(noteFilesRef.current, pendingNoteSave.current)
+    noteFilesRef.current = []
+    setAddedNoteFiles([])
+    setRemovedAttachments([])
+    setEditing(false)
+    if (log) setForm(noteForm(log))
+  }
+
+  const leaveNoteEditor = (action: 'back' | 'cancel') => {
+    if (saving || addingFiles) return
+    const files = [...(log?.attachments ?? []), ...addedNoteFiles].filter((_, index) => !removedAttachments.includes(index))
+    if (editing && log && hasNoteChanges(log, form, files)) { setPendingEditExit(action); return }
+    resetNoteEditor()
+    if (action === 'back') navigate(menuForPath(location.pathname) ?? '/')
+  }
+
+  const discardNoteChanges = () => {
+    const action = pendingEditExit
+    setPendingEditExit(null)
+    resetNoteEditor()
+    if (action === 'back') navigate(menuForPath(location.pathname) ?? '/')
+  }
 
   const handleSave = async () => {
-    if (!log) return
+    if (!log || saving || addingFiles) return
+    const logId = log.id
+    const imported = [...noteFilesRef.current]
+    const attachments = [...log.attachments, ...addedNoteFiles].filter((_, index) => !removedAttachments.includes(index))
     setSaving(true)
+    const pending = updateLog(logId, { ...form, attachments })
+    pendingNoteSave.current = pending
     try {
-      const newAttachments = log.attachments.filter((_, i) => !removedAttachments.includes(i))
-      await updateLog(log.id, { title: form.title, content: form.content, tags: form.tags, content_format: form.content_format, attachments: newAttachments, is_secret: form.is_secret })
-      const updated = await api.logs.get(log.id)
-      if (recordIdRef.current === log.id) {
+      const updated = await pending
+      if (recordIdRef.current === logId) {
         setLog(updated)
-        setAttachmentUrls(prev => prev.filter((_, i) => !removedAttachments.includes(i)))
+        setForm(noteForm(updated))
+        noteFilesRef.current = []
+        setAddedNoteFiles([])
         setRemovedAttachments([])
         setEditing(false)
       }
+      discardDraftFiles(imported)
     } catch {}
-    setSaving(false)
+    finally {
+      if (pendingNoteSave.current === pending) pendingNoteSave.current = null
+      if (recordIdRef.current === logId) setSaving(false)
+    }
   }
 
   const handleDelete = () => { if (log) setShowConfirm(true) }
@@ -260,7 +318,7 @@ export default function LogDetail() {
   }
 
   const handleBack = () => {
-    navigate(menuForPath(location.pathname) ?? '/')
+    leaveNoteEditor('back')
   }
 
   const handleCopyContent = async () => {
@@ -298,15 +356,21 @@ export default function LogDetail() {
   }
 
   const handleAddComment = async () => {
-    if (!log || !commentDraft.trim() || addingComment) return
+    if (!log || (!commentDraft.trim() && !newCommentFiles.length) || addingComment) return
     const logId = log.id
     setAddingComment(true)
     setCommentErrorId(null)
     try {
-      const comment = await api.logs.addComment(logId, commentDraft)
+      const files = [...newCommentFilesRef.current]
+      const pending = api.logs.addComment(logId, commentDraft, files)
+      pendingCommentSave.current = pending
+      const comment = await pending
+      if (pendingCommentSave.current === pending) pendingCommentSave.current = null
       if (recordIdRef.current === logId) {
         setComments(previous => [...previous, comment])
         setCommentDraft(current => current === commentDraft ? '' : current)
+        newCommentFilesRef.current = []
+        setNewCommentFiles([])
       }
       syncCommentCount(logId, comment.comment_count)
       refreshChangedComments(logId)
@@ -318,16 +382,26 @@ export default function LogDetail() {
   }
 
   const handleSaveComment = async () => {
-    if (!log || !commentEditor?.content.trim() || commentBusyId) return
+    if (!log || !commentEditor || commentBusyId || addingComment) return
+    const original = comments.find(comment => comment.id === commentEditor.id)
+    const removingOnlyFiles = !!original && !original.content.trim() && (original.attachments?.length ?? 0) > 0
+      && !commentEditor.content.trim() && !commentEditor.attachments.length
+    if (!commentEditor.content.trim() && !commentEditor.attachments.length && !removingOnlyFiles) return
     const logId = log.id
     const editor = commentEditor
     setCommentBusyId(editor.id)
     setCommentErrorId(null)
     try {
-      const updated = await api.logs.updateComment(logId, editor.id, editor.content)
+      const pending = removingOnlyFiles ? api.logs.updateCommentFiles(logId, editor.id, [])
+        : api.logs.updateComment(logId, editor.id, editor.content, editor.attachments)
+      pendingCommentSave.current = pending
+      const updated = await pending
+      if (pendingCommentSave.current === pending) pendingCommentSave.current = null
+      discardDraftFiles(editor.added)
       if (recordIdRef.current === logId) {
         setComments(previous => previous.map(comment => comment.id === updated.id ? updated : comment))
         setCommentEditor(current => current?.id === editor.id ? null : current)
+        editorFilesRef.current = []
       }
       syncCommentCount(logId, updated.comment_count)
       refreshChangedComments(logId)
@@ -360,6 +434,79 @@ export default function LogDetail() {
     }
   }
 
+  const cancelCommentEditor = () => {
+    discardDraftFiles(editorFilesRef.current, pendingCommentSave.current)
+    editorFilesRef.current = []
+    setCommentEditor(null)
+    setCommentErrorId(null)
+  }
+
+  const addCommentFiles = async (comment: LogComment | null, files: File[], mode: AttachmentMode) => {
+    if (!log || !files.length || commentBusyId || addingComment) return
+    const logId = log.id
+    const editor = comment && commentEditor?.id === comment.id ? commentEditor : null
+    if (comment) setCommentBusyId(comment.id)
+    else setAddingComment(true)
+    setCommentErrorId(null)
+    let imported: string[] = []
+    try {
+      const result = await window.electronAPI?.importAttachments(files, mode) ?? []
+      imported = result.map(file => file.path)
+      if (!imported.length) throw new Error('No files imported')
+      if (recordIdRef.current !== logId) { discardDraftFiles(imported); return }
+      if (!comment) {
+        newCommentFilesRef.current = [...newCommentFilesRef.current, ...imported]
+        setNewCommentFiles(newCommentFilesRef.current)
+      } else if (editor) {
+        editorFilesRef.current = [...editorFilesRef.current, ...imported]
+        setCommentEditor(current => current?.id === editor.id ? { ...current, attachments: [...current.attachments, ...imported], added: [...current.added, ...imported] } : current)
+      } else {
+        const pending = api.logs.updateCommentFiles(logId, comment.id, [...(comment.attachments ?? []), ...imported])
+        pendingCommentSave.current = pending
+        const updated = await pending
+        if (pendingCommentSave.current === pending) pendingCommentSave.current = null
+        if (recordIdRef.current === logId) setComments(previous => previous.map(item => item.id === updated.id ? updated : item))
+        syncCommentCount(logId, updated.comment_count)
+        refreshChangedComments(logId)
+      }
+      if (imported.length !== files.length && recordIdRef.current === logId) setCommentErrorId(comment?.id ?? 'new')
+    } catch {
+      discardDraftFiles(imported, pendingCommentSave.current)
+      if (recordIdRef.current === logId) setCommentErrorId(comment?.id ?? 'new')
+    } finally {
+      if (recordIdRef.current === logId) { setCommentBusyId(null); setAddingComment(false) }
+    }
+  }
+
+  const removeNewCommentFile = (index: number) => {
+    const reference = newCommentFilesRef.current[index]
+    newCommentFilesRef.current = newCommentFilesRef.current.filter((_, position) => position !== index)
+    setNewCommentFiles(newCommentFilesRef.current)
+    if (reference) discardDraftFiles([reference])
+  }
+
+  const removeCommentFile = (comment: LogComment, index: number) => {
+    if (commentEditor?.id === comment.id) {
+      setCommentEditor(current => current ? { ...current, attachments: current.attachments.filter((_, position) => position !== index) } : current)
+    } else setCommentFileToDelete({ comment, index })
+  }
+
+  const confirmRemoveCommentFile = async () => {
+    if (!log || !commentFileToDelete || commentBusyId) return
+    const { comment, index } = commentFileToDelete
+    const logId = log.id
+    setCommentFileToDelete(null)
+    setCommentBusyId(comment.id)
+    setCommentErrorId(null)
+    try {
+      const updated = await api.logs.updateCommentFiles(logId, comment.id, comment.attachments.filter((_, position) => position !== index))
+      if (recordIdRef.current === logId) setComments(previous => previous.map(item => item.id === updated.id ? updated : item))
+      syncCommentCount(logId, updated.comment_count)
+      refreshChangedComments(logId)
+    } catch { if (recordIdRef.current === logId) setCommentErrorId(comment.id) }
+    finally { if (recordIdRef.current === logId) setCommentBusyId(null) }
+  }
+
   const addFiles = async (files: File[], mode: AttachmentMode) => {
     if (!log || log.log_type === 'summary' || files.length === 0 || addingFiles) return
     setAddingFiles(true)
@@ -369,6 +516,13 @@ export default function LogDetail() {
       imported = await window.electronAPI?.importAttachments(files, mode) ?? []
       if (imported.length === 0) {
         setFileAddFailed(true)
+        return
+      }
+      if (editing) {
+        if (recordIdRef.current !== log.id) { discardDraftFiles(imported.map(file => file.path)); return }
+        noteFilesRef.current = [...noteFilesRef.current, ...imported.map(file => file.path)]
+        setAddedNoteFiles(noteFilesRef.current)
+        setFileAddFailed(imported.length !== files.length)
         return
       }
       const updated = await updateLog(log.id, {
@@ -425,6 +579,9 @@ export default function LogDetail() {
   if (!log) return null
 
   if (log.is_secret && secretGate !== 'open') {
+    if (pendingEditExit) return <ConfirmModal title={t('unsavedChanges')} message={t('discardChangesMessage')}
+      danger={false} confirmLabel={t('discardChanges')} cancelLabel={t('keepEditing')}
+      onConfirm={discardNoteChanges} onCancel={() => setPendingEditExit(null)} />
     if (secretGate === 'unlock') return (
       <SecretPasswordModal key={log.id} mode="unlock" onSuccess={() => {
         rememberSecretUnlock()
@@ -452,7 +609,7 @@ export default function LogDetail() {
     <div className="relative flex flex-col flex-1 min-w-0 h-full">
       {/* 상단 바 */}
       <div className="flex h-20 shrink-0 items-center gap-3 px-6 border-b" style={{ borderColor: 'rgba(99,102,241,0.12)' }}>
-        <button onClick={handleBack} className="btn-ghost flex items-center gap-1.5 -ml-1">
+        <button onClick={handleBack} disabled={saving || addingFiles} className="btn-ghost flex items-center gap-1.5 -ml-1">
           <ArrowLeft className="w-4 h-4" />
           {t('back')}
         </button>
@@ -468,11 +625,11 @@ export default function LogDetail() {
           <>
             {editing ? (
               <>
-                <button onClick={() => { setEditing(false); setRemovedAttachments([]); setForm({ title: log.title, content: log.content, tags: log.tags, content_format: log.content_format ?? 'text', is_secret: !!log.is_secret }) }} className="btn-secondary flex items-center gap-1.5">
+                <button onClick={() => leaveNoteEditor('cancel')} disabled={saving || addingFiles} className="btn-secondary flex items-center gap-1.5">
                   <X className="w-4 h-4" />
                   {t('cancel')}
                 </button>
-                <button onClick={handleSave} disabled={saving} className="btn-primary flex items-center gap-1.5">
+                <button onClick={handleSave} disabled={saving || addingFiles} className="btn-primary flex items-center gap-1.5">
                   {saving && <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                   <Save className="w-4 h-4" />
                   {t('save')}
@@ -480,7 +637,7 @@ export default function LogDetail() {
               </>
             ) : (
               <>
-                <button onClick={() => setEditing(true)} className="btn-secondary flex items-center gap-1.5">
+                <button onClick={() => { setForm(noteForm(log)); setEditing(true) }} className="btn-secondary flex items-center gap-1.5">
                   <SquarePen className="w-4 h-4" />
                   {t('edit')}
                 </button>
@@ -500,6 +657,11 @@ export default function LogDetail() {
         data-screen-scroll="main" data-screen-scroll-key={id}
         className="detail-scroll-area relative flex-1 overflow-y-auto"
         onScroll={event => setShowScrollTop(event.currentTarget.scrollTop > 240)}
+        onDragEnterCapture={event => {
+          if (event.dataTransfer.types.includes('Files') && (event.target as Element).closest('[data-comment-drop]')) {
+            dragDepthRef.current = 0; setDraggingFiles(false)
+          }
+        }}
         onDragEnter={handleDragEnter}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -712,9 +874,9 @@ export default function LogDetail() {
             <section className="space-y-2" aria-label={t('attachmentFiles')}>
               <div className="flex items-center gap-1.5 text-xs font-medium text-gray-400"><Paperclip className="h-3.5 w-3.5" /><span>{t('attachmentFiles')}</span></div>
               <div className="flex flex-col gap-2">
-                {log.attachments.map((reference, index) => removedAttachments.includes(index) ? null : (
+                {[...log.attachments, ...addedNoteFiles].map((reference, index) => removedAttachments.includes(index) ? null : (
                   <AttachmentFileRow key={`${reference}-${index}`} reference={reference} url={attachmentUrls[index]}
-                    onRemove={editing ? () => setRemovedAttachments(previous => [...previous, index]) : undefined} />
+                    removeStyle="hover" onRemove={editing ? () => setRemovedAttachments(previous => [...previous, index]) : undefined} />
                 ))}
               </div>
               {!isAiSummary && <>
@@ -798,45 +960,30 @@ export default function LogDetail() {
                   <CommentCard key={comment.id} comment={comment}
                     date={format(new Date(comment.created_at * 1000), detailDateFormat, dateLocale ? { locale: dateLocale } : undefined)}
                     draft={commentEditor?.id === comment.id ? commentEditor.content : null}
-                    busy={commentBusyId !== null} error={commentErrorId === comment.id}
-                    onEdit={() => { setCommentEditor({ id: comment.id, content: comment.content }); setCommentErrorId(null) }}
+                    files={commentEditor?.id === comment.id ? commentEditor.attachments : (comment.attachments ?? [])}
+                    busy={commentBusyId !== null || addingComment} error={commentErrorId === comment.id}
+                    onEdit={() => { cancelCommentEditor(); setCommentEditor({ id: comment.id, content: comment.content, attachments: [...(comment.attachments ?? [])], added: [] }); setCommentErrorId(null) }}
                     onChange={content => setCommentEditor(current => current?.id === comment.id ? { ...current, content } : current)}
                     onSave={() => void handleSaveComment()}
-                    onCancel={() => { setCommentEditor(null); setCommentErrorId(null) }}
+                    onCancel={cancelCommentEditor}
+                    onFiles={(files, mode) => addCommentFiles(comment, files, mode)}
+                    onRemoveFile={index => removeCommentFile(comment, index)}
                     onDelete={() => { setCommentToDelete(comment); setCommentErrorId(null) }} />
                 ))}
               </div>
             )}
-            <div className="flex items-end gap-2">
-              <textarea
-                value={commentDraft}
-                maxLength={2000}
-                onChange={event => setCommentDraft(event.target.value)}
-                onKeyDown={event => {
-                  if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
-                    event.preventDefault()
-                    void handleAddComment()
-                  }
-                }}
-                className="input min-h-[42px] resize-y py-2 text-sm"
-                placeholder={t('commentPlaceholder')}
-                rows={1}
-              />
-              <button
-                type="button"
-                onClick={() => void handleAddComment()}
-                disabled={!commentDraft.trim() || addingComment}
-                className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-lg border border-violet-500/40 bg-violet-500/15 text-violet-300 transition-colors hover:bg-violet-500/25 hover:text-violet-200 disabled:cursor-not-allowed disabled:opacity-40"
-                title={t('addComment')}
-                aria-label={t('addComment')}
-              >
-                <Pencil className="h-4 w-4" />
-              </button>
-            </div>
-            {commentErrorId === 'new' && <p role="alert" className="mt-2 text-xs text-red-400">{t('operationFailed')}</p>}
+            <CommentComposer content={commentDraft} files={newCommentFiles} busy={addingComment || commentBusyId !== null} error={commentErrorId === 'new'}
+              onChange={setCommentDraft} onFiles={(files, mode) => addCommentFiles(null, files, mode)}
+              onRemove={removeNewCommentFile} onSubmit={() => void handleAddComment()} />
           </div>
         </div>
       </div>
+
+      {pendingEditExit && <ConfirmModal title={t('unsavedChanges')} message={t('discardChangesMessage')}
+        danger={false} confirmLabel={t('discardChanges')} cancelLabel={t('keepEditing')}
+        onConfirm={discardNoteChanges} onCancel={() => setPendingEditExit(null)} />}
+      {commentFileToDelete && <ConfirmModal title={t('delete')} message={t('deleteCommentFileMessage')}
+        onConfirm={() => void confirmRemoveCommentFile()} onCancel={() => setCommentFileToDelete(null)} />}
 
       {commentToDelete && <ConfirmModal title={t('deleteComment')} message={t('deleteCommentMessage')}
         onConfirm={() => void handleDeleteComment()} onCancel={() => setCommentToDelete(null)} />}

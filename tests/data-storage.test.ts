@@ -173,3 +173,21 @@ test('a final location preference write failure preserves the source database an
     assert.deepEqual(await prepareDataLocation(f.profile), { directory: f.profile })
   } finally { fs.renameSync = rename; f.cleanup() }
 })
+
+test('storage migration remaps comment copies and preserves original link locations', async () => {
+  const f = await fixture()
+  try {
+    const file = path.join(f.profile, 'open-peep-note.db')
+    const db = new f.SQL.Database(fs.readFileSync(file))
+    db.run('CREATE TABLE comments (id TEXT, attachments TEXT)')
+    db.run('INSERT INTO comments VALUES (?, ?)', ['with-files', JSON.stringify([f.attachment, attachmentReference(f.attachment, 'link')])])
+    fs.writeFileSync(file, Buffer.from(db.export())); db.close()
+    scheduleDataLocation(f.profile, f.profile, f.target)
+    assert.equal((await prepareDataLocation(f.profile)).directory, f.target)
+    const copied = new f.SQL.Database(fs.readFileSync(path.join(f.target, 'open-peep-note.db')))
+    const value = String(copied.exec('SELECT attachments FROM comments')[0].values[0][0])
+    assert.deepEqual(JSON.parse(value), [path.join(f.target, 'attachments', 'nested', 'read me.txt'), attachmentReference(f.attachment, 'link')])
+    copied.close()
+    assert.ok(fs.existsSync(f.attachment), 'the original profile remains untouched')
+  } finally { f.cleanup() }
+})

@@ -1,8 +1,6 @@
-import fs from 'fs'
 import { queryAll, queryOne, run, transaction } from './db'
-import { managedMediaPath, mediaPaths } from './media'
+import { cleanupUnreferencedMedia, mediaPaths } from './media'
 import { DEFAULT_TRASH_RETENTION_DAYS, normalizeTrashRetentionDays } from '../shared/trashRetention'
-import { attachmentPath } from '../shared/attachments'
 
 export const TRASH_RETENTION_SECONDS = DEFAULT_TRASH_RETENTION_DAYS * 86400
 
@@ -24,6 +22,10 @@ export function permanentlyDelete(where: string, params: unknown[]) {
     `SELECT id, file_path, attachments FROM logs WHERE deleted_at IS NOT NULL AND (${where})`, params
   )
   if (!rows.length) return 0
+  const files = rows.flatMap(row => [
+    ...mediaPaths(row),
+    ...queryAll<{ attachments: string }>('SELECT attachments FROM comments WHERE log_id = ?', [row.id]).flatMap(mediaPaths)
+  ])
   transaction(() => {
     for (const row of rows) {
       run('DELETE FROM comments WHERE log_id = ?', [row.id])
@@ -31,14 +33,7 @@ export function permanentlyDelete(where: string, params: unknown[]) {
     }
     run('DELETE FROM log_groups WHERE NOT EXISTS (SELECT 1 FROM logs WHERE logs.group_id = log_groups.id)')
   })
-  const references = new Set(queryAll<{ file_path: string | null; attachments: string }>('SELECT file_path, attachments FROM logs')
-    .flatMap(mediaPaths).map(file => managedMediaPath(attachmentPath(file))).filter(Boolean))
-  for (const file of new Set(rows.flatMap(mediaPaths))) {
-    const resolved = managedMediaPath(file)
-    if (resolved && !references.has(resolved)) {
-      try { fs.unlinkSync(resolved) } catch (error) { console.warn('Trash media cleanup failed:', error) }
-    }
-  }
+  cleanupUnreferencedMedia(files)
   return rows.length
 }
 

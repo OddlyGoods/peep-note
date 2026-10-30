@@ -26,6 +26,7 @@ import { attachmentPath, isLinkedAttachment } from '../shared/attachments'
 import { importLocalAttachments } from './attachmentFiles'
 import { directoryUsage } from './dataUsage'
 import { queryAll } from '../server/db'
+import { cleanupUnreferencedMedia } from '../server/media'
 import { DataStorageError, prepareDataLocation, scheduleDataLocation } from './dataStorage'
 import { restartAfterDataLocationChange } from './restart'
 import { dataStorageCopy, dataStorageErrorKey, type DataLocationResult } from '../shared/dataStorage'
@@ -140,7 +141,7 @@ function readableAttachmentFile(reference: string): string | null {
   if (!isLinkedAttachment(reference)) return managedLocalFile(reference)
   if (!path.isAbsolute(attachmentPath(reference))) return null
   try {
-    const saved = selectedAttachmentLinks.has(reference) || queryAll<{ attachments: string }>('SELECT attachments FROM logs')
+    const saved = selectedAttachmentLinks.has(reference) || queryAll<{ attachments: string }>('SELECT attachments FROM logs UNION ALL SELECT attachments FROM comments')
       .some(row => { try { const files = JSON.parse(row.attachments); return Array.isArray(files) && files.includes(reference) } catch { return false } })
     if (!saved) return null
     const resolved = fs.realpathSync(attachmentPath(reference))
@@ -1192,12 +1193,8 @@ function setupIPC() {
     if (typeof filepath !== 'string') return false
     const resolved = managedLocalFile(filepath)
     if (!resolved) return false
-    try {
-      await fs.promises.unlink(resolved)
-      const parent = path.dirname(resolved)
-      if (path.dirname(parent) === path.resolve(attachmentsDir)) await fs.promises.rmdir(parent).catch(() => {})
-      return true
-    } catch { return false }
+    cleanupUnreferencedMedia([resolved])
+    return !fs.existsSync(resolved)
   })
 
   ipcMain.handle('open-attachment', async (_e, filepath: unknown) => {

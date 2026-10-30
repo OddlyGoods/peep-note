@@ -12,7 +12,7 @@ const commentCount = (logId: string, userId: string) => queryOne<{ count: number
 )!.count
 
 const ownedComment = (logId: string, commentId: string, userId: string) => queryOne(
-  `SELECT comments.id FROM comments JOIN logs ON logs.id = comments.log_id
+  `SELECT comments.* FROM comments JOIN logs ON logs.id = comments.log_id
    WHERE logs.id = ? AND logs.user_id = ? AND logs.deleted_at IS NULL
    AND comments.id = ? AND comments.user_id = ?`, [logId, userId, commentId, userId]
 )
@@ -70,25 +70,34 @@ logs.get('/ocr-status', async c => {
   return c.json(ocrStatus(userId))
 })
 
-// GET /api/logs/:id/comments
-logs.get('/:id/comments', async (c) => {
+function parseComment(row: any) {
+  return { ...row, attachments: mediaPaths(row) }
+}
+
+function validCommentFiles(value: unknown): value is string[] {
+  return Array.isArray(value) && value.length <= 100 && value.every(file => typeof file === 'string' && file.length > 0)
+}
+
+// Comment attachments share the same managed-copy/link references as notes.
+logs.get('/:id/comments', c => {
   const userId = LOCAL_PROFILE_ID
   const logId = c.req.param('id')
   if (!queryOne('SELECT id FROM logs WHERE deleted_at IS NULL AND id = ? AND user_id = ?', [logId, userId])) return c.json({ error: '로그를 찾을 수 없습니다.' }, 404)
-  return c.json(queryAll('SELECT id, log_id, user_id, content, created_at FROM comments WHERE log_id = ? AND user_id = ? ORDER BY created_at ASC', [logId, userId]))
+  return c.json(queryAll('SELECT * FROM comments WHERE log_id = ? AND user_id = ? ORDER BY created_at ASC', [logId, userId]).map(parseComment))
 })
 
-// POST /api/logs/:id/comments
-logs.post('/:id/comments', async (c) => {
+logs.post('/:id/comments', async c => {
   const userId = LOCAL_PROFILE_ID
   const logId = c.req.param('id')
   const body = await c.req.json().catch(() => null)
   if (!queryOne('SELECT id FROM logs WHERE deleted_at IS NULL AND id = ? AND user_id = ?', [logId, userId])) return c.json({ error: '로그를 찾을 수 없습니다.' }, 404)
   const content = typeof body?.content === 'string' ? body.content.trim() : ''
-  if (!content) return c.json({ error: '댓글 내용을 입력하세요.' }, 400)
+  const attachments = body?.attachments === undefined ? [] : body.attachments
+  if (!validCommentFiles(attachments)) return c.json({ error: '잘못된 첨부 파일입니다.' }, 400)
+  if (!content && !attachments.length) return c.json({ error: '댓글 내용이나 파일을 추가하세요.' }, 400)
   if (content.length > 2000) return c.json({ error: '댓글은 2,000자까지 입력할 수 있습니다.' }, 400)
-  const comment = { id: generateId(), log_id: logId, user_id: userId, content, created_at: Math.floor(Date.now() / 1000) }
-  run('INSERT INTO comments (id, log_id, user_id, content, created_at) VALUES (?, ?, ?, ?, ?)', [comment.id, comment.log_id, comment.user_id, comment.content, comment.created_at])
+  const comment = { id: generateId(), log_id: logId, user_id: userId, content, attachments, created_at: Math.floor(Date.now() / 1000) }
+  run('INSERT INTO comments (id, log_id, user_id, content, attachments, created_at) VALUES (?, ?, ?, ?, ?, ?)', [comment.id, logId, userId, content, JSON.stringify(attachments), comment.created_at])
   return c.json({ ...comment, comment_count: commentCount(logId, userId) }, 201)
 })
 
@@ -97,21 +106,31 @@ logs.put('/:id/comments/:commentId', async c => {
   const logId = c.req.param('id')
   const commentId = c.req.param('commentId')
   const body = await c.req.json().catch(() => null)
-  if (!ownedComment(logId, commentId, userId)) return c.json({ error: '댓글을 찾을 수 없습니다.' }, 404)
-  const content = typeof body?.content === 'string' ? body.content.trim() : ''
-  if (!content) return c.json({ error: '댓글 내용을 입력하세요.' }, 400)
+  const current = ownedComment(logId, commentId, userId) as any
+  if (!current) return c.json({ error: '댓글을 찾을 수 없습니다.' }, 404)
+  if (!body || (body.content === undefined && body.attachments === undefined) || (body.content !== undefined && typeof body.content !== 'string')) return c.json({ error: '잘못된 댓글 내용입니다.' }, 400)
+  const content = body?.content === undefined ? current.content : typeof body.content === 'string' ? body.content.trim() : ''
+  const attachments = body?.attachments === undefined ? mediaPaths(current) : body.attachments
+  if (!validCommentFiles(attachments)) return c.json({ error: '잘못된 첨부 파일입니다.' }, 400)
+  // Removing the last file may leave an existing comment empty; text edits and
+  // newly submitted comments still require content or an attachment.
+  if (!content && !attachments.length && (body?.content !== undefined || body?.attachments === undefined)) return c.json({ error: '댓글 내용이나 파일을 추가하세요.' }, 400)
   if (content.length > 2000) return c.json({ error: '댓글은 2,000자까지 입력할 수 있습니다.' }, 400)
-  run('UPDATE comments SET content = ? WHERE id = ? AND log_id = ? AND user_id = ?', [content, commentId, logId, userId])
-  const comment = queryOne('SELECT id, log_id, user_id, content, created_at FROM comments WHERE id = ?', [commentId])!
-  return c.json({ ...comment, comment_count: commentCount(logId, userId) })
+  run('UPDATE comments SET content = ?, attachments = ? WHERE id = ? AND log_id = ? AND user_id = ?', [content, JSON.stringify(attachments), commentId, logId, userId])
+  const comment = queryOne('SELECT * FROM comments WHERE id = ?', [commentId])!
+  const retained = new Set(attachments)
+  cleanupUnreferencedMedia(mediaPaths(current).filter(file => !retained.has(file)))
+  return c.json({ ...parseComment(comment), comment_count: commentCount(logId, userId) })
 })
 
 logs.delete('/:id/comments/:commentId', c => {
   const userId = LOCAL_PROFILE_ID
   const logId = c.req.param('id')
   const commentId = c.req.param('commentId')
-  if (!ownedComment(logId, commentId, userId)) return c.json({ error: '댓글을 찾을 수 없습니다.' }, 404)
+  const current = ownedComment(logId, commentId, userId) as any
+  if (!current) return c.json({ error: '댓글을 찾을 수 없습니다.' }, 404)
   run('DELETE FROM comments WHERE id = ? AND log_id = ? AND user_id = ?', [commentId, logId, userId])
+  cleanupUnreferencedMedia(mediaPaths(current))
   return c.json({ ok: true, comment_count: commentCount(logId, userId) })
 })
 

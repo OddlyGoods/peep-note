@@ -52,10 +52,12 @@ export const api = {
     bulkMove: (log_ids: string[], group_ids: string[], workspace_id: string) =>
       request<{ ok: boolean; logs: number; groups: number }>('/api/logs/bulk-move', { method: 'POST', body: JSON.stringify({ log_ids, group_ids, workspace_id }) }),
     comments: (id: string) => request<LogComment[]>(`/api/logs/${id}/comments`),
-    addComment: (id: string, content: string) =>
-      request<LogComment & { comment_count: number }>(`/api/logs/${id}/comments`, { method: 'POST', body: JSON.stringify({ content }) }),
-    updateComment: (id: string, commentId: string, content: string) =>
-      request<LogComment & { comment_count: number }>(`/api/logs/${id}/comments/${commentId}`, { method: 'PUT', body: JSON.stringify({ content }) }),
+    addComment: (id: string, content: string, attachments: string[] = []) =>
+      request<LogComment & { comment_count: number }>(`/api/logs/${id}/comments`, { method: 'POST', body: JSON.stringify({ content, attachments }) }),
+    updateComment: (id: string, commentId: string, content: string, attachments?: string[]) =>
+      request<LogComment & { comment_count: number }>(`/api/logs/${id}/comments/${commentId}`, { method: 'PUT', body: JSON.stringify({ content, attachments }) }),
+    updateCommentFiles: (id: string, commentId: string, attachments: string[]) =>
+      request<LogComment & { comment_count: number }>(`/api/logs/${id}/comments/${commentId}`, { method: 'PUT', body: JSON.stringify({ attachments }) }),
     deleteComment: (id: string, commentId: string) =>
       request<{ ok: boolean; comment_count: number }>(`/api/logs/${id}/comments/${commentId}`, { method: 'DELETE' }),
     statsDates: () =>
@@ -182,6 +184,7 @@ export interface Log {
 }
 
 export interface LogComment {
+  attachments: string[]
   id: string
   log_id: string
   user_id: string

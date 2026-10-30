@@ -86,6 +86,7 @@ export async function initDb(appDataPath: string) {
   `)
 
   // 마이그레이션
+  try { db.run("ALTER TABLE comments ADD COLUMN attachments TEXT NOT NULL DEFAULT '[]'") } catch {}
   try { db.run("ALTER TABLE logs ADD COLUMN content_format TEXT NOT NULL DEFAULT 'text'") } catch {}
   try { db.run("ALTER TABLE logs ADD COLUMN attachments TEXT NOT NULL DEFAULT '[]'") } catch {}
   try { db.run("ALTER TABLE logs ADD COLUMN workspace_id TEXT") } catch {}

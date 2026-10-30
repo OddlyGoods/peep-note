@@ -1126,3 +1126,22 @@ html[data-theme='light'] .markdown-code-copy[data-state='copied'] {
 html[data-theme='light'] .markdown-code-copy[data-state='error'] {
   color: #b91c1c;
 }
+
+.comment-composer {
+  border-color: var(--medium-border);
+  background: var(--side-panel-bg);
+}
+.comment-composer textarea.comment-composer-input {
+  display: block;
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+}
+.comment-composer:focus-within {
+  box-shadow: 0 0 0 1px rgb(139 92 246 / .25);
+}
+:root [data-comment-drop][data-dragging='true'] {
+  border-color: #8b5cf6 !important;
+  background: rgb(139 92 246 / .08) !important;
+  box-shadow: 0 0 0 2px rgb(139 92 246 / .25);
+}

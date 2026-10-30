@@ -36,10 +36,16 @@ export function readableMediaPath(reference: string): string | null {
   } catch { return null }
 }
 
+export function referencedMediaPaths(): string[] {
+  return [
+    ...queryAll<{ file_path: string | null; attachments: string }>('SELECT file_path, attachments FROM logs'),
+    ...queryAll<{ attachments: string }>('SELECT attachments FROM comments')
+  ].flatMap(mediaPaths)
+}
+
 export function cleanupUnreferencedMedia(filePaths: string[]) {
   if (!filePaths.length) return
-  const references = new Set(queryAll<{ file_path: string | null; attachments: string }>('SELECT file_path, attachments FROM logs')
-    .flatMap(mediaPaths)
+  const references = new Set(referencedMediaPaths()
     .map(file => managedMediaPath(attachmentPath(file)))
     .filter((file): file is string => !!file))
   for (const filePath of new Set(filePaths)) {

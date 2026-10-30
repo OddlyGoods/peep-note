@@ -6,7 +6,7 @@ import { useScreenActive } from '../lib/screenActivity'
 
 const copy = {
   en: {
-    title: 'MCP connection', enable: 'Allow MCP connections',
+    title: 'MCP', enable: 'Allow MCP connections',
     description: 'Control PeepNote from Codex or another MCP client.',
     limits: 'Secret notes and provider API keys are excluded.',
     endpoint: 'Server URL', button: 'Copy Codex configuration',
@@ -14,7 +14,7 @@ const copy = {
     failed: 'Could not update MCP settings or copy the configuration. Please try again.'
   },
   ko: {
-    title: 'MCP 연결', enable: '연결 허용',
+    title: 'MCP', enable: '연결 허용',
     description: '코덱스 등 MCP 클라이언트에서 피프노트를 제어할 수 있습니다.',
     limits: '시크릿 메모와 AI 공급처 API 키는 제외됩니다.',
     endpoint: '서버 주소', button: 'Codex 연결 설정 복사',
@@ -22,7 +22,7 @@ const copy = {
     failed: 'MCP 설정을 변경하거나 복사하지 못했습니다. 다시 시도해 주세요.'
   },
   ja: {
-    title: 'MCP 接続', enable: 'MCP 接続を許可',
+    title: 'MCP', enable: 'MCP 接続を許可',
     description: 'Codex などの MCP クライアントから PeepNote を操作できます。',
     limits: 'シークレットメモと AI プロバイダーの API キーは対象外です。',
     endpoint: 'サーバー URL', button: 'Codex 接続設定をコピー',
@@ -30,7 +30,7 @@ const copy = {
     failed: 'MCP 設定の変更またはコピーに失敗しました。もう一度お試しください。'
   },
   zh: {
-    title: 'MCP 连接', enable: '允许 MCP 连接',
+    title: 'MCP', enable: '允许 MCP 连接',
     description: '通过 Codex 等 MCP 客户端控制 PeepNote。',
     limits: '私密笔记和 AI 服务商 API 密钥不对 MCP 开放。',
     endpoint: '服务器地址', button: '复制 Codex 连接配置',

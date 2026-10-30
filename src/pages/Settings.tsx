@@ -10,6 +10,7 @@ import ConfirmModal from '../components/ConfirmModal'
 import { dataStorageErrorKey } from '../../shared/dataStorage'
 import DataLocationField from '../components/DataLocationField'
 import AiConnectionTest from '../components/AiConnectionTest'
+import McpPanel from '../components/McpPanel'
 import { APP_DEVELOPER, APP_GITHUB_URL, APP_WEBSITE_URL } from '../../shared/appInfo'
 import { DEFAULT_TRASH_RETENTION_DAYS, TRASH_RETENTION_OPTIONS, normalizeTrashRetentionDays } from '../../shared/trashRetention'
 import { AI_MODELS, DEFAULT_AI_MODELS, getAiModels, getAiModelSelection, type AiProvider } from '../../shared/aiModels'
@@ -698,6 +699,8 @@ export default function Settings() {
           </section>
 
           {/* 앱 정보 */}
+          <McpPanel />
+
           <section className="card p-5">
             <div className="flex items-center gap-2 mb-4">
               <User className="w-4 h-4 text-gray-400" />

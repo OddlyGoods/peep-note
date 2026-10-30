@@ -17,3 +17,5 @@ release
 *.pfx
 .npmrc
 .DS_Store
+mcp-access.json
+mcp-access.json.tmp

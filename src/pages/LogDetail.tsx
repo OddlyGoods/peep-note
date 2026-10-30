@@ -213,6 +213,21 @@ export default function LogDetail() {
 
   const wasActive = useRef(active)
   useEffect(() => {
+    if (!active || !id || editing || log?.is_secret) return
+    let cancelled = false
+    const changed = () => {
+      void api.logs.get(id).then(data => {
+        if (cancelled || editingRef.current) return
+        setLog(data)
+        setForm({ title: data.title, content: data.content, tags: data.tags, content_format: data.content_format ?? 'text', is_secret: !!data.is_secret })
+      }).catch(error => {
+        if (!cancelled && !editingRef.current && error.status === 404) navigate(menuForPath(location.pathname) ?? '/')
+      })
+    }
+    window.electronAPI?.on('mcp-data-changed', changed)
+    return () => { cancelled = true; window.electronAPI?.off('mcp-data-changed', changed) }
+  }, [active, id, editing, log?.is_secret, navigate])
+  useEffect(() => {
     const resuming = active && !wasActive.current
     wasActive.current = active
     if (!resuming || !id || editing) return

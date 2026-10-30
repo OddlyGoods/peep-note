@@ -1399,7 +1399,12 @@ app.whenReady().then(async () => {
   })
 
   // 로컬 Hono 서버 시작
-  await startServer(APP_PORT, dataDirectory)
+  await startServer(APP_PORT, dataDirectory, () => {
+    for (const win of [mainWindow, overlayWindow, quickSwitchWindow]) {
+      if (win && !win.isDestroyed()) win.webContents.send('mcp-data-changed')
+    }
+    mainWindow?.webContents.send('log-created')
+  })
 
   createMainWindow()
   createOverlayWindow()

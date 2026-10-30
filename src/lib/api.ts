@@ -22,6 +22,11 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
+  mcp: {
+    status: () => request<{ enabled: boolean; endpoint: string }>('/api/mcp'),
+    setEnabled: (enabled: boolean) => request<{ enabled: boolean; endpoint: string }>('/api/mcp', { method: 'PUT', body: JSON.stringify({ enabled }) }),
+    config: () => request<{ config: string }>('/api/mcp/config')
+  },
   // Logs
   logs: {
     favoriteCount: () => request<{ count: number }>('/api/logs/favorites/count'),

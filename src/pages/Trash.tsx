@@ -40,6 +40,12 @@ export default function Trash() {
     setSelected(prev => prev.filter(id => rows.some(row => row.id === id)))
   }
   useEffect(() => { if (active) void refresh().catch(() => setError(true)).finally(() => setLoading(false)) }, [active])
+  useEffect(() => {
+    if (!active) return
+    const changed = () => { void refresh().catch(() => setError(true)) }
+    window.electronAPI?.on('mcp-data-changed', changed)
+    return () => window.electronAPI?.off('mcp-data-changed', changed)
+  }, [active])
   const perform = async (action: 'restore' | 'selected' | 'all', ids = selected) => {
     if (working.current) return
     working.current = true

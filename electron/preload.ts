@@ -114,6 +114,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'start-recording-region',
       'stop-recording',
       'log-created',
+      'mcp-data-changed',
       'snipping-init',
       'update-state-changed',
       'quick-switch-open',

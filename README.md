@@ -61,6 +61,7 @@ The package and Linux executable are named `peep-note`. The app keeps its existi
 - Restore deleted records from Trash during a configurable retention period (7, 10, 30, or 90 days; default 10), or permanently delete them. Individually deleted AI summaries are removed immediately; deleting a whole group keeps its summary in Trash with the group.
 - Search Korean and English text in screenshots and attached images using local OCR
 - Generate AI summaries with OpenAI, Claude, Gemini, or Qwen
+- Connect Codex and other MCP clients to search, save, edit and group non-secret notes
 - Use global shortcuts and a recent-record Quick List
 - Protect secret notes with a four-digit PIN and masked list previews
 - English, Korean, Japanese, and Simplified Chinese UI
@@ -209,6 +210,27 @@ Use the **⋯** menu beside a shortcut to disable or re-enable it while keeping 
 Enable the **Secret** badge while creating or editing a note to mask its preview in lists. Set a four-digit secret PIN in **Settings → Secret note lock**. Opening a secret note requests the PIN; after a successful entry, secret notes remain unlocked for one minute in the current app session.
 
 The PIN is stored as a hash, not plain text. A four-digit PIN is a convenience lock, not full-disk encryption; use operating-system account protection for highly sensitive data.
+
+### MCP connection
+
+PeepNote provides a local **Streamable HTTP** MCP server. No separate Node.js installation or cloud backend is needed for an installed app. Keep PeepNote running; it can remain in the tray.
+
+1. Open **Settings → MCP connection** and turn on **Allow MCP connections**. It is off by default, and changes apply immediately.
+2. Click **Copy Codex configuration**.
+3. Add the copied block to `~/.codex/config.toml` and restart Codex. The block includes the local server URL (normally `http://127.0.0.1:3848/mcp`) and its private authorization header. For a manually added server, select **Streamable HTTP** and use that URL and header.
+4. Ask Codex to “Find my RAG notes” or “Save this answer in PeepNote as Markdown.”
+
+The connection configuration contains a dedicated MCP token, separate from AI provider API keys. Do not publish or share it. Turning MCP off blocks access immediately; turning it back on generates a new token, so copy the configuration again. A custom local API port is reflected in the copied URL. Remote computers and cloud sessions cannot reach this loopback-only endpoint without a separate connection setup.
+
+Available tools: `search_notes`, `get_note`, `create_note`, `update_note` (replace or append), `set_favorite`, `list_workspaces`, `create_workspace`, `list_groups`, `create_group`, `trash_notes`, and `trash_group`.
+
+- Secret notes are excluded from search, results, counts and direct access. MCP cannot create, unlock, modify or delete them. Groups containing active secret notes cannot be deleted through MCP.
+- No settings, provider API keys, password hashes, attachment paths, file-reading tools, AI provider calls or permanent-deletion tools are exposed.
+- MCP deletion always moves records to Trash, including individually deleted AI summaries. Normal Trash retention and automatic expiry still apply. Whole groups and their summaries can be restored together in the app.
+- Creating groups requires ungrouped, non-secret notes from the same workspace. MCP changes refresh the app's lists; an open edit draft is preserved.
+- Notes returned to an MCP client may be sent to that client's AI model. Stored note text is data, not instructions for the client to execute.
+
+Run `npm run test:mcp` for protocol, authentication, secret-note exclusion, write and recovery tests. These use a real MCP client over loopback HTTP with a temporary database, not your notes.
 
 ### AI summaries
 

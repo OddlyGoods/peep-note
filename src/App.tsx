@@ -18,6 +18,7 @@ import { useSearchStore } from './stores/searchStore'
 import { saveQuickListRange } from './lib/quickListRange'
 import { useWorkspaceStore } from './stores/workspaceStore'
 import { subscribeToUpdates } from './stores/updateStore'
+import { invalidateExploreCache } from './lib/exploreCache'
 
 function ElectronNavigation() {
   const openLog = useOpenLog()
@@ -62,6 +63,16 @@ function ElectronNavigation() {
 
 export default function App() {
   useEffect(subscribeToUpdates, [])
+  useEffect(() => {
+    const refresh = () => {
+      invalidateExploreCache()
+      void useWorkspaceStore.getState().fetchWorkspaces()
+      void useLogStore.getState().fetchLogs()
+      void useLogStore.getState().fetchActiveDates()
+    }
+    window.electronAPI?.on('mcp-data-changed', refresh)
+    return () => window.electronAPI?.off('mcp-data-changed', refresh)
+  }, [])
   const { setLanguage } = useI18n()
   const { setTheme } = useTheme()
   const setDateNavigation = useLogStore(s => s.setDateNavigation)

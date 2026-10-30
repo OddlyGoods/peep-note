@@ -12,6 +12,8 @@ const electronExternals = [
   'electron-store',
   '@hono/node-server',
   'hono',
+  /^@modelcontextprotocol\/sdk(?:\/|$)/,
+  'zod',
   'path',
   'fs',
   'crypto',

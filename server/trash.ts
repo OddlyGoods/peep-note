@@ -9,13 +9,13 @@ export function getTrashRetentionDays(userId: string) {
   return normalizeTrashRetentionDays(settings?.trash_retention_days)
 }
 
-export function moveToTrash(userId: string, ids: string[], group?: { id: string; name: string }) {
+export function moveToTrash(userId: string, ids: string[], group?: { id: string; name: string }, retainSummaries = !!group) {
   if (!ids.length) return 0
   const placeholders = ids.map(() => '?').join(',')
   const rows = queryAll<DeletableLog & { log_type: string }>(`SELECT id, log_type, file_path, attachments FROM logs WHERE user_id = ? AND deleted_at IS NULL AND id IN (${placeholders})`, [userId, ...ids])
   const files = transaction(() => {
-    run(`UPDATE logs SET deleted_at = ?, trash_group_id = ?, trash_group_name = ?, ocr_status = CASE WHEN ocr_status IN ('pending', 'processing') THEN 'idle' ELSE ocr_status END WHERE user_id = ? AND deleted_at IS NULL ${group ? '' : "AND log_type != 'summary'"} AND id IN (${placeholders})`, [Math.floor(Date.now() / 1000), group?.id ?? null, group?.name ?? null, userId, ...ids])
-    return group ? [] : deleteRows(rows.filter(row => row.log_type === 'summary'))
+    run(`UPDATE logs SET deleted_at = ?, trash_group_id = ?, trash_group_name = ?, ocr_status = CASE WHEN ocr_status IN ('pending', 'processing') THEN 'idle' ELSE ocr_status END WHERE user_id = ? AND deleted_at IS NULL ${retainSummaries ? '' : "AND log_type != 'summary'"} AND id IN (${placeholders})`, [Math.floor(Date.now() / 1000), group?.id ?? null, group?.name ?? null, userId, ...ids])
+    return retainSummaries ? [] : deleteRows(rows.filter(row => row.log_type === 'summary'))
   })
   // Ungrouping can wrap this operation in a transaction. Check file references
   // after that transaction completes so rollback never removes restored files.

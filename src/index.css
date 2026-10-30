@@ -1103,6 +1103,12 @@ html[data-theme='light'] .ai-summary-content .markdown-code-block pre code {
   background: transparent !important;
   color: #1f2937 !important;
 }
+html[data-theme='light'] .markdown-content :not(pre) > code,
+html[data-theme='light'] .ai-summary-content :not(pre) > code {
+  background: #f6f8fc !important;
+  border: 1px solid #d9e1f2;
+  color: #1f2937 !important;
+}
 html[data-theme='light'] .markdown-code-copy {
   background: #eef2ff;
   color: #7c3aed;

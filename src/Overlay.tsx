@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { X, Maximize2, Minimize2, Camera, Video, FileText, Text as TextIcon, StopCircle, Code2, Globe, Hash, Lock, SlidersHorizontal, Paperclip, ChevronDown, Check, Loader2 } from 'lucide-react'
+import { X, Maximize2, Minimize2, Camera, Video, FileText, Text as TextIcon, StopCircle, Code2, Globe, Hash, Lock, SlidersHorizontal, ChevronDown, Check, Loader2 } from 'lucide-react'
 import { api, type Workspace } from './lib/api'
 import { useI18n } from './i18n'
 import { startRegionRecording, RecordingRegion } from './lib/regionRecording'
@@ -548,7 +548,6 @@ export default function Overlay() {
             </div>
 
             <div className="space-y-1.5 shrink-0">
-              <div className="flex items-center gap-1.5 text-xs font-medium text-gray-400"><Paperclip className="h-3.5 w-3.5" /><span>{t('attachmentFiles')}</span></div>
               {attachmentPicker.input}
               {attachmentPicker.dialog}
               {attachments.length > 0 && <div className="flex max-h-40 flex-col gap-1.5 overflow-y-auto">

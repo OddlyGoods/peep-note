@@ -35,11 +35,11 @@ export default function AttachmentFileRow({ reference, url, name, size, compact 
     <div className={`attachment-actions flex shrink-0 items-center gap-1.5 ${actionsOnHover ? 'opacity-0 pointer-events-none transition-opacity group-hover/file:opacity-100 group-hover/file:pointer-events-auto group-focus-within/file:opacity-100 group-focus-within/file:pointer-events-auto' : ''}`}>
       {allowOpen && <>
         <button type="button" onClick={() => void window.electronAPI?.openAttachment(reference)} title={t('openFile')} aria-label={t('openFile')}
-          className="attachment-action-button btn-secondary flex h-8 w-8 items-center justify-center p-0"><FileOutput className="h-3.5 w-3.5" /></button>
+          className="attachment-action-button btn-ghost flex h-7 w-7 items-center justify-center p-0"><FileOutput className="h-3.5 w-3.5" /></button>
         <button type="button" onClick={() => void window.electronAPI?.showAttachmentInFolder?.(reference)} title={t('showInFolder')} aria-label={t('showInFolder')}
-          className="attachment-action-button btn-secondary flex h-8 w-8 items-center justify-center p-0"><FolderOpen className="h-3.5 w-3.5" /></button>
+          className="attachment-action-button btn-ghost flex h-7 w-7 items-center justify-center p-0"><FolderOpen className="h-3.5 w-3.5" /></button>
         <button type="button" onClick={() => void window.electronAPI?.downloadAttachment(reference)} title={t('downloadFile')} aria-label={t('downloadFile')}
-          className="attachment-action-button btn-secondary flex h-8 w-8 items-center justify-center p-0"><Download className="h-3.5 w-3.5" /></button>
+          className="attachment-action-button btn-ghost flex h-7 w-7 items-center justify-center p-0"><Download className="h-3.5 w-3.5" /></button>
       </>}
       {onRemove && <button type="button" onClick={onRemove} disabled={disabled} title={t('delete')} aria-label={t('delete')}
         className={`attachment-action-button btn-ghost flex h-7 w-7 items-center justify-center p-0 text-red-400 disabled:opacity-40 ${removeStyle === 'hover' ? 'opacity-0 pointer-events-none transition-opacity group-hover/file:opacity-100 group-hover/file:pointer-events-auto group-focus-within/file:opacity-100 group-focus-within/file:pointer-events-auto' : ''}`}>

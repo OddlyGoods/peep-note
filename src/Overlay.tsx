@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useId } from 'react'
 import { X, Maximize2, Minimize2, Camera, Video, FileText, Text as TextIcon, StopCircle, Code2, Globe, Hash, Lock, SlidersHorizontal, ChevronDown, Check, Loader2 } from 'lucide-react'
 import { api, type Workspace } from './lib/api'
 import { useI18n } from './i18n'
@@ -36,6 +36,7 @@ function getWorkspaceFromStorage(): SelectedWorkspace | null {
 }
 
 export default function Overlay() {
+  const fieldId = useId()
   const { t } = useI18n()
   const [type, setType] = useState<LogType>('note')
   const [title, setTitle] = useState('')
@@ -487,7 +488,7 @@ export default function Overlay() {
 
         <div ref={filePickerHostRef} className="relative flex min-h-0 flex-1 flex-col">
           {/* 타입 탭 */}
-          <div className="flex items-center gap-1 px-3 py-2 shrink-0"
+          <div className={`flex items-center gap-1 px-3 pt-2 ${type === 'note' ? 'pb-1' : 'pb-2'} shrink-0`}
             style={{ borderBottom: type === 'note' ? 'none' : '1px solid rgba(99,102,241,0.1)' }}>
             {TYPES.map(({ value, label, icon: Icon, color, accent }) => (
               <button key={value} onClick={() => handleTypeChange(value)}
@@ -503,7 +504,7 @@ export default function Overlay() {
 
           {/* 포맷 토글 (노트) */}
           {type === 'note' && (
-            <div className="flex items-center gap-1 px-3 py-1.5 shrink-0"
+            <div className="flex items-center gap-1 px-3 pt-1 pb-2 shrink-0"
               style={{ borderBottom: '1px solid rgba(99,102,241,0.1)' }}>
               {FORMATS.map(({ value, label, icon: Icon }) => (
                 <button key={value} onClick={() => setFormat(value)}
@@ -527,24 +528,30 @@ export default function Overlay() {
 
           {/* 입력 영역 */}
           <div className="flex-1 flex flex-col overflow-y-auto px-3 pt-2.5 pb-2 gap-2 min-h-0">
-            <input type="text" className="input py-1.5 text-sm shrink-0" placeholder={t('titleOptional')}
-              value={title} onChange={e => setTitle(e.target.value)} />
+            <div className="overlay-field shrink-0">
+              <label className="overlay-field-label" htmlFor={`${fieldId}-title`}>TITLE</label>
+              <input id={`${fieldId}-title`} type="text" className="input py-1.5 text-sm" placeholder={t('titleOptional')}
+                value={title} onChange={e => setTitle(e.target.value)} />
+            </div>
 
-            <textarea ref={contentRef}
-              className={`input resize-none text-sm flex-1 min-h-0 ${
-                format === 'code' && type === 'note' ? 'code-input font-mono text-emerald-400 bg-gray-950' :
-                format === 'html' && type === 'note' ? 'code-input font-mono text-sky-300 bg-gray-950' : ''
-              }`}
-              style={{ minHeight: previewUrl ? '36px' : '64px' }}
-              placeholder={
-                format === 'code' ? t('codeInput') :
-                format === 'html' ? t('htmlInput') :
-                type === 'note' ? t('overlayContent') : t('descriptionOptional')
-              }
-              value={content} onChange={e => setContent(e.target.value)} />
+            <div className="overlay-field flex flex-1 min-h-0" style={{ minHeight: previewUrl ? '36px' : '64px' }}>
+              <label className="overlay-field-label" htmlFor={`${fieldId}-content`}>CONTENT</label>
+              <textarea id={`${fieldId}-content`} ref={contentRef}
+                className={`input resize-none text-sm flex-1 min-h-0 ${
+                  format === 'code' && type === 'note' ? 'code-input font-mono text-emerald-400 bg-gray-950' :
+                  format === 'html' && type === 'note' ? 'code-input font-mono text-sky-300 bg-gray-950' : ''
+                }`}
+                placeholder={
+                  format === 'code' ? t('codeInput') :
+                  format === 'html' ? t('htmlInput') :
+                  type === 'note' ? t('overlayContent') : t('descriptionOptional')
+                }
+                value={content} onChange={e => setContent(e.target.value)} />
+            </div>
 
-            <div className="shrink-0">
-              <TagInput key={tagInputKey} value={tags} onChange={setTags} disabled={saving || saved} />
+            <div className="overlay-field shrink-0">
+              <label className="overlay-field-label" htmlFor={`${fieldId}-tags`}>TAG</label>
+              <TagInput inputId={`${fieldId}-tags`} key={tagInputKey} value={tags} onChange={setTags} disabled={saving || saved} />
             </div>
 
             <div className="flex flex-col gap-1.5 shrink-0">

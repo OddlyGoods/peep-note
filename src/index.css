@@ -390,6 +390,25 @@ html[data-theme] body:has(> #overlay-root),
   background: transparent !important;
 }
 
+.overlay-field {
+  position: relative;
+}
+.overlay-field-label {
+  position: absolute;
+  top: 0;
+  left: 9px;
+  z-index: 1;
+  transform: translateY(-50%);
+  padding: 0 4px;
+  background: var(--overlay-bg);
+  color: var(--title-text);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 12px;
+  letter-spacing: .06em;
+  cursor: text;
+}
+
 html[data-theme='light'] .card,
 html[data-theme='light'] .input {
   background: rgba(255,255,255,.9);

@@ -2,10 +2,11 @@ import { useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import { useI18n } from '../i18n'
 
-export default function TagInput({ value, onChange, disabled = false }: {
+export default function TagInput({ value, onChange, disabled = false, inputId }: {
   value: string[]
   onChange: (tags: string[]) => void
   disabled?: boolean
+  inputId?: string
 }) {
   const { t } = useI18n()
   const [draft, setDraft] = useState('')
@@ -33,7 +34,7 @@ export default function TagInput({ value, onChange, disabled = false }: {
           </button>
         </span>
       ))}
-      <input ref={inputRef} type="text" className="tag-input-field" value={draft} disabled={disabled}
+      <input id={inputId} ref={inputRef} type="text" className="tag-input-field" value={draft} disabled={disabled}
         aria-label={t('tags')} placeholder={t(value.length ? 'addTag' : 'tagInputPlaceholder')}
         onChange={event => setDraft(event.target.value)}
         onBlur={() => { if (!disabled) commit() }}

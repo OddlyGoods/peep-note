@@ -118,6 +118,7 @@ ai.post('/test-connection', async c => {
 
 // POST /api/ai/summarize  { group_id, language? }
 ai.post('/summarize', async (c) => {
+  const startedAt = performance.now()
   const userId = LOCAL_PROFILE_ID
 
   const { group_id, language: requestedLanguage } = await c.req.json()
@@ -186,6 +187,7 @@ ai.post('/summarize', async (c) => {
   const parsed = parseAiSummaryResult(raw)
   const summaryTitle = parsed.title === '요약' ? SUMMARY_TITLES[language] : parsed.title
   const { summary } = parsed
+  const durationMs = Math.round(performance.now() - startedAt)
 
   // 요약 로그 저장
   const existing = queryOne<any>(
@@ -204,12 +206,12 @@ ai.post('/summarize', async (c) => {
   )?.workspace_id ?? null
 
   if (existing) {
-    run('UPDATE logs SET title = ?, content = ?, workspace_id = ?, created_at = ?, updated_at = ? WHERE id = ?',
-      [summaryTitle, summary, summaryWorkspaceId, summaryCreatedAt, now, existing.id])
+    run('UPDATE logs SET title = ?, content = ?, workspace_id = ?, created_at = ?, updated_at = ?, summary_provider = ?, summary_model = ?, summary_duration_ms = ? WHERE id = ?',
+      [summaryTitle, summary, summaryWorkspaceId, summaryCreatedAt, now, provider, model, durationMs, existing.id])
   } else {
     run(
-      'INSERT INTO logs (id, user_id, title, content, log_type, content_format, tags, attachments, pinned, workspace_id, group_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [generateId(), userId, summaryTitle, summary, 'summary', 'text', '[]', '[]', 0, summaryWorkspaceId, group_id, summaryCreatedAt, now]
+      'INSERT INTO logs (id, user_id, title, content, log_type, content_format, tags, attachments, pinned, workspace_id, group_id, created_at, updated_at, summary_provider, summary_model, summary_duration_ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [generateId(), userId, summaryTitle, summary, 'summary', 'text', '[]', '[]', 0, summaryWorkspaceId, group_id, summaryCreatedAt, now, provider, model, durationMs]
     )
   }
 

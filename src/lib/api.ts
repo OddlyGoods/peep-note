@@ -2,7 +2,7 @@ import { invalidateExploreCache } from './exploreCache'
 import type { TrashRetentionDays } from '../../shared/trashRetention'
 import type { Hotkeys } from '../../shared/hotkeys'
 import type { AiConnectionInput, AiConnectionResult } from '../../shared/aiConnection'
-import type { AiModelMap } from '../../shared/aiModels'
+import type { AiModelMap, AiProvider } from '../../shared/aiModels'
 
 const configuredPort = Number(import.meta.env.VITE_LOCAL_SERVER_PORT)
 const LOCAL_SERVER_PORT = Number.isInteger(configuredPort) && configuredPort >= 1024 && configuredPort <= 65535 ? configuredPort : 3848
@@ -185,6 +185,9 @@ export interface Log {
   workspace_id: string | null
   group_id: string | null
   group_created_at?: number | null
+  summary_provider?: AiProvider | null
+  summary_model?: string | null
+  summary_duration_ms?: number | null
   created_at: number
   updated_at: number
   comment_count?: number

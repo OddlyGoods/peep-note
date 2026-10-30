@@ -33,6 +33,7 @@ import SecretPasswordModal from '../components/SecretPasswordModal'
 import { useI18n } from '../i18n'
 import { useTheme } from '../theme'
 import { getAiSummaryContent, getAiSummaryTitle } from '../lib/aiSummary'
+import { AI_MODELS } from '../../shared/aiModels'
 import { useOpenLog } from '../components/LogNavigationProvider'
 import { hasActiveSecretUnlock, rememberSecretUnlock } from '../lib/secretUnlock'
 import { attachmentMimeType, isImageAttachment } from '../../shared/attachments'
@@ -622,6 +623,12 @@ export default function LogDetail() {
   const fmtCfg = FORMAT_CONFIG[log.content_format ?? 'text']
   const isNote = log.log_type === 'note'
   const isAiSummary = log.log_type === 'summary'
+  const summaryProvider = log.summary_provider
+  const summaryProviderName = summaryProvider && { openai: 'OpenAI', anthropic: 'Claude', gemini: 'Gemini', qwen: 'Qwen' }[summaryProvider]
+  const summaryModelName = (summaryProvider && AI_MODELS[summaryProvider]?.find(model => model.value === log.summary_model)?.label) || log.summary_model
+  const summaryDuration = typeof log.summary_duration_ms === 'number' && Number.isFinite(log.summary_duration_ms) && log.summary_duration_ms >= 0
+    ? new Intl.NumberFormat(language, { style: 'unit', unit: 'second', unitDisplay: 'narrow', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(log.summary_duration_ms / 1000)
+    : null
   const displayContent = log.is_secret && secretGate !== 'open' ? '' : (isAiSummary ? getAiSummaryContent(log.content) : log.content)
   const displayTitle = isAiSummary ? getAiSummaryTitle(log.content, log.title) : log.title
   const dateLocale = language === 'ko' ? ko : language === 'ja' ? ja : language === 'zh' ? zhCN : undefined
@@ -638,12 +645,7 @@ export default function LogDetail() {
         <div className="flex-1" />
         {!editing && <FavoriteButton variant="detail" log={log} onChange={favorite => setLog(current => current?.id === log.id ? { ...current, favorite } : current)} />}
         {!editing && <WorkspaceMoveButton variant="detail" log={log} onMoved={updated => setLog(current => current?.id === updated.id ? updated : current)} />}
-        {isAiSummary ? (
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-amber-500/30 bg-amber-500/10">
-            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-            <span className="text-xs font-medium text-amber-400">{t('summary')}</span>
-          </div>
-        ) : (
+        {!isAiSummary && (
           <>
             {editing ? (
               <>
@@ -663,13 +665,15 @@ export default function LogDetail() {
                   <SquarePen className="w-4 h-4" />
                   {t('edit')}
                 </button>
-                <button onClick={handleDelete} className="detail-delete-button btn-secondary flex items-center gap-1.5 text-rose-300 hover:text-rose-300 hover:border-rose-500/30">
-                  <Trash2 className="w-4 h-4" />
-                  {t('delete')}
-                </button>
               </>
             )}
           </>
+        )}
+        {!editing && (
+          <button onClick={handleDelete} className="detail-delete-button btn-secondary flex items-center gap-1.5 text-rose-300 hover:text-rose-300 hover:border-rose-500/30">
+            <Trash2 className="w-4 h-4" />
+            {t('delete')}
+          </button>
         )}
       </div>
 
@@ -878,6 +882,11 @@ export default function LogDetail() {
                   [&_code]:text-emerald-400 [&_code]:bg-gray-900 [&_code]:px-1 [&_code]:rounded [&_code]:text-xs
                   [&_p]:text-gray-300 [&_p]:leading-relaxed">
                   <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>{displayContent}</ReactMarkdown>
+                  {summaryProviderName && summaryModelName && (
+                    <div className="not-prose mt-4 text-left text-xs text-gray-400">
+                      {summaryProviderName} · {summaryModelName}{summaryDuration && ` (${summaryDuration})`}
+                    </div>
+                  )}
                 </div>
               ) : log.content_format === 'markdown' ? (
                 <MarkdownContent content={log.content} />

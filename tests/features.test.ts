@@ -604,6 +604,54 @@ test('AI summaries stay in their group workspace', async () => {
 })
 
 
+test('summary provenance follows the actual request and survives deletion and restore', async () => {
+  insert('summary-info-one')
+  insert('summary-info-two')
+  const group = await json('/api/groups', 'POST', { name: 'Summary info', log_ids: ['summary-info-one', 'summary-info-two'] })
+  await json('/api/settings', 'PUT', { ai_provider: 'qwen', ai_model: 'qwen3.7-plus', qwen_api_key: 'test-only-placeholder', qwen_base_url: 'https://example.test/compatible-mode/v1' })
+  const originalFetch = globalThis.fetch
+  globalThis.fetch = async (_url, init) => {
+    assert.equal(JSON.parse(String(init?.body)).model, 'qwen3.7-plus')
+    // Changing settings during a pending request must not relabel its result.
+    await json('/api/settings', 'PUT', { ai_provider: 'openai', ai_model: 'gpt-6.1-sol' })
+    await new Promise(resolve => setTimeout(resolve, 20))
+    return Response.json({ choices: [{ message: { content: '{"title":"First summary","summary":"Original result"}' } }] })
+  }
+  try {
+    await json('/api/ai/summarize', 'POST', { group_id: group.id })
+    const first = queryOne<any>("SELECT * FROM logs WHERE group_id = ? AND log_type = 'summary'", [group.id])
+    assert.equal(first.summary_provider, 'qwen')
+    assert.equal(first.summary_model, 'qwen3.7-plus')
+    assert.ok(Number.isInteger(first.summary_duration_ms) && first.summary_duration_ms >= 10)
+    assert.equal((await json(`/api/logs/${first.id}`)).summary_duration_ms, first.summary_duration_ms)
+
+    run('UPDATE logs SET summary_duration_ms = 999999 WHERE id = ?', [first.id])
+    globalThis.fetch = async (_url, init) => {
+      assert.equal(JSON.parse(String(init?.body)).model, 'gpt-6.1-sol')
+      return Response.json({ choices: [{ message: { content: '{"title":"New summary","summary":"Updated result"}' } }] })
+    }
+    await json('/api/ai/summarize', 'POST', { group_id: group.id })
+    const updated = await json(`/api/logs/${first.id}`)
+    assert.equal(updated.summary_provider, 'openai')
+    assert.equal(updated.summary_model, 'gpt-6.1-sol')
+    assert.ok(Number.isInteger(updated.summary_duration_ms) && updated.summary_duration_ms >= 0 && updated.summary_duration_ms < 999999)
+    assert.equal(updated.content, 'Updated result')
+    assert.equal(queryAll("SELECT id FROM logs WHERE group_id = ? AND log_type = 'summary'", [group.id]).length, 1)
+
+    globalThis.fetch = async () => Response.json({ error: { message: 'test-only failure' } }, { status: 500 })
+    assert.equal((await request('/api/ai/summarize', 'POST', { group_id: group.id })).status, 502)
+    assert.deepEqual(await json(`/api/logs/${first.id}`), updated)
+
+    await json(`/api/logs/${first.id}`, 'DELETE')
+    assert.ok(row(first.id).deleted_at)
+    assert.equal(row('summary-info-one').deleted_at, null)
+    assert.equal(row('summary-info-two').deleted_at, null)
+    assert.ok(queryOne('SELECT id FROM log_groups WHERE id = ?', [group.id]))
+    restoreTrash('local', [first.id])
+    assert.equal((await json(`/api/logs/${first.id}`)).summary_model, 'gpt-6.1-sol')
+  } finally { globalThis.fetch = originalFetch }
+})
+
 test('restart cancels old automatic jobs without extracting images', async () => {
   await processOcrQueue()
   insert('legacy-pending', { log_type: 'screenshot', file_path: screenshot, ocr_status: 'pending' })

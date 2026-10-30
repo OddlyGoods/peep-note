@@ -91,6 +91,9 @@ export async function initDb(appDataPath: string) {
   try { db.run("ALTER TABLE logs ADD COLUMN attachments TEXT NOT NULL DEFAULT '[]'") } catch {}
   try { db.run("ALTER TABLE logs ADD COLUMN workspace_id TEXT") } catch {}
   try { db.run("ALTER TABLE logs ADD COLUMN group_id TEXT") } catch {}
+  try { db.run('ALTER TABLE logs ADD COLUMN summary_provider TEXT') } catch {}
+  try { db.run('ALTER TABLE logs ADD COLUMN summary_model TEXT') } catch {}
+  try { db.run('ALTER TABLE logs ADD COLUMN summary_duration_ms INTEGER') } catch {}
   try { db.run('ALTER TABLE logs ADD COLUMN is_secret INTEGER NOT NULL DEFAULT 0') } catch {}
   try { db.run("ALTER TABLE settings ADD COLUMN openai_api_key TEXT") } catch {}
   try { db.run("ALTER TABLE settings ADD COLUMN ai_provider TEXT NOT NULL DEFAULT 'openai'") } catch {}

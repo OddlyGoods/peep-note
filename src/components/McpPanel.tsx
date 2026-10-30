@@ -7,39 +7,35 @@ import { useScreenActive } from '../lib/screenActivity'
 const copy = {
   en: {
     title: 'MCP connection', enable: 'Allow MCP connections',
-    description: 'Connect Codex or another MCP client to search, save, edit and group your notes. PeepNote must stay running, including in the tray.',
-    limits: 'Secret notes and provider API keys are excluded. Deletion only moves notes to Trash, including AI summaries. Notes read by a client may be sent to its AI model.',
+    description: 'Control PeepNote from Codex or another MCP client.',
+    limits: 'Secret notes and provider API keys are excluded.',
     endpoint: 'Server URL', button: 'Copy Codex configuration',
     setup: 'Paste the copied block into ~/.codex/config.toml, then restart Codex. In MCP settings, use Streamable HTTP. The configuration contains a private connection token; do not share it.',
-    off: 'Disabled by default. Turning off disconnects clients; enabling again creates a new token.',
-    immediate: 'Changes apply immediately.', failed: 'Could not update MCP settings or copy the configuration. Please try again.'
+    failed: 'Could not update MCP settings or copy the configuration. Please try again.'
   },
   ko: {
     title: 'MCP 연결', enable: 'MCP 연결 허용',
-    description: '코덱스 등 MCP 클라이언트에서 메모를 검색·저장·수정하고 그룹으로 묶을 수 있습니다. 피프노트가 실행 중이어야 하며, 트레이에 있어도 사용할 수 있습니다.',
-    limits: '시크릿 메모와 AI 공급처 API 키는 제외됩니다. AI 요약을 포함해 삭제는 휴지통 이동만 가능합니다. 클라이언트가 읽은 메모는 해당 AI 모델에 전달될 수 있습니다.',
+    description: '코덱스 등 MCP 클라이언트에서 피프노트를 제어할 수 있습니다.',
+    limits: '시크릿 메모와 AI 공급처 API 키는 제외됩니다.',
     endpoint: '서버 주소', button: 'Codex 연결 설정 복사',
     setup: '복사한 내용을 ~/.codex/config.toml에 추가하고 코덱스를 재시작하세요. MCP 설정에서는 Streamable HTTP를 사용합니다. 연결 전용 토큰이 포함되어 있으니 공유하지 마세요.',
-    off: '기본은 꺼짐입니다. 끄면 연결이 차단되고, 다시 켜면 새 연결 토큰이 발급됩니다.',
-    immediate: '변경 사항은 즉시 적용됩니다.', failed: 'MCP 설정을 변경하거나 복사하지 못했습니다. 다시 시도해 주세요.'
+    failed: 'MCP 설정을 변경하거나 복사하지 못했습니다. 다시 시도해 주세요.'
   },
   ja: {
     title: 'MCP 接続', enable: 'MCP 接続を許可',
-    description: 'Codex などの MCP クライアントからメモの検索・保存・編集・グループ化ができます。PeepNote はトレイ内を含め、起動している必要があります。',
-    limits: 'シークレットメモと AI プロバイダーの API キーは対象外です。AI 要約を含め、削除はゴミ箱への移動のみです。読み取ったメモがクライアントの AI モデルに送信される場合があります。',
+    description: 'Codex などの MCP クライアントから PeepNote を操作できます。',
+    limits: 'シークレットメモと AI プロバイダーの API キーは対象外です。',
     endpoint: 'サーバー URL', button: 'Codex 接続設定をコピー',
     setup: 'コピーした設定を ~/.codex/config.toml に追加して Codex を再起動してください。MCP 設定では Streamable HTTP を使用します。専用トークンが含まれるため、共有しないでください。',
-    off: '初期状態は無効です。無効にすると接続が切れ、再度有効にすると新しいトークンが発行されます。',
-    immediate: '変更はすぐに反映されます。', failed: 'MCP 設定の変更またはコピーに失敗しました。もう一度お試しください。'
+    failed: 'MCP 設定の変更またはコピーに失敗しました。もう一度お試しください。'
   },
   zh: {
     title: 'MCP 连接', enable: '允许 MCP 连接',
-    description: '通过 Codex 等 MCP 客户端搜索、保存、编辑笔记和创建分组。PeepNote 需要保持运行，在托盘中也可以使用。',
-    limits: '私密笔记和 AI 服务商 API 密钥不对 MCP 开放。删除操作只会移至回收站，包括 AI 摘要。客户端读取的笔记可能会发送给其 AI 模型。',
+    description: '通过 Codex 等 MCP 客户端控制 PeepNote。',
+    limits: '私密笔记和 AI 服务商 API 密钥不对 MCP 开放。',
     endpoint: '服务器地址', button: '复制 Codex 连接配置',
     setup: '将复制的配置添加到 ~/.codex/config.toml，然后重启 Codex。在 MCP 设置中使用 Streamable HTTP。配置含有专用连接令牌，请勿分享。',
-    off: '默认关闭。关闭后会阻止连接，重新开启会生成新的令牌。',
-    immediate: '更改立即生效。', failed: '无法更改 MCP 设置或复制配置，请重试。'
+    failed: '无法更改 MCP 设置或复制配置，请重试。'
   }
 }
 
@@ -95,7 +91,6 @@ export default function McpPanel() {
       </button>
       <p className="text-xs text-gray-400 leading-relaxed mt-2">{text.setup}</p>
     </div>}
-    <p className="text-xs text-gray-500 mt-3 leading-relaxed">{text.off} {text.immediate}</p>
     {failed && <p role="alert" className="text-xs text-red-400 mt-3">{text.failed}</p>}
   </section>
 }

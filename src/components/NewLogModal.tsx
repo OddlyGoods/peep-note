@@ -297,44 +297,47 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
 
         <div className="p-5 flex flex-col gap-4 overflow-y-auto flex-1 [&>*]:shrink-0"
           onDragEnter={handleDragEnter} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
-          {/* 타입 선택 */}
-          <div className="grid grid-cols-3 gap-2">
-            {TYPES.map(({ value, label, icon: Icon, color }) => (
-              <button key={value} onClick={() => handleTypeChange(value)} aria-pressed={type === value}
-                className={`new-log-type-tab flex items-center justify-center gap-1.5 py-2.5 rounded-xl border text-xs font-medium transition-all ${
-                  type === value
-                    ? 'bg-gray-800 border-violet-500/50 text-white'
-                    : 'bg-gray-800/50 border-gray-700 text-gray-400 hover:border-gray-600 hover:text-gray-300'
-                }`}>
-                <Icon className={`w-4 h-4 ${type === value ? color : ''}`} />
-                {t(label as 'note' | 'screenshot' | 'video')}
-              </button>
-            ))}
-          </div>
-
-          {/* 포맷 토글 (노트) */}
-          {type === 'note' && (
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-1">
-              {FORMATS.map(({ value, label, icon: Icon }) => (
-                <button key={value} onClick={() => setFormat(value)} aria-pressed={format === value}
-                  className={`new-log-format-tab flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                    format === value
-                      ? 'text-violet-300 bg-violet-500/15 border border-violet-500/30'
-                      : 'text-gray-400 hover:text-gray-400 border border-transparent'
+          <div className="flex flex-col gap-2 pb-1">
+            {/* 타입 선택 */}
+            <div className="grid grid-cols-3 gap-2">
+              {TYPES.map(({ value, label, icon: Icon, color }) => (
+                <button key={value} onClick={() => handleTypeChange(value)} aria-pressed={type === value}
+                  className={`new-log-type-tab flex items-center justify-center gap-1.5 py-2.5 rounded-xl border text-xs font-medium transition-all ${
+                    type === value
+                      ? 'bg-gray-800 border-violet-500/50 text-white'
+                      : 'bg-gray-800/50 border-gray-700 text-gray-400 hover:border-gray-600 hover:text-gray-300'
                   }`}>
-                  <Icon className="w-3.5 h-3.5" />
-                  {value === 'html' ? label : t(label as 'text' | 'markdown' | 'code')}
+                  <Icon className={`w-4 h-4 ${type === value ? color : ''}`} />
+                  {t(label as 'note' | 'screenshot' | 'video')}
                 </button>
               ))}
-              </div>
-              <button type="button" onClick={() => setIsSecret(value => !value)} aria-pressed={isSecret}
-                className={`new-log-secret-button flex shrink-0 items-center gap-1.5 rounded-md border px-2 py-1.5 text-xs transition-all ${isSecret ? 'border-violet-500/50 bg-violet-500/15 text-violet-300' : 'text-gray-400 hover:text-gray-200'}`}>
-                <Lock className="h-3.5 w-3.5" />
-                {t('secret')}
-              </button>
             </div>
-          )}
+
+            {/* 포맷 토글 (노트) */}
+            {type === 'note' && (
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-1">
+                {FORMATS.map(({ value, label, icon: Icon }) => (
+                  <button key={value} onClick={() => setFormat(value)} aria-pressed={format === value}
+                    className={`new-log-format-tab flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      format === value
+                        ? 'text-violet-300 bg-violet-500/15 border border-violet-500/30'
+                        : 'text-gray-400 hover:text-gray-400 border border-transparent'
+                    }`}>
+                    <Icon className="w-3.5 h-3.5" />
+                    {value === 'html' ? label : t(label as 'text' | 'markdown' | 'code')}
+                  </button>
+                ))}
+                </div>
+                <button type="button" onClick={() => setIsSecret(value => !value)} aria-pressed={isSecret}
+                  className={`new-log-secret-button flex shrink-0 items-center gap-1.5 rounded-md border px-2 py-1.5 text-xs transition-all ${isSecret ? 'border-violet-500/50 bg-violet-500/15 text-violet-300' : 'text-gray-400 hover:text-gray-200'}`}>
+                  <Lock className="h-3.5 w-3.5" />
+                  {t('secret')}
+                </button>
+              </div>
+            )}
+
+          </div>
 
           {/* 제목 */}
           <input type="text" className="input" placeholder={t('titleOptional')}

@@ -46,10 +46,9 @@ export default function ConfirmModal({
   }, [active, onConfirm, onCancel])
 
   if (!active) return null
-  const host = document.getElementById('app-content')
 
   return createPortal(
-    <div className={`confirm-overlay ${host ? 'absolute inset-0' : 'fixed inset-x-0 bottom-0 top-10'} z-[100] flex items-center justify-center`} onClick={e => e.stopPropagation()}>
+    <div className="confirm-overlay fixed inset-x-0 bottom-0 top-10 z-[100] flex items-center justify-center" onClick={e => e.stopPropagation()}>
       {/* 백드롭 */}
       <div
         className="absolute inset-0"
@@ -133,6 +132,6 @@ export default function ConfirmModal({
           </button>
         </div>
       </div>
-    </div>, host ?? document.body
+    </div>, document.body
   )
 }

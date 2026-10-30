@@ -125,7 +125,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </aside>
 
         {/* 메인 콘텐츠 */}
-        <main id="app-content" className="relative flex-1 overflow-auto" style={{ background: 'var(--app-bg)' }}>
+        <main className="flex-1 overflow-auto" style={{ background: 'var(--app-bg)' }}>
           {children}
         </main>
       </div>

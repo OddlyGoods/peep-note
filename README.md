@@ -11,7 +11,6 @@ PeepNote is a local-first desktop app for saving useful LLM responses, recording
 - **2026-10-30 — v1.1.2** — Improved comments and file attachments, added syntax highlighting and separate HTML preview windows.
 - **2026-10-30 — v1.1.1** — Added linked file attachments and storage usage, preserved screens and drafts, and refined the interface.
 - **2026-10-29 — v1.1.0** — Improved shortcuts, tags, Markdown previews, and the app interface.
-- **2026-10-29** — Fixed Linux update restarts after the executable rename. Older installations retain a compatible launch path when updating to v1.0.17.
 
 ## See it in action
 

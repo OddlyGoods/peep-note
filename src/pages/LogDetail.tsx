@@ -16,6 +16,7 @@ import OcrText from '../components/OcrText'
 import FavoriteButton from '../components/FavoriteButton'
 import WorkspaceMoveButton from '../components/WorkspaceMoveButton'
 import MarkdownCodeBlock from '../components/MarkdownCodeBlock'
+import MarkdownLink from '../components/MarkdownLink'
 import HighlightedSource from '../components/HighlightedSource'
 import TagInput from '../components/TagInput'
 import AutoGrowTextarea from '../components/AutoGrowTextarea'
@@ -54,6 +55,7 @@ const FORMAT_CONFIG = {
 
 const FORMATS = ['text', 'markdown', 'code', 'html'] as const
 const MARKDOWN_COMPONENTS = {
+  a: MarkdownLink,
   pre: MarkdownCodeBlock,
   table: ({ node: _node, ...props }: any) => (
     <div className="markdown-table-wrap"><table {...props} /></div>

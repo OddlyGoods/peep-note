@@ -20,6 +20,8 @@ import { createConnection } from 'node:net'
 import { autoUpdater } from 'electron-updater'
 import { UpdateController, type UpdateEvent } from './updateController'
 import { installDebAndRestart } from './installDeb'
+import { protectAppNavigation } from './appNavigation'
+import { externalWebUrl } from '../shared/noteLinks'
 import { UPDATE_STATE_CHANNEL } from '../shared/updates'
 import { startServer } from '../server/index'
 import { attachmentPath, isLinkedAttachment } from '../shared/attachments'
@@ -195,6 +197,7 @@ function createMainWindow() {
     show: false
   })
 
+  protectAppNavigation(mainWindow.webContents, url => shell.openExternal(url))
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173')
     mainWindow.webContents.openDevTools()
@@ -236,6 +239,7 @@ function createOverlayWindow() {
     }
   })
 
+  protectAppNavigation(overlayWindow.webContents, url => shell.openExternal(url))
   if (isDev) {
     overlayWindow.loadURL('http://localhost:5173/overlay.html')
   } else {
@@ -1278,8 +1282,10 @@ function setupIPC() {
   ipcMain.handle('window-close', () => mainWindow?.hide())
   ipcMain.handle('window-is-maximized', () => mainWindow?.isMaximized() ?? false)
 
-  ipcMain.handle('open-external', (_e, url: string) => {
-    shell.openExternal(url)
+  ipcMain.handle('open-external', async (_e, url: unknown) => {
+    const href = externalWebUrl(url)
+    if (!href) throw new Error('UNSUPPORTED_EXTERNAL_URL')
+    await shell.openExternal(href)
   })
 
   ipcMain.handle('get-app-port', () => APP_PORT)

@@ -5,6 +5,7 @@ export {}
 declare global {
   interface Window {
     electronAPI?: {
+      openHtmlPreview: (html: string, title: string) => Promise<boolean>
       takeScreenshot: () => Promise<string | null>
       getSources: () => Promise<{ id: string; name: string; thumbnail: string }[]>
       saveVideo: (buffer: ArrayBuffer, filename: string) => Promise<string | null>

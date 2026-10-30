@@ -60,6 +60,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setHotkeysEnabled: (enabled: boolean) => ipcRenderer.invoke('set-hotkeys-enabled', enabled),
 
   // 윈도우 제어
+  openHtmlPreview: (html: string, title: string) => ipcRenderer.invoke('open-html-preview', html, title),
   openOverlay: () => ipcRenderer.invoke('open-overlay'),
   closeOverlay: () => ipcRenderer.invoke('close-overlay'),
   selectQuickLog: (id: string) => ipcRenderer.invoke('select-quick-log', id),

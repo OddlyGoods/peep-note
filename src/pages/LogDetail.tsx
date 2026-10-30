@@ -110,7 +110,7 @@ export default function LogDetail() {
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
   const [showConfirm, setShowConfirm] = useState(false)
-  const [htmlPreview, setHtmlPreview] = useState(false)
+  const [previewFailed, setPreviewFailed] = useState(false)
   const [groupLogs, setGroupLogs] = useState<Log[]>([])
   const [copied, setCopied] = useState(false)
   const [showScrollTop, setShowScrollTop] = useState(false)
@@ -160,6 +160,7 @@ export default function LogDetail() {
     setNoteFileToDelete(null)
     setNoteFileDeleteFailed(false)
     setSaving(false)
+    setPreviewFailed(false)
     setNewCommentFiles([])
     setCommentFileToDelete(null)
     setGroupLogs([])
@@ -818,14 +819,20 @@ export default function LogDetail() {
                     </button>
                   </div>
                 )}
-                {/* 뷰 모드 + HTML일 때 편집/미리보기 토글 */}
-                {!editing && isNote && log.content_format === 'html' && (
+                {!editing && isNote && log.content_format === 'html' && (!log.is_secret || secretGate === 'open') && (
                   <button
-                    onClick={() => setHtmlPreview(v => !v)}
+                    onClick={async () => {
+                      const previewLogId = log.id
+                      setPreviewFailed(false)
+                      try {
+                        const opened = await window.electronAPI?.openHtmlPreview?.(log.content, `${displayTitle || t('untitled')} — ${t('preview')}`)
+                        if (!opened && recordIdRef.current === previewLogId) setPreviewFailed(true)
+                      } catch { if (recordIdRef.current === previewLogId) setPreviewFailed(true) }
+                    }}
                     className="flex items-center gap-1.5 px-2 py-0.5 rounded text-xs text-gray-400 hover:text-violet-300 hover:bg-violet-500/10 transition-colors"
                   >
-                    {htmlPreview ? <Code2 className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                    {htmlPreview ? t('viewSource') : t('preview')}
+                    <Eye className="w-3.5 h-3.5" />
+                    {t('preview')}
                   </button>
                 )}
                 {!editing && log.content && (!log.is_secret || secretGate === 'open') && (
@@ -841,6 +848,7 @@ export default function LogDetail() {
               </div>
             </div>
 
+            {previewFailed && <p role="alert" className="mb-2 text-xs text-red-400">{t('operationFailed')}</p>}
             {editing ? (
               <AutoGrowTextarea
                 aria-label={t('content')}
@@ -873,13 +881,6 @@ export default function LogDetail() {
                 </div>
               ) : log.content_format === 'markdown' ? (
                 <MarkdownContent content={log.content} />
-              ) : log.content_format === 'html' && htmlPreview ? (
-                <iframe
-                  srcDoc={`<!DOCTYPE html><html><head><style>body{margin:0;padding:12px;background:#111827;color:#e5e7eb;font-family:sans-serif;font-size:14px;}*{box-sizing:border-box;}</style></head><body>${log.content}</body></html>`}
-                  className="w-full rounded-xl border border-gray-700 bg-gray-900"
-                  style={{ minHeight: '200px', height: '400px' }}
-                  sandbox="allow-scripts"
-                />
               ) : log.content_format === 'code' || log.content_format === 'html' ? (
                 <HighlightedSource content={log.content} format={log.content_format} />
               ) : (

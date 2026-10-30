@@ -32,6 +32,7 @@ import { restartAfterDataLocationChange } from './restart'
 import { dataStorageCopy, dataStorageErrorKey, type DataLocationResult } from '../shared/dataStorage'
 import { getActiveHotkeys, resolveHotkeys } from '../shared/hotkeys'
 import { handleFavoritesShortcut } from './favoritesShortcut'
+import { openHtmlPreview } from './htmlPreview'
 
 // Register the internal app scheme before Electron is ready.
 protocol.registerSchemesAsPrivileged([
@@ -952,6 +953,16 @@ function registerHotkeys() {
 
 // ── IPC 핸들러 ─────────────────────────────────────────────────────────
 function setupIPC() {
+  ipcMain.handle('open-html-preview', async (event, source: unknown, title: unknown) => {
+    if (event.sender !== mainWindow?.webContents || typeof source !== 'string' || source.length > 5_000_000) return false
+    const windowTitle = typeof title === 'string' ? title.slice(0, 200) : 'HTML Preview'
+    try {
+      await openHtmlPreview(source, windowTitle)
+      return true
+    } catch {
+      return false
+    }
+  })
   ipcMain.handle('open-image-viewer', (_e, filepath: string, requestedTheme?: string) => {
     const source = isLinkedAttachment(filepath) ? readableAttachmentFile(filepath) : filepath
     if (!source) return null

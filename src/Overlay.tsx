@@ -640,7 +640,6 @@ export default function Overlay() {
             )}
 
             <div className="flex-1" />
-            <span className="text-xs font-medium" style={{ color: 'var(--title-text)' }}>Ctrl+Enter</span>
 
             <button onClick={handleSave} disabled={saving || saved || recording}
               className="overlay-save flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-all disabled:opacity-50"

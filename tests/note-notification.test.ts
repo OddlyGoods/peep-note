@@ -14,8 +14,9 @@ function fixture() {
   const timers = new Map<number, { at: number; run: () => void }>()
   const events: string[] = []
   const lifetime = createNoteNotificationLifetime<string>({
-    show: value => events.push(value), fade: () => events.push('fade'), hide: () => events.push('hide')
+    show: value => events.push(value), fade: () => events.push('fade'), restore: () => events.push('restore'), hide: () => events.push('hide')
   }, {
+    now: () => now,
     set: (delay, run) => { timers.set(++id, { at: now + delay, run }); return id },
     clear: key => timers.delete(key as number)
   })
@@ -60,6 +61,55 @@ test('opening, closing or quitting cancels pending notification timers', () => {
   assert.deepEqual(f.events, ['first', 'hide'])
 })
 
+test('hover pauses the remaining hold time, including repeated enter and leave events', () => {
+  const f = fixture()
+  f.lifetime.show('first'); f.tick(2000)
+  f.lifetime.setHovered(true); f.tick(10_000)
+  f.lifetime.setHovered(true); f.tick(10_000)
+  assert.deepEqual(f.events, ['first'])
+  f.lifetime.setHovered(false); f.tick(1000)
+  f.lifetime.setHovered(false)
+  f.lifetime.setHovered(true); f.tick(10_000)
+  f.lifetime.setHovered(false); f.tick(1999)
+  assert.deepEqual(f.events, ['first'])
+  f.tick(1)
+  assert.deepEqual(f.events, ['first', 'fade'])
+  f.tick(500)
+  assert.deepEqual(f.events, ['first', 'fade', 'hide'])
+})
+
+test('a replacement stays paused under the pointer and gets five seconds after leaving', () => {
+  const f = fixture()
+  f.lifetime.show('first'); f.tick(4000); f.lifetime.setHovered(true)
+  f.lifetime.show('second'); f.tick(10_000)
+  assert.deepEqual(f.events, ['first', 'second'])
+  f.lifetime.setHovered(false); f.tick(4999)
+  assert.deepEqual(f.events, ['first', 'second'])
+  f.tick(1); f.tick(500)
+  assert.deepEqual(f.events, ['first', 'second', 'fade', 'hide'])
+})
+
+test('dismissing a hovered notification clears its pause state and cannot resurrect it', () => {
+  const f = fixture()
+  f.lifetime.show('first'); f.tick(2000); f.lifetime.setHovered(true)
+  f.lifetime.dismiss(); f.lifetime.setHovered(false); f.tick(10_000)
+  assert.deepEqual(f.events, ['first', 'hide'])
+  f.lifetime.show('second'); f.tick(5500)
+  assert.deepEqual(f.events, ['first', 'hide', 'second', 'fade', 'hide'])
+})
+
+test('hovering during fade restores full visibility and cancels the pending close', () => {
+  const f = fixture()
+  f.lifetime.show('first'); f.tick(5200)
+  assert.deepEqual(f.events, ['first', 'fade'])
+  f.lifetime.setHovered(true); f.tick(10_000)
+  assert.deepEqual(f.events, ['first', 'fade', 'restore'])
+  f.lifetime.setHovered(false); f.tick(200); f.lifetime.setHovered(true); f.tick(10_000)
+  assert.deepEqual(f.events, ['first', 'fade', 'restore', 'fade', 'restore'])
+  f.lifetime.setHovered(false); f.tick(500)
+  assert.deepEqual(f.events, ['first', 'fade', 'restore', 'fade', 'restore', 'fade', 'hide'])
+})
+
 test('notification follows the bottom right of the monitor work area, including negative coordinates', () => {
   assert.deepEqual(noteNotificationBounds({ x: -1920, y: 24, width: 1920, height: 1032 }), {
     x: -496, y: 896, width: 480, height: 144
@@ -83,28 +133,72 @@ test('notification uses the selected language and theme, bounds its text and for
   assert.equal(noteNotificationPresentation(note, { language: 'zh' }).close, '关闭')
 })
 
-test('notification renders note text literally and exposes only open and dismiss actions', () => {
+test('notification renders note text literally and forwards card hover, open and dismiss actions', () => {
   const elements = new Map<string, any>()
-  let show!: (data: unknown) => void, fade!: () => void, opened = 0, dismissed = 0
-  const body = { dataset: {}, classList: { remove() {}, add() {} } }
+  let show!: (data: unknown) => void, fade!: () => void, restore!: () => void, opened = 0, dismissed = 0
+  const hovered: boolean[] = []
+  const classes = new Set<string>()
+  const body = { dataset: {}, classList: {
+    remove(...names: string[]) { names.forEach(name => classes.delete(name)) },
+    add(...names: string[]) { names.forEach(name => classes.add(name)) }
+  } }
   const document = {
     body, documentElement: { lang: '' }, getElementById(id: string) {
-      if (!elements.has(id)) elements.set(id, { textContent: '', setAttribute() {}, addEventListener(_event: string, handler: () => void) { this.click = handler } })
+      if (!elements.has(id)) elements.set(id, { textContent: '', setAttribute() {}, addEventListener(event: string, handler: () => void) { this[event] = handler } })
       return elements.get(id)
     }
   }
   const code = noteNotificationHtml.match(/<script>([\s\S]*?)<\/script>/)![1]
   vm.runInNewContext(code, { document, window: { noteNotification: {
     onShow: (fn: typeof show) => { show = fn }, onFade: (fn: typeof fade) => { fade = fn },
-    open: () => opened++, dismiss: () => dismissed++
+    onRestore: (fn: typeof restore) => { restore = fn },
+    open: () => opened++, dismiss: () => dismissed++, setHovered: (value: boolean) => hovered.push(value)
   } } })
   const hostile = '<img src=x onerror="alert(1)"><script>bad()</script>'
   show(noteNotificationPresentation({ id: 'test', title: hostile, preview: hostile, savedAt: 1 }, {}))
   assert.equal(elements.get('title').textContent, hostile)
   assert.equal(elements.get('preview').textContent, hostile)
+  elements.get('card').mouseenter(); elements.get('card').mouseleave()
+  assert.deepEqual(hovered, [true, false])
   elements.get('open').click(); elements.get('dismiss').click(); fade()
+  assert.equal(classes.has('leaving'), true)
+  restore()
+  assert.equal(classes.has('leaving'), false)
+  assert.equal(classes.has('held'), true)
+  fade()
+  assert.equal(classes.has('held'), false)
   assert.equal(opened, 1)
   assert.equal(dismissed, 1)
+})
+
+test('notification only accepts hover state from its own frame and remains interactive while fading', t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  let now = 0
+  t.mock.method(performance, 'now', () => now)
+  const f = nativeFixture()
+  t.after(() => f.notification.dismiss())
+  const tick = (ms: number) => { now += ms; t.mock.timers.tick(ms) }
+  f.notification.show({ id: 'hover-test', title: 'Hover test', preview: 'Text', savedAt: 1 })
+  const win = f.windows[0]
+  win.webContents.emit('did-finish-load')
+  const event = { sender: win.webContents, senderFrame: win.webContents.mainFrame }
+  const hover = f.handlers.get('note-toast-hover')!
+  tick(2000)
+  hover({ sender: {}, senderFrame: event.senderFrame }, true)
+  hover({ sender: event.sender, senderFrame: {} }, true)
+  hover(event, 'true')
+  tick(3000)
+  assert.equal(win.sent.at(-1)[0], 'note-toast-fade')
+  assert.equal(win.ignoresMouse, false)
+  tick(200); hover(event, true)
+  assert.equal(win.sent.at(-1)[0], 'note-toast-restore')
+  tick(10_000)
+  assert.equal(win.destroyed, false)
+  assert.equal(win.inactiveShows, 1)
+  hover(event, false); tick(0)
+  assert.equal(win.sent.at(-1)[0], 'note-toast-fade')
+  tick(500)
+  assert.equal(win.destroyed, true)
 })
 
 function nativeFixture() {
@@ -112,6 +206,7 @@ function nativeFixture() {
   class Window extends EventEmitter {
     destroyed = false
     inactiveShows = 0
+    ignoresMouse = false
     sent: any[] = []
     webContents = Object.assign(new EventEmitter(), {
       mainFrame: {},
@@ -122,7 +217,7 @@ function nativeFixture() {
     constructor(public options: any) { super(); windows.push(this) }
     isDestroyed() { return this.destroyed }
     setBounds() {}
-    setIgnoreMouseEvents() {}
+    setIgnoreMouseEvents(value: boolean) { this.ignoresMouse = value }
     showInactive() { this.inactiveShows++ }
     loadURL() { return Promise.resolve() }
     destroy() { this.destroyed = true; this.emit('closed') }

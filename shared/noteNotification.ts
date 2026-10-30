@@ -35,34 +35,68 @@ export function noteNotificationBounds(area: { x: number; y: number; width: numb
 }
 
 interface Clock {
+  now(): number
   set(delay: number, callback: () => void): unknown
   clear(timer: unknown): void
 }
 const clock: Clock = {
+  now: () => performance.now(),
   set: (delay, callback) => setTimeout(callback, delay),
   clear: timer => clearTimeout(timer as ReturnType<typeof setTimeout>)
 }
 
 // A replacement cancels both old timers, including one already fading out.
-export function createNoteNotificationLifetime<T>(view: { show: (value: T) => void; fade: () => void; hide: () => void }, timer: Clock = clock) {
+export function createNoteNotificationLifetime<T>(view: { show: (value: T) => void; fade: () => void; restore: () => void; hide: () => void }, timer: Clock = clock) {
   let visible = false
+  let hovered = false
+  let fading = false
+  let remaining = NOTE_NOTIFICATION_HOLD_MS
+  let startedAt = 0
   let hold: unknown, fade: unknown
   const clear = () => { timer.clear(hold); timer.clear(fade); hold = fade = undefined }
   const dismiss = () => {
     clear()
+    hovered = false
     if (!visible) return
     visible = false
     view.hide()
+  }
+  const startHold = () => {
+    startedAt = timer.now()
+    hold = timer.set(remaining, () => {
+      hold = undefined
+      remaining = 0
+      fading = true
+      view.fade()
+      fade = timer.set(NOTE_NOTIFICATION_FADE_MS, dismiss)
+    })
   }
   return {
     show(value: T) {
       clear()
       visible = true
+      fading = false
+      remaining = NOTE_NOTIFICATION_HOLD_MS
       view.show(value)
-      hold = timer.set(NOTE_NOTIFICATION_HOLD_MS, () => {
-        view.fade()
-        fade = timer.set(NOTE_NOTIFICATION_FADE_MS, dismiss)
-      })
+      if (!hovered) startHold()
+    },
+    setHovered(value: boolean) {
+      if (!visible || value === hovered) return
+      hovered = value
+      if (hovered) {
+        if (fading) {
+          timer.clear(fade)
+          fade = undefined
+          fading = false
+          view.restore()
+        } else {
+          remaining = Math.max(0, remaining - (timer.now() - startedAt))
+          timer.clear(hold)
+          hold = undefined
+        }
+      } else {
+        startHold()
+      }
     },
     dismiss
   }

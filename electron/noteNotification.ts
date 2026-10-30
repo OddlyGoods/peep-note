@@ -20,8 +20,11 @@ export class NoteNotification {
     },
     fade: () => {
       if (!this.window || this.window.isDestroyed()) return
-      this.window.setIgnoreMouseEvents(true, { forward: true })
       this.window.webContents.send('note-toast-fade')
+    },
+    restore: () => {
+      if (!this.window || this.window.isDestroyed()) return
+      this.window.webContents.send('note-toast-restore')
     },
     hide: () => this.destroyWindow()
   })
@@ -38,6 +41,9 @@ export class NoteNotification {
       this.openNote(id)
     })
     ipcMain.handle('note-toast-dismiss', event => { if (trusted(event)) this.dismiss() })
+    ipcMain.handle('note-toast-hover', (event, hovered: unknown) => {
+      if (trusted(event) && typeof hovered === 'boolean') this.lifetime.setHovered(hovered)
+    })
   }
 
   show(note: McpSavedNote) {

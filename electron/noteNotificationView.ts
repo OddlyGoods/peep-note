@@ -8,7 +8,8 @@ export const noteNotificationHtml = `<!doctype html>
 <style>
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;background:transparent!important;overflow:hidden;color-scheme:normal}
 body{padding:8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;opacity:1;transition:opacity ${NOTE_NOTIFICATION_FADE_MS}ms ease}
-body.leaving{opacity:0;pointer-events:none}
+body.leaving{opacity:0}
+body.held{opacity:1;transition:none}
 #card{position:relative;height:100%;border:1px solid rgba(99,102,241,.5);border-radius:18px;background:rgba(245,243,255,.98);box-shadow:0 6px 16px rgba(79,70,229,.13);color:#1e293b;overflow:hidden}
 button{font:inherit;border:0;cursor:pointer}#open{display:flex;align-items:center;gap:12px;width:100%;height:100%;padding:16px 18px;background:transparent;text-align:left;color:inherit}
 .icon{width:36px;height:36px;border-radius:12px;background:#e0e7ff;display:grid;place-items:center;flex:none;color:#6d28d9}
@@ -23,14 +24,24 @@ body[data-theme=dark] .icon{background:rgba(139,92,246,.18);color:#c4b5fd}body[d
 <button id="dismiss" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
 <script>
 const bridge=window.noteNotification;
+const card=document.getElementById('card');
+card.addEventListener('mouseenter',()=>bridge.setHovered(true));
+card.addEventListener('mouseleave',()=>bridge.setHovered(false));
 document.getElementById('open').addEventListener('click',()=>bridge.open());
 document.getElementById('dismiss').addEventListener('click',()=>bridge.dismiss());
 bridge.onShow(value=>{
  document.documentElement.lang=value.language;
  document.body.dataset.theme=value.theme;
- document.body.classList.remove('leaving');
+ document.body.classList.remove('leaving','held');
  for(const key of ['metadata','title','preview']) document.getElementById(key).textContent=value[key];
  document.getElementById('dismiss').setAttribute('aria-label',value.close);
 });
-bridge.onFade(()=>document.body.classList.add('leaving'));
+bridge.onFade(()=>{
+ document.body.classList.remove('held');
+ document.body.classList.add('leaving');
+});
+bridge.onRestore(()=>{
+ document.body.classList.remove('leaving');
+ document.body.classList.add('held');
+});
 </script></body></html>`

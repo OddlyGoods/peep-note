@@ -1131,6 +1131,64 @@ html[data-theme='light'] .markdown-code-copy[data-state='error'] {
   color: #b91c1c;
 }
 
+.syntax-source {
+  --syntax-text: #e5e7eb;
+  --syntax-keyword: #c4b5fd;
+  --syntax-name: #fda4af;
+  --syntax-attribute: #fcd34d;
+  --syntax-string: #a7f3d0;
+  --syntax-value: #fdba74;
+  --syntax-title: #93c5fd;
+  --syntax-comment: #94a3b8;
+  color: var(--syntax-text);
+  line-height: 1.65;
+  tab-size: 4;
+}
+html[data-theme='light'] .syntax-source {
+  --syntax-text: #1f2937;
+  --syntax-keyword: #6d28d9;
+  --syntax-name: #be123c;
+  --syntax-attribute: #92400e;
+  --syntax-string: #166534;
+  --syntax-value: #9a3412;
+  --syntax-title: #1d4ed8;
+  --syntax-comment: #64748b;
+}
+.syntax-source-code {
+  display: block;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+.syntax-source .hljs-subst,
+.syntax-source .hljs-tag { color: var(--syntax-text); }
+.syntax-source .hljs-keyword,
+.syntax-source .hljs-selector-tag,
+.syntax-source .hljs-meta { color: var(--syntax-keyword); }
+.syntax-source .hljs-name,
+.syntax-source .hljs-selector-id,
+.syntax-source .hljs-selector-class,
+.syntax-source .hljs-deletion { color: var(--syntax-name); }
+.syntax-source .hljs-attr,
+.syntax-source .hljs-attribute,
+.syntax-source .hljs-type { color: var(--syntax-attribute); }
+.syntax-source .hljs-string,
+.syntax-source .hljs-regexp,
+.syntax-source .hljs-addition { color: var(--syntax-string); }
+.syntax-source .hljs-number,
+.syntax-source .hljs-literal,
+.syntax-source .hljs-variable,
+.syntax-source .hljs-template-variable { color: var(--syntax-value); }
+.syntax-source .hljs-title,
+.syntax-source .hljs-built_in,
+.syntax-source .hljs-symbol,
+.syntax-source .hljs-bullet { color: var(--syntax-title); }
+.syntax-source .hljs-comment,
+.syntax-source .hljs-quote { color: var(--syntax-comment); }
+.syntax-source .hljs-emphasis { font-style: italic; }
+.syntax-source .hljs-strong { font-weight: 600; }
+
 .comment-composer {
   border-color: var(--medium-border);
   background: var(--side-panel-bg);

@@ -16,6 +16,7 @@ import OcrText from '../components/OcrText'
 import FavoriteButton from '../components/FavoriteButton'
 import WorkspaceMoveButton from '../components/WorkspaceMoveButton'
 import MarkdownCodeBlock from '../components/MarkdownCodeBlock'
+import HighlightedSource from '../components/HighlightedSource'
 import TagInput from '../components/TagInput'
 import AutoGrowTextarea from '../components/AutoGrowTextarea'
 import TagBadge from '../components/TagBadge'
@@ -879,12 +880,10 @@ export default function LogDetail() {
                   style={{ minHeight: '200px', height: '400px' }}
                   sandbox="allow-scripts"
                 />
+              ) : log.content_format === 'code' || log.content_format === 'html' ? (
+                <HighlightedSource content={log.content} format={log.content_format} />
               ) : (
-                <div className={`detail-content break-words p-4 rounded-xl border border-gray-700 text-sm whitespace-pre-wrap ${
-                  log.content_format === 'code' ? 'font-mono text-emerald-400 bg-gray-950' :
-                  log.content_format === 'html' ? 'font-mono text-sky-300 bg-gray-950' :
-                  'bg-gray-800/50 text-gray-200'
-                }`}>
+                <div className="detail-content break-words p-4 rounded-xl border border-gray-700 text-sm whitespace-pre-wrap bg-gray-800/50 text-gray-200">
                   {log.content}
                 </div>
               )

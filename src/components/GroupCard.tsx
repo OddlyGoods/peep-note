@@ -261,7 +261,7 @@ export default function GroupCard({ group, onRefresh, startEditing = false, onSt
             placeholder={t('aiSettings')}
             value={keyInput}
             onChange={e => setKeyInput(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') handleSaveKey(); if (e.key === 'Escape') setShowKeyInput(false) }}
+            onKeyDown={e => { if (e.key === 'Enter') handleSaveKey(); if (e.key === 'Escape') { e.preventDefault(); setShowKeyInput(false) } }}
             className="flex-1 bg-gray-800 border border-amber-500/30 rounded px-2 py-1 text-xs text-white outline-none placeholder-gray-600"
           />
           <button onClick={handleSaveKey} className="text-xs text-green-400 hover:text-green-300 px-2 py-1 rounded hover:bg-green-500/10">저장</button>

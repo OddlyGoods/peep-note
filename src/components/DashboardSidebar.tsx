@@ -224,7 +224,7 @@ export default function DashboardSidebar() {
                       ref={editInputRef}
                       value={editingName}
                       onChange={e => setEditingName(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter') confirmEdit(); if (e.key === 'Escape') setEditingId(null) }}
+                      onKeyDown={e => { if (e.key === 'Enter') confirmEdit(); if (e.key === 'Escape') { e.preventDefault(); setEditingId(null) } }}
                       className="flex-1 min-w-0 rounded-md border border-violet-500/30 bg-gray-900/50 px-2.5 py-1.5 text-xs text-gray-200 outline-none focus:border-violet-400"
                     />
                     <button
@@ -280,7 +280,7 @@ export default function DashboardSidebar() {
                   ref={newInputRef}
                   value={newName}
                   onChange={e => setNewName(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') confirmAdd(); if (e.key === 'Escape') { setAddingNew(false); setNewName('') } }}
+                  onKeyDown={e => { if (e.key === 'Enter') confirmAdd(); if (e.key === 'Escape') { e.preventDefault(); setAddingNew(false); setNewName('') } }}
                   placeholder={t('workspaceName')}
                   className="flex-1 min-w-0 rounded-md border border-violet-500/30 bg-gray-900/50 px-2.5 py-1.5 text-xs text-gray-200 outline-none placeholder:text-gray-500 focus:border-violet-400"
                 />

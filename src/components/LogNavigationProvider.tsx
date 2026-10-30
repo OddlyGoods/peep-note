@@ -43,7 +43,7 @@ export default function LogNavigationProvider({ children }: { children: React.Re
   useEffect(() => {
     if (pending?.stage !== 'loading') return
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') cancel()
+      if (event.key === 'Escape') { event.preventDefault(); cancel() }
     }
     window.addEventListener('keydown', handleEscape)
     return () => window.removeEventListener('keydown', handleEscape)

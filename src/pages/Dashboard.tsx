@@ -121,7 +121,7 @@ export default function Dashboard() {
       if (!tagMenuRef.current?.contains(event.target as Node)) setTagMenuOpen(false)
     }
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setTagMenuOpen(false)
+      if (event.key === 'Escape') { event.preventDefault(); setTagMenuOpen(false) }
     }
     document.addEventListener('mousedown', closeMenu)
     document.addEventListener('keydown', closeOnEscape)

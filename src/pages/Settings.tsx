@@ -347,6 +347,7 @@ export default function Settings() {
     }
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
+        event.preventDefault()
         setLanguageMenuOpen(false)
         setModelMenuOpen(false)
       }

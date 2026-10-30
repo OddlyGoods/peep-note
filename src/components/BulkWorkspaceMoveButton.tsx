@@ -30,7 +30,7 @@ export default function BulkWorkspaceMoveButton({ logIds, groupIds, currentWorks
     const close = (event: MouseEvent) => {
       if (!wrapperRef.current?.contains(event.target as Node)) setOpen(false)
     }
-    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') setOpen(false) }
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') { event.preventDefault(); setOpen(false) } }
     document.addEventListener('mousedown', close)
     document.addEventListener('keydown', closeOnEscape)
     return () => {

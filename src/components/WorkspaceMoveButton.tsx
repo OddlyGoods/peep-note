@@ -59,7 +59,7 @@ export default function WorkspaceMoveButton({ log, variant = 'compact', onMoved 
       const node = event.target as Node
       if (!buttonRef.current?.contains(node) && !menuRef.current?.contains(node)) setOpen(false)
     }
-    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') setOpen(false) }
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') { event.preventDefault(); setOpen(false) } }
     const closeOnViewportChange = () => setOpen(false)
     document.addEventListener('mousedown', close)
     document.addEventListener('keydown', closeOnEscape)

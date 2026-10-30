@@ -64,6 +64,23 @@ function ElectronNavigation() {
 export default function App() {
   useEffect(subscribeToUpdates, [])
   useEffect(() => {
+    let active = true
+    const hideOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.repeat || event.isComposing || event.keyCode === 229 || event.defaultPrevented) return
+      const hasOpenLayer = Array.from(document.querySelectorAll(
+        '[role="dialog"], [role="menu"], [role="listbox"], [aria-haspopup][aria-expanded="true"]'
+      )).some(element => element.getClientRects().length > 0)
+      // Let dialogs, menus and inline editors consume Escape before hiding.
+      queueMicrotask(() => {
+        if (!active || hasOpenLayer || event.defaultPrevented || !document.hasFocus()) return
+        event.preventDefault()
+        void window.electronAPI?.windowClose()
+      })
+    }
+    window.addEventListener('keydown', hideOnEscape)
+    return () => { active = false; window.removeEventListener('keydown', hideOnEscape) }
+  }, [])
+  useEffect(() => {
     const refresh = () => {
       invalidateExploreCache()
       void useWorkspaceStore.getState().fetchWorkspaces()

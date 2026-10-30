@@ -535,7 +535,7 @@ export default function Overlay() {
                 format === 'code' && type === 'note' ? 'code-input font-mono text-emerald-400 bg-gray-950' :
                 format === 'html' && type === 'note' ? 'code-input font-mono text-sky-300 bg-gray-950' : ''
               }`}
-              style={{ minHeight: previewUrl ? '36px' : '80px' }}
+              style={{ minHeight: previewUrl ? '36px' : '64px' }}
               placeholder={
                 format === 'code' ? t('codeInput') :
                 format === 'html' ? t('htmlInput') :

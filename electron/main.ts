@@ -1275,6 +1275,12 @@ function setupIPC() {
     else mainWindow?.maximize()
   })
   ipcMain.handle('window-close', () => mainWindow?.hide())
+  ipcMain.handle('quit-app', event => {
+    if (!mainWindow || mainWindow.isDestroyed() || event.sender !== mainWindow.webContents
+      || event.senderFrame !== mainWindow.webContents.mainFrame) return false
+    app.exit(0)
+    return true
+  })
   ipcMain.handle('window-is-maximized', () => mainWindow?.isMaximized() ?? false)
 
   ipcMain.handle('open-external', async (_e, url: unknown) => {

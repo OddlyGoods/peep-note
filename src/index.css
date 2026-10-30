@@ -511,6 +511,13 @@ html[data-theme='light'] .detail-delete-button:hover {
   color: #e11d48 !important;
 }
 
+.app-quit-button:not(:disabled):hover,
+.app-quit-button:not(:disabled):focus-visible {
+  color: #e11d48 !important;
+  background: rgba(244,63,94,.10) !important;
+  border-color: rgba(244,63,94,.24);
+}
+
 html[data-theme='light'] .sidebar-filter-item:hover,
 html[data-theme='light'] .workspace-list-item:hover {
   background: #e0e7ff !important;

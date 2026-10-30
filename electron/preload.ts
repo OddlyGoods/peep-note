@@ -74,6 +74,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   windowMinimize: () => ipcRenderer.invoke('window-minimize'),
   windowMaximize: () => ipcRenderer.invoke('window-maximize'),
   windowClose: () => ipcRenderer.invoke('window-close'),
+  quitApp: () => ipcRenderer.invoke('quit-app'),
   windowIsMaximized: () => ipcRenderer.invoke('window-is-maximized'),
 
   // 오버레이 컨트롤

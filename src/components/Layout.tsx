@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Search, Star, Trash2, Settings, ChevronLeft, ChevronRight } from 'lucide-react'
+import { LayoutDashboard, Search, Star, Trash2, Settings, ChevronLeft, ChevronRight, Power } from 'lucide-react'
 import TitleBar from './TitleBar'
 import { useI18n } from '../i18n'
 import UpdatePanel from './UpdatePanel'
@@ -8,6 +8,7 @@ import { api } from '../lib/api'
 import { useLogStore } from '../stores/logStore'
 import { useMenuMemoryStore } from '../stores/menuMemoryStore'
 import type { MenuPath } from '../lib/menuMemory'
+import ConfirmModal from './ConfirmModal'
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { t } = useI18n()
@@ -17,6 +18,21 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const remembered = useMenuMemoryStore(state => state.targets)
   const [favoriteCount, setFavoriteCount] = useState(0)
   const [trashCount, setTrashCount] = useState(0)
+  const [showQuitConfirm, setShowQuitConfirm] = useState(false)
+  const [quitting, setQuitting] = useState(false)
+  const [quitFailed, setQuitFailed] = useState(false)
+  const exitRequested = useRef(false)
+  const quitApp = async () => {
+    if (exitRequested.current || !window.electronAPI?.quitApp) return
+    exitRequested.current = true
+    setQuitting(true)
+    setQuitFailed(false)
+    try {
+      if (!await window.electronAPI.quitApp()) throw new Error('APP_QUIT_FAILED')
+      setShowQuitConfirm(false)
+    } catch { setQuitFailed(true) }
+    finally { exitRequested.current = false; setQuitting(false) }
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -105,6 +121,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 </div>
               )
             })}
+            <div className="relative group mt-2 border-t pt-2" style={{ borderColor: 'var(--soft-border)' }}>
+              <button type="button" aria-label={t('quitApp')} title={t('quitApp')}
+                disabled={!window.electronAPI?.quitApp || quitting}
+                onClick={() => { setQuitFailed(false); setShowQuitConfirm(true) }}
+                className={`app-quit-button flex w-full items-center rounded-lg border border-transparent px-3 py-2 text-sm font-medium text-slate-500 transition-colors disabled:opacity-40 ${collapsed ? 'justify-center gap-0' : 'gap-2.5'}`}>
+                <Power className="w-4 h-4 shrink-0" aria-hidden="true" />
+                <span className={`whitespace-nowrap overflow-hidden transition-all duration-200 ${collapsed ? 'max-w-0 opacity-0' : 'max-w-32 opacity-100'}`}>{t('quitApp')}</span>
+              </button>
+              {collapsed && <div aria-hidden="true" className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 rounded-md px-2 py-1 text-xs font-medium text-white whitespace-nowrap opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150 z-50"
+                style={{ background: 'rgba(30,34,60,0.97)', border: '1px solid rgba(99,102,241,0.25)' }}>{t('quitApp')}</div>}
+            </div>
           </nav>
 
           {/* 접기/펼치기 버튼 */}
@@ -129,6 +156,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
+      {showQuitConfirm && <ConfirmModal title={t('quitApp')} message={t(quitFailed ? 'quitAppFailed' : 'quitAppConfirm')}
+        confirmLabel={t('quitApp')} onConfirm={() => { void quitApp() }}
+        onCancel={() => { if (!exitRequested.current) setShowQuitConfirm(false) }} />}
     </div>
   )
 }

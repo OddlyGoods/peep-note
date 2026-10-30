@@ -36,6 +36,7 @@ declare global {
       windowMinimize: () => Promise<void>
       windowMaximize: () => Promise<void>
       windowClose: () => Promise<void>
+      quitApp: () => Promise<boolean>
       windowIsMaximized: () => Promise<boolean>
       overlayMaximize: () => Promise<void>
       overlayIsMaximized: () => Promise<boolean>

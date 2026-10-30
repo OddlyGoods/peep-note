@@ -32,6 +32,7 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
   const fieldId = useId()
   const active = useScreenActive()
   const { t } = useI18n()
+  const workspaceTitle = workspaceName || t('defaultWorkspace')
   const { createLog } = useLogStore()
   const [type, setType] = useState<LogType>('note')
   const [format, setFormat] = useState<ContentFormat>('text')
@@ -270,11 +271,11 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
 
   return (
     <ModalLayer className="new-log-overlay p-4" onClose={handleClose}>
-      <div role="dialog" aria-modal="true" aria-label={t('newRecord')} className="relative w-full max-w-lg bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl max-h-[90vh] flex flex-col">
+      <div role="dialog" aria-modal="true" aria-label={workspaceTitle} className="relative w-full max-w-lg bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl max-h-[90vh] flex flex-col">
         {/* 헤더 */}
         <div className="flex items-center justify-between px-5 py-3 border-b border-gray-800 shrink-0">
-          <h2 className="text-sm font-semibold text-white">{t('newRecord')}</h2>
-          <button onClick={handleClose} aria-label={t('cancel')} className="new-log-close-button btn-ghost p-1.5"><X className="w-4 h-4" /></button>
+          <h2 className="min-w-0 truncate pr-3 text-sm font-semibold text-white">{workspaceTitle}</h2>
+          <button onClick={handleClose} aria-label={t('cancel')} className="new-log-close-button btn-ghost shrink-0 p-1.5"><X className="w-4 h-4" /></button>
         </div>
 
         <div className="p-5 flex flex-col gap-4 overflow-y-auto flex-1 [&>*]:shrink-0"
@@ -395,13 +396,7 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
         </div>
 
         {/* 푸터 */}
-        <div className="flex items-center justify-between px-5 py-3 border-t border-gray-800 shrink-0">
-          <div className="min-w-0 pr-3">
-            <span className="inline-flex h-7 max-w-48 items-center rounded-md px-2.5 align-middle text-xs leading-none"
-              style={{ background: 'var(--workspace-badge-bg)', color: 'var(--workspace-badge-text)', border: '1px solid var(--workspace-badge-border)' }}>
-              <span className="truncate">{workspaceName ?? t('defaultWorkspace')}</span>
-            </span>
-          </div>
+        <div className="flex items-center justify-end px-5 py-3 border-t border-gray-800 shrink-0">
           <div className="flex items-center gap-2">
             <button onClick={handleClose} className="new-log-cancel-button btn-secondary">{t('cancel')}</button>
             <button onClick={handleSave} disabled={saving || recording || importingFiles} className="btn-primary flex items-center gap-2">

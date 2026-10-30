@@ -6,6 +6,7 @@ PeepNote is a local-first desktop app for saving useful LLM responses, recording
 
 ## News
 
+- **2026-10-30 — v1.1.5** — Added MCP support for Codex, Claude Code, and Gemini CLI.
 - **2026-10-30 — v1.1.4** — Fixed links opening inside the app or causing blank screens.
 - **2026-10-30 — v1.1.3** — Added AI model connection testing in Settings.
 - **2026-10-30 — v1.1.2** — Improved comments and file attachments, added syntax highlighting and separate HTML preview windows.

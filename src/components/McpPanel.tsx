@@ -84,7 +84,7 @@ export default function McpPanel() {
     {status?.enabled && <div className="mt-4 border-t pt-4" style={{ borderColor: 'var(--soft-border)' }}>
       <label htmlFor="mcp-endpoint" className="block text-xs text-gray-400 mb-1.5">{text.endpoint}</label>
       <input id="mcp-endpoint" readOnly value={status.endpoint} className="input w-full font-mono text-xs" />
-      <button type="button" onClick={copyConfig} disabled={busy} className="btn-secondary flex items-center gap-1.5 text-xs mt-3">
+      <button type="button" onClick={copyConfig} disabled={busy} className="btn-secondary ml-auto flex items-center gap-1.5 text-xs mt-3">
         {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
         {copied ? t('copied') : text.button}
       </button>

@@ -893,7 +893,7 @@ export default function LogDetail() {
               <div className="detail-content flex items-center gap-2 rounded-xl border border-violet-500/20 bg-violet-500/5 p-4 text-sm text-gray-400"><Lock className="h-4 w-4 text-violet-400" /><span>••••••••••••</span></div>
             ) : displayContent ? (
               isAiSummary ? (
-                <div className="ai-summary-content break-words p-4 rounded-xl border border-amber-500/25 bg-amber-400/10 text-sm text-gray-200 prose prose-invert prose-sm max-w-none
+                <div className="ai-summary-content break-words p-6 rounded-xl border border-amber-500/25 bg-amber-400/10 text-sm text-gray-200 prose prose-invert prose-sm max-w-none
                   [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1
                   [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1
                   [&_li]:text-gray-300

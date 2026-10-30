@@ -351,7 +351,7 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
           <div className="bordered-field flex">
             <label className="bordered-field-label" htmlFor={`${fieldId}-content`}>{t('fieldContent')}</label>
             <textarea id={`${fieldId}-content`}
-              className={`input resize-none h-28 ${
+              className={`input resize-none h-40 ${
                 format === 'code' && type === 'note' ? 'code-input font-mono text-emerald-400 bg-gray-950' :
                 format === 'html' && type === 'note' ? 'code-input font-mono text-sky-300 bg-gray-950' : ''
               }`}

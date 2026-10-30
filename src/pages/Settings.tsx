@@ -360,7 +360,7 @@ export default function Settings() {
 
   return (
     <div className="settings-page flex h-full min-h-0 overflow-hidden">
-      <aside className="settings-category-sidebar w-44 lg:w-52 max-[640px]:w-36 shrink-0 overflow-y-auto border-r"
+      <aside className="settings-category-sidebar w-64 shrink-0 overflow-y-auto border-r"
         style={{ background: 'var(--side-panel-bg)', borderColor: 'var(--soft-border)' }}>
         <nav role="tablist" aria-label={t('settings')} aria-orientation="vertical" className="space-y-0.5 p-3 pt-6">
           {categories.map(({ id, label }, index) => <button key={id} ref={node => { categoryTabs.current[id] = node ?? undefined }}

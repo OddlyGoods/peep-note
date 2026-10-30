@@ -1,11 +1,11 @@
 import { useScreenActive } from '../lib/screenActivity'
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { format } from 'date-fns'
 import { ko, ja, zhCN } from 'date-fns/locale'
 import { Plus, Search, FileText, Layers, X, ArrowUp, Trash2, SquareMousePointer } from 'lucide-react'
 import { useLogStore } from '../stores/logStore'
 import { useWorkspaceStore } from '../stores/workspaceStore'
-import { api, LogGroup } from '../lib/api'
+import { api } from '../lib/api'
 import LogCard from '../components/LogCard'
 import GroupCard from '../components/GroupCard'
 import NewLogModal from '../components/NewLogModal'
@@ -21,7 +21,7 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const revealLogId = typeof location.state?.revealLogId === 'string' ? location.state.revealLogId as string : undefined
   const {
-    logs, loading, dateFrom, dateTo, filterType, searchQuery, fetchLogs, fetchActiveDates, deleteLogs, setSearchQuery
+    logs, groups, loading, dateFrom, dateTo, filterType, searchQuery, fetchLogs, fetchActiveDates, deleteLogs, setSearchQuery
   } = useLogStore()
 
   const { selectedId: selectedWorkspaceId, workspaces } = useWorkspaceStore()
@@ -44,8 +44,6 @@ export default function Dashboard() {
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([])
   const [groupToRenameId, setGroupToRenameId] = useState<string | null>(null)
-  const [groups, setGroups] = useState<LogGroup[]>([])
-  const [groupLoading, setGroupLoading] = useState(false)
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false)
   const [bulkDeletingLogIds, setBulkDeletingLogIds] = useState<string[]>([])
   const [bulkDeletingGroupIds, setBulkDeletingGroupIds] = useState<string[]>([])
@@ -133,24 +131,7 @@ export default function Dashboard() {
     }
   }, [tagMenuOpen])
 
-  const fetchGroups = useCallback(async () => {
-    setGroupLoading(true)
-    try {
-      const result = await api.groups.list({
-        date_from: dateFrom,
-        date_to: dateTo,
-        workspace_id: selectedWorkspaceId ?? undefined,
-        type: filterType || undefined,
-        search: searchQuery || undefined
-      })
-      setGroups(result)
-    } catch {}
-    setGroupLoading(false)
-  }, [dateFrom, dateTo, selectedWorkspaceId, filterType, searchQuery])
-
-  useEffect(() => { fetchGroups() }, [fetchGroups])
-
-  const refresh = () => { fetchLogs(); fetchActiveDates(); fetchGroups() }
+  const refresh = () => { void fetchLogs(); void fetchActiveDates() }
 
   // 그룹화된 log id 집합
   const groupedLogIds = new Set(groups.flatMap(g => g.logs.map(l => l.id)))
@@ -222,7 +203,7 @@ export default function Dashboard() {
   const scrollRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const container = scrollRef.current
-    if (!active || !revealLogId || !container || loading || groupLoading) return
+    if (!active || !revealLogId || !container || loading) return
     let frame = 0
     let timer: ReturnType<typeof setTimeout> | undefined
     let revealed: HTMLElement | undefined
@@ -254,7 +235,7 @@ export default function Dashboard() {
       clearTimeout(timer)
       if (revealed) delete revealed.dataset.revealed
     }
-  }, [active, revealLogId, loading, groupLoading, logs, groups, location.pathname, location.state, navigate])
+  }, [active, revealLogId, loading, logs, groups, location.pathname, location.state, navigate])
 
   const pinnedLogs = logs.filter(l => l.pinned && !groupedLogIds.has(l.id))
   const normalLogs = logs.filter(l => !l.pinned && !groupedLogIds.has(l.id))
@@ -414,7 +395,7 @@ export default function Dashboard() {
       <div
         ref={scrollRef}
         className="dashboard-scroll-area flex-1 overflow-y-auto px-6 pt-6 pb-40"
-        data-screen-scroll="main" data-screen-scroll-restore={revealLogId ? 'skip' : undefined} data-screen-scroll-key={JSON.stringify([dateFrom, dateTo, filterType, searchQuery, selectedWorkspaceId])} aria-busy={loading || groupLoading || deleteTransitionLoading}
+        data-screen-scroll="main" data-screen-scroll-restore={revealLogId ? 'skip' : undefined} data-screen-scroll-key={JSON.stringify([dateFrom, dateTo, filterType, searchQuery, selectedWorkspaceId])} aria-busy={loading || deleteTransitionLoading}
         onScroll={e => {
           const target = e.target as HTMLDivElement
           setShowScrollTop(target.scrollTop > 240)
@@ -435,7 +416,7 @@ export default function Dashboard() {
               </div>
             ))}
           </div>
-        ) : loading || groupLoading ? (
+        ) : loading ? (
           <div className="flex items-center justify-center h-48">
             <div className="w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
           </div>

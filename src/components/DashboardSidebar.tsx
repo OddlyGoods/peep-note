@@ -1,3 +1,4 @@
+import { invalidateExploreCache } from '../lib/exploreCache'
 import { useScreenActive } from '../lib/screenActivity'
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
@@ -96,6 +97,7 @@ export default function DashboardSidebar() {
       fetchActiveDates()
     })
     const handler = async (id?: unknown) => {
+      invalidateExploreCache()
       await fetchLogs()
       fetchActiveDates()
       if (typeof id === 'string') markRecentlyCreated(id)
@@ -105,26 +107,28 @@ export default function DashboardSidebar() {
   }, [active])
 
   useEffect(() => {
-    if (selectedWorkspaceId) fetchLogs()
-  }, [selectedWorkspaceId])
-
-  useEffect(() => {
+    if (!active) return
+    let cancelled = false
     api.logs.statsTypes({ date_from: dateFrom, date_to: dateTo, workspace_id: selectedWorkspaceId ?? undefined })
-      .then(rows => setTypeCounts(rows.reduce<Record<string, number>>((counts, row) => {
+      .then(rows => { if (!cancelled) setTypeCounts(rows.reduce<Record<string, number>>((counts, row) => {
         counts[row.log_type] = row.count
         return counts
-      }, {})))
-      .catch(() => setTypeCounts({}))
-  }, [dateFrom, dateTo, selectedWorkspaceId, logs.length])
+      }, {})) })
+      .catch(() => { if (!cancelled) setTypeCounts({}) })
+    return () => { cancelled = true }
+  }, [active, dateFrom, dateTo, selectedWorkspaceId, logs.length])
 
   useEffect(() => {
+    if (!active) return
+    let cancelled = false
     api.logs.statsWorkspaces({ date_from: dateFrom, date_to: dateTo })
-      .then(rows => setWorkspaceCounts(rows.reduce<Record<string, number>>((counts, row) => {
+      .then(rows => { if (!cancelled) setWorkspaceCounts(rows.reduce<Record<string, number>>((counts, row) => {
         if (row.workspace_id) counts[row.workspace_id] = row.count
         return counts
-      }, {})))
-      .catch(() => setWorkspaceCounts({}))
-  }, [dateFrom, dateTo, logs.length])
+      }, {})) })
+      .catch(() => { if (!cancelled) setWorkspaceCounts({}) })
+    return () => { cancelled = true }
+  }, [active, dateFrom, dateTo, logs.length])
 
   useEffect(() => {
     if (editingId && editInputRef.current) editInputRef.current.focus()

@@ -3,7 +3,7 @@ import { attachmentFilename, formatBytes, isImageAttachment } from '../../shared
 import { useI18n } from '../i18n'
 import AttachmentModeBadge from './AttachmentModeBadge'
 
-export default function AttachmentFileRow({ reference, url, name, size, compact = false, onRemove, allowOpen = !onRemove, removeStyle = 'inline', disabled = false }: {
+export default function AttachmentFileRow({ reference, url, name, size, compact = false, onRemove, allowOpen = !onRemove, removeStyle = 'inline', disabled = false, actionsOnHover = false }: {
   reference: string
   url?: string | null
   name?: string
@@ -12,6 +12,7 @@ export default function AttachmentFileRow({ reference, url, name, size, compact 
   onRemove?: () => void
   allowOpen?: boolean
   removeStyle?: 'inline' | 'hover'
+  actionsOnHover?: boolean
   disabled?: boolean
 }) {
   const { t } = useI18n()
@@ -31,7 +32,7 @@ export default function AttachmentFileRow({ reference, url, name, size, compact 
       <p className={`truncate ${compact ? 'text-xs' : 'text-sm'}`} style={{ color: 'var(--title-text)' }} title={filename}>{filename}</p>
       {!!size && <p className="text-[10px] text-gray-400">{formatBytes(size)}</p>}
     </div>
-    <div className="attachment-actions flex shrink-0 items-center gap-1.5">
+    <div className={`attachment-actions flex shrink-0 items-center gap-1.5 ${actionsOnHover ? 'opacity-0 pointer-events-none transition-opacity group-hover/file:opacity-100 group-hover/file:pointer-events-auto group-focus-within/file:opacity-100 group-focus-within/file:pointer-events-auto' : ''}`}>
       {allowOpen && <>
         <button type="button" onClick={() => void window.electronAPI?.openAttachment(reference)} title={t('openFile')} aria-label={t('openFile')}
           className="attachment-action-button btn-secondary flex h-8 w-8 items-center justify-center p-0"><FileOutput className="h-3.5 w-3.5" /></button>

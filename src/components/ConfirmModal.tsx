@@ -1,5 +1,6 @@
 import { useScreenActive } from '../lib/screenActivity'
-import { useEffect } from 'react'
+import { useEffect, useId } from 'react'
+import { createPortal } from 'react-dom'
 import { AlertTriangle, X } from 'lucide-react'
 import { useI18n } from '../i18n'
 
@@ -25,6 +26,8 @@ export default function ConfirmModal({
   onCancel
 }: Props) {
   const active = useScreenActive()
+  const titleId = useId()
+  const messageId = useId()
   const { t } = useI18n()
   const resolvedConfirmLabel = confirmLabel ?? (danger ? t('delete') : t('confirm'))
   const resolvedCancelLabel = cancelLabel ?? t('cancel')
@@ -42,17 +45,20 @@ export default function ConfirmModal({
     return () => window.removeEventListener('keydown', handler)
   }, [active, onConfirm, onCancel])
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={e => e.stopPropagation()}>
+  if (!active) return null
+
+  return createPortal(
+    <div className="confirm-overlay fixed inset-x-0 bottom-0 top-10 z-[100] flex items-center justify-center" onClick={e => e.stopPropagation()}>
       {/* 백드롭 */}
       <div
         className="absolute inset-0"
-        style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
+        style={{ background: 'rgba(0,0,0,0.25)', backdropFilter: 'blur(1px)' }}
         onClick={onCancel}
       />
 
       {/* 모달 */}
       <div
+        role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={messageId}
         className="relative w-full max-w-sm mx-4 flex flex-col"
         style={{
           background: 'var(--modal-bg)',
@@ -76,7 +82,7 @@ export default function ConfirmModal({
             >
               <AlertTriangle className={`w-3.5 h-3.5 ${danger ? 'text-red-400' : 'text-indigo-400'}`} />
             </div>
-            <h3 className="text-sm font-semibold text-slate-100">{title}</h3>
+            <h3 id={titleId} className="text-sm font-semibold text-slate-100">{title}</h3>
           </div>
           <button
             onClick={onCancel}
@@ -87,7 +93,7 @@ export default function ConfirmModal({
         </div>
 
         {/* 내용 */}
-        <div className="px-5 py-4">
+        <div id={messageId} className="confirm-message min-h-[80px] px-5 py-4">
           <p className="text-sm text-slate-100 leading-relaxed whitespace-pre-wrap">{primaryMessage}</p>
           {secondaryMessage && (
             <p className="mt-1.5 text-xs text-slate-500 leading-relaxed whitespace-pre-wrap">{secondaryMessage}</p>
@@ -126,6 +132,6 @@ export default function ConfirmModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>, document.body
   )
 }

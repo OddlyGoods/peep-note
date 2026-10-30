@@ -214,12 +214,18 @@ test('revealing a favorite includes its group date, clears filters and loads pag
 test('an older dashboard response cannot overwrite the latest navigation result', async () => {
   const { useLogStore } = await import('../src/stores/logStore')
   const list = api.logs.list
+  const groupList = api.groups.list
+  const previous = useLogStore.getState()
+  const { invalidateExploreCache } = await import('../src/lib/exploreCache')
+  invalidateExploreCache()
   const responses: Array<(value: any[]) => void> = []
   try {
-    useLogStore.setState({ revealTarget: null, logs: [] })
+    useLogStore.setState({ revealTarget: null, logs: [], groups: [], queryKey: null })
+    api.groups.list = async () => []
     api.logs.list = () => new Promise(resolve => responses.push(resolve))
     const oldRequest = useLogStore.getState().fetchLogs()
     await new Promise(resolve => setImmediate(resolve))
+    useLogStore.setState({ searchQuery: 'a different query' })
     const newRequest = useLogStore.getState().fetchLogs()
     await new Promise(resolve => setImmediate(resolve))
     responses[1]([{ id: 'current-record' }])
@@ -227,7 +233,7 @@ test('an older dashboard response cannot overwrite the latest navigation result'
     responses[0]([{ id: 'outdated-record' }])
     await oldRequest
     assert.equal(useLogStore.getState().logs[0].id, 'current-record')
-  } finally { api.logs.list = list }
+  } finally { api.logs.list = list; api.groups.list = groupList; useLogStore.setState(previous); invalidateExploreCache() }
 })
 
 test('renderer includes the current UI language in AI summary requests', async () => {

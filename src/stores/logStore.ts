@@ -1,5 +1,7 @@
 import { create } from 'zustand'
-import { api, Log } from '../lib/api'
+import { api, Log, type LogGroup } from '../lib/api'
+import { useWorkspaceStore } from './workspaceStore'
+import { cachedExplore, cacheExplore, exploreRevision } from '../lib/exploreCache'
 import { format, subDays } from 'date-fns'
 
 type RangeTarget = 'start' | 'end'
@@ -9,6 +11,7 @@ const storageKey = 'openpeepnote_dashboard_date_range'
 const today = () => format(new Date(), 'yyyy-MM-dd')
 const defaultRange = (): SavedRange => ({ dateFrom: format(subDays(new Date(), 6), 'yyyy-MM-dd'), dateTo: today() })
 let logsRequest = 0
+let pendingLogs: { key: string; revision: number; promise: Promise<void> } | null = null
 
 function initialRange(): SavedRange {
   try {
@@ -24,6 +27,8 @@ function saveRange(range: SavedRange) {
 
 interface LogState {
   logs: Log[]
+  groups: LogGroup[]
+  queryKey: string | null
   commentCounts: Record<string, number>
   setCommentCount: (id: string, count: number) => void
   dateFrom: string
@@ -59,6 +64,8 @@ const savedRange = initialRange()
 
 export const useLogStore = create<LogState>((set, get) => ({
   logs: [],
+  groups: [],
+  queryKey: null,
   commentCounts: {},
   setCommentCount: (id, count) => set(state => state.commentCounts[id] === count ? state : ({
     commentCounts: { ...state.commentCounts, [id]: count },
@@ -80,47 +87,56 @@ export const useLogStore = create<LogState>((set, get) => ({
 
   revealLog: (log, workspaceId) => {
     ++logsRequest
+    pendingLogs = null
     const date = format(new Date(log.created_at * 1000), 'yyyy-MM-dd')
     const groupDate = log.group_created_at != null ? format(new Date(log.group_created_at * 1000), 'yyyy-MM-dd') : date
     const range = { dateFrom: [get().dateFrom, date, groupDate].sort()[0], dateTo: [get().dateTo, date, groupDate].sort()[2] }
     saveRange(range)
-    set({ ...range, followToday: range.dateTo === today(), filterType: '', searchQuery: '', logs: [], loading: true, revealTarget: { id: log.id, workspaceId } })
+    set({ ...range, followToday: range.dateTo === today(), filterType: '', searchQuery: '', logs: [], groups: [], queryKey: null, loading: true, revealTarget: { id: log.id, workspaceId } })
   },
 
-  fetchLogs: async () => {
+  fetchLogs: () => {
+    const { dateFrom, dateTo, filterType, searchQuery, revealTarget } = get()
+    const selectedWorkspaceId = useWorkspaceStore.getState().selectedId
+    const params = { date_from: dateFrom, date_to: dateTo, type: filterType || undefined,
+      search: searchQuery || undefined, workspace_id: selectedWorkspaceId || undefined }
+    const key = JSON.stringify(params)
+    const revision = exploreRevision()
+    if (pendingLogs?.key === key && pendingLogs.revision === revision) return pendingLogs.promise
     const request = ++logsRequest
-    const hasData = get().logs.length > 0
-    if (!hasData) set({ loading: true })
-    try {
-      const { dateFrom, dateTo, filterType, searchQuery, revealTarget } = get()
-      const { useWorkspaceStore } = await import('./workspaceStore')
-      const selectedWorkspaceId = useWorkspaceStore.getState().selectedId
-      const params = {
-        date_from: dateFrom,
-        date_to: dateTo,
-        type: filterType || undefined,
-        search: searchQuery || undefined,
-        workspace_id: selectedWorkspaceId || undefined,
-        limit: 500
-      }
-      const logs = await api.logs.list(params)
-      if (request !== logsRequest) return
-      if (revealTarget?.workspaceId === selectedWorkspaceId) {
-        let page = 1
-        let count = logs.length
-        while (!logs.some(log => log.id === revealTarget.id) && count === 500) {
-          const rows = await api.logs.list({ ...params, page: ++page })
-          if (request !== logsRequest) return
-          count = rows.length
-          logs.push(...rows)
+    const cached = cachedExplore(key)
+    if (get().queryKey !== key) {
+      set({ logs: cached?.logs ?? [], groups: cached?.groups ?? [], queryKey: key, loading: !cached })
+    } else if (!cached && !get().logs.length && !get().groups.length) set({ loading: true })
+    const promise = (async () => {
+      try {
+        // Commit both lists together so old groups cannot hide the new workspace's notes.
+        const [logs, groups] = await Promise.all([api.logs.list({ ...params, limit: 500 }), api.groups.list(params)])
+        if (request !== logsRequest) return
+        if (revealTarget?.workspaceId === selectedWorkspaceId) {
+          let page = 1
+          let count = logs.length
+          while (!logs.some(log => log.id === revealTarget.id) && count === 500) {
+            const rows = await api.logs.list({ ...params, limit: 500, page: ++page })
+            if (request !== logsRequest) return
+            count = rows.length
+            logs.push(...rows)
+          }
         }
+        if (revision !== exploreRevision()) {
+          pendingLogs = null
+          await get().fetchLogs()
+          return
+        }
+        cacheExplore(key, { logs, groups })
+        set({ logs, groups, loading: false })
+      } catch (error) { console.error(error) }
+      finally {
+        if (request === logsRequest) { pendingLogs = null; set({ loading: false }) }
       }
-      set({ logs })
-    } catch (e) {
-      console.error(e)
-    } finally {
-      if (request === logsRequest) set({ loading: false })
-    }
+    })()
+    pendingLogs = { key, revision, promise }
+    return promise
   },
 
   fetchActiveDates: async () => {
@@ -151,7 +167,11 @@ export const useLogStore = create<LogState>((set, get) => ({
 
   updateLog: async (id, data) => {
     const updated = await api.logs.update(id, data)
-    set(state => ({ logs: state.logs.map(l => l.id === id ? updated : l) }))
+    set(state => ({
+      logs: state.logs.map(log => log.id === id ? updated : log),
+      groups: state.groups.map(group => group.logs.some(log => log.id === id)
+        ? { ...group, logs: group.logs.map(log => log.id === id ? updated : log) } : group)
+    }))
     return updated
   },
 
@@ -224,3 +244,10 @@ export const useLogStore = create<LogState>((set, get) => ({
     get().fetchLogs()
   }
 }))
+
+// Switch the query before React paints the newly selected workspace.
+const unsubscribeWorkspace = useWorkspaceStore.subscribe((state, previous) => {
+  if (state.selectedId !== previous.selectedId) void useLogStore.getState().fetchLogs()
+})
+
+if (import.meta.hot) import.meta.hot.dispose(unsubscribeWorkspace)

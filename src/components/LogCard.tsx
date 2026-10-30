@@ -97,8 +97,10 @@ function MediaThumbnail({ log }: { log: Log }) {
 export default function LogCard({ log, basePath = '/log', showCheckbox = false, checked = false, onCheck, onCardClick, inGroup = false, isDeleting = false, isCollapsing = false, onMoved, onReveal }: LogCardProps) {
   const { language, t } = useI18n()
   const openLog = useOpenLog()
-  const { deleteLog, updateLog, recentlyCreatedIds, commentCounts } = useLogStore()
-  const commentCount = commentCounts[log.id] ?? log.comment_count ?? 0
+  const deleteLog = useLogStore(state => state.deleteLog)
+  const updateLog = useLogStore(state => state.updateLog)
+  const entering = useLogStore(state => state.recentlyCreatedIds.includes(log.id))
+  const commentCount = useLogStore(state => state.commentCounts[log.id] ?? log.comment_count ?? 0)
   const [deleting, setDeleting] = useState(false)
   const [collapsing, setCollapsing] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
@@ -106,7 +108,6 @@ export default function LogCard({ log, basePath = '/log', showCheckbox = false, 
   const collapsingVisual = collapsing || isCollapsing
 
   const isAiSummary = log.log_type === 'summary'
-  const entering = recentlyCreatedIds.includes(log.id)
   const displayContent = log.is_secret ? '' : (isAiSummary ? getAiSummaryContent(log.content) : log.content)
   const displayTitle = isAiSummary ? getAiSummaryTitle(log.content, log.title) : log.title
   const cfg = TYPE_CONFIG[log.log_type] ?? TYPE_CONFIG.note

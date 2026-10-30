@@ -102,6 +102,8 @@ export default function LogDetail() {
   const editorFilesRef = useRef<string[]>([])
   const pendingNoteSave = useRef<Promise<unknown> | null>(null)
   const pendingCommentSave = useRef<Promise<unknown> | null>(null)
+  const [noteFileToDelete, setNoteFileToDelete] = useState<string | null>(null)
+  const [noteFileDeleteFailed, setNoteFileDeleteFailed] = useState(false)
   const [pendingEditExit, setPendingEditExit] = useState<'back' | 'cancel' | null>(null)
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -153,6 +155,8 @@ export default function LogDetail() {
     setRemovedAttachments([])
     setAddedNoteFiles([])
     setPendingEditExit(null)
+    setNoteFileToDelete(null)
+    setNoteFileDeleteFailed(false)
     setSaving(false)
     setNewCommentFiles([])
     setCommentFileToDelete(null)
@@ -541,6 +545,21 @@ export default function LogDetail() {
     }
   }
 
+  const confirmRemoveNoteFile = async () => {
+    if (!log || !noteFileToDelete || addingFiles || saving) return
+    const logId = log.id
+    const index = log.attachments.indexOf(noteFileToDelete)
+    setNoteFileToDelete(null)
+    if (index < 0) return
+    setAddingFiles(true)
+    setNoteFileDeleteFailed(false)
+    try {
+      const updated = await updateLog(logId, { attachments: log.attachments.filter((_, position) => position !== index) })
+      if (recordIdRef.current === logId) setLog(updated)
+    } catch { if (recordIdRef.current === logId) setNoteFileDeleteFailed(true) }
+    finally { if (recordIdRef.current === logId) setAddingFiles(false) }
+  }
+
   const attachmentPicker = useAttachmentPicker(addFiles, addingFiles, { topInset: 40 })
 
   const handleDragEnter = (event: React.DragEvent) => {
@@ -876,9 +895,11 @@ export default function LogDetail() {
               <div className="flex flex-col gap-2">
                 {[...log.attachments, ...addedNoteFiles].map((reference, index) => removedAttachments.includes(index) ? null : (
                   <AttachmentFileRow key={`${reference}-${index}`} reference={reference} url={attachmentUrls[index]}
-                    removeStyle="hover" onRemove={editing ? () => setRemovedAttachments(previous => [...previous, index]) : undefined} />
+                    actionsOnHover allowOpen={!editing} disabled={saving || addingFiles} removeStyle="hover"
+                    onRemove={editing ? () => setRemovedAttachments(previous => [...previous, index]) : () => setNoteFileToDelete(reference)} />
                 ))}
               </div>
+              {noteFileDeleteFailed && <p role="alert" className="text-xs text-red-400">{t('operationFailed')}</p>}
               {!isAiSummary && <>
                 {attachmentPicker.input}
                 {attachmentPicker.dialog}
@@ -999,6 +1020,8 @@ export default function LogDetail() {
         </button>
       )}
 
+      {noteFileToDelete && <ConfirmModal title={t('delete')} message={t('deleteNoteFileMessage')}
+        onConfirm={confirmRemoveNoteFile} onCancel={() => setNoteFileToDelete(null)} />}
       {showConfirm && (
         <ConfirmModal
           title={t('deleteLog')}

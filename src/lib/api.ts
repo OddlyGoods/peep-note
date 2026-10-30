@@ -1,3 +1,4 @@
+import { invalidateExploreCache } from './exploreCache'
 import type { TrashRetentionDays } from '../../shared/trashRetention'
 import type { Hotkeys } from '../../shared/hotkeys'
 
@@ -14,6 +15,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   })
   const data = await res.json()
   if (!res.ok) throw Object.assign(new Error(data.error ?? 'Request failed'), { status: res.status })
+  if (options.method && options.method !== 'GET' && /^\/api\/(logs|groups|trash|workspaces)(?:\/|$|\?)/.test(path)) invalidateExploreCache()
   return data as T
 }
 

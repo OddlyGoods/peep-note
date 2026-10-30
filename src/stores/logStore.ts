@@ -60,6 +60,15 @@ interface LogState {
   syncToday: () => void
 }
 
+function removeDeletedLogs(state: LogState, ids: Set<string>) {
+  return {
+    logs: state.logs.filter(log => !ids.has(log.id)),
+    groups: state.groups.map(group => group.logs.some(log => ids.has(log.id))
+      ? { ...group, logs: group.logs.filter(log => !ids.has(log.id)) }
+      : group).filter(group => group.logs.length > 0)
+  }
+}
+
 const savedRange = initialRange()
 
 export const useLogStore = create<LogState>((set, get) => ({
@@ -189,7 +198,7 @@ export const useLogStore = create<LogState>((set, get) => ({
 
   deleteLog: async (id) => {
     await api.logs.delete(id)
-    set(state => ({ logs: state.logs.filter(l => l.id !== id) }))
+    set(state => removeDeletedLogs(state, new Set([id])))
     get().fetchActiveDates()
   },
 
@@ -197,7 +206,7 @@ export const useLogStore = create<LogState>((set, get) => ({
     if (ids.length === 0) return
     await api.logs.bulkDelete(ids)
     const idSet = new Set(ids)
-    set(state => ({ logs: state.logs.filter(log => !idSet.has(log.id)) }))
+    set(state => removeDeletedLogs(state, idSet))
     get().fetchActiveDates()
   },
 

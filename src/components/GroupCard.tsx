@@ -293,9 +293,7 @@ export default function GroupCard({ group, onRefresh, startEditing = false, onSt
           {summaryLog ? (
             <>
               {/* AI 요약 — 항상 표시 */}
-              <div className="rounded-lg ring-1 ring-amber-500/30">
-                <LogCard log={summaryLog} inGroup={showCheckbox} onCardClick={showCheckbox ? () => onCheck?.(!checked) : undefined} onMoved={onRefresh} />
-              </div>
+              <LogCard key={summaryLog.id} log={summaryLog} summaryAccent inGroup={showCheckbox} onCardClick={showCheckbox ? () => onCheck?.(!checked) : undefined} onMoved={onRefresh} />
 
               {/* 일반 기록 토글 */}
               <button

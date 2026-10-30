@@ -106,3 +106,63 @@ test('a successful API mutation invalidates cached workspace results', async con
   await api.logs.update('updated', { title: 'Changed title' })
   assert.equal(cachedExplore('saved-query'), undefined)
 })
+
+function setupDeletion(context: TestContext) {
+  const previous = useLogStore.getState()
+  const single = api.logs.delete, bulk = api.logs.bulkDelete
+  const summary = { id: 'summary', log_type: 'summary' } as Log
+  const original = { id: 'original', log_type: 'note' } as Log
+  const last = { id: 'last', log_type: 'note' } as Log
+  const untouched = { id: 'untouched', log_type: 'note' } as Log
+  const group = { id: 'group', logs: [summary, original] } as LogGroup
+  const other = { id: 'other', logs: [untouched] } as LogGroup
+  let refreshes = 0
+  useLogStore.setState({
+    logs: [summary, original, last, untouched],
+    groups: [group, { id: 'last-group', logs: [last] } as LogGroup, other],
+    fetchActiveDates: async () => { refreshes++ }
+  })
+  context.after(() => {
+    api.logs.delete = single; api.logs.bulkDelete = bulk
+    useLogStore.setState(previous)
+  })
+  return { summary, original, group, other, refreshes: () => refreshes }
+}
+
+test('deleting a summary updates its group immediately without refetching or removing source notes', async context => {
+  const state = setupDeletion(context)
+  const response = deferred<unknown>()
+  api.logs.delete = () => response.promise
+  const pending = useLogStore.getState().deleteLog('summary')
+  assert.equal(useLogStore.getState().groups[0], state.group, 'keep the card until the server confirms deletion')
+  response.resolve({ ok: true })
+  await pending
+  assert.equal(useLogStore.getState().logs.some(log => log.id === 'summary'), false)
+  assert.deepEqual(useLogStore.getState().groups[0].logs, [state.original])
+  assert.equal(useLogStore.getState().groups[2], state.other)
+  assert.deepEqual(state.group.logs, [state.summary, state.original], 'do not mutate previous group snapshots')
+  assert.equal(state.refreshes(), 1)
+})
+
+test('bulk deletion removes grouped entries and empty groups while preserving untouched groups', async context => {
+  const state = setupDeletion(context)
+  api.logs.bulkDelete = async () => ({ ok: true, deleted: 2 })
+  await useLogStore.getState().deleteLogs(['summary', 'last'])
+  assert.deepEqual(useLogStore.getState().logs.map(log => log.id), ['original', 'untouched'])
+  assert.deepEqual(useLogStore.getState().groups.map(group => group.id), ['group', 'other'])
+  assert.deepEqual(useLogStore.getState().groups[0].logs, [state.original])
+  assert.equal(useLogStore.getState().groups[1], state.other)
+  assert.equal(state.refreshes(), 1)
+})
+
+test('failed single and bulk deletions leave group contents unchanged', async context => {
+  const state = setupDeletion(context)
+  const snapshot = useLogStore.getState()
+  api.logs.delete = async () => { throw new Error('test-only deletion failure') }
+  api.logs.bulkDelete = async () => { throw new Error('test-only deletion failure') }
+  await assert.rejects(useLogStore.getState().deleteLog('summary'), /test-only deletion failure/)
+  await assert.rejects(useLogStore.getState().deleteLogs(['summary', 'last']), /test-only deletion failure/)
+  assert.equal(useLogStore.getState().groups, snapshot.groups)
+  assert.equal(useLogStore.getState().logs, snapshot.logs)
+  assert.equal(state.refreshes(), 0)
+})

@@ -37,6 +37,7 @@ interface LogCardProps {
   onCheck?: (checked: boolean) => void
   onCardClick?: () => void
   inGroup?: boolean
+  summaryAccent?: boolean
   isDeleting?: boolean
   isCollapsing?: boolean
   onMoved?: (log: Log) => void
@@ -94,7 +95,7 @@ function MediaThumbnail({ log }: { log: Log }) {
   )
 }
 
-export default function LogCard({ log, basePath = '/log', showCheckbox = false, checked = false, onCheck, onCardClick, inGroup = false, isDeleting = false, isCollapsing = false, onMoved, onReveal }: LogCardProps) {
+export default function LogCard({ log, basePath = '/log', showCheckbox = false, checked = false, onCheck, onCardClick, inGroup = false, summaryAccent = false, isDeleting = false, isCollapsing = false, onMoved, onReveal }: LogCardProps) {
   const { language, t } = useI18n()
   const openLog = useOpenLog()
   const deleteLog = useLogStore(state => state.deleteLog)
@@ -144,6 +145,7 @@ export default function LogCard({ log, basePath = '/log', showCheckbox = false, 
   return (
     <div
       data-log-id={log.id}
+      style={summaryAccent ? { borderColor: collapsingVisual ? 'transparent' : 'rgba(245,158,11,0.3)' } : undefined}
       onClick={() => {
         if (showCheckbox) { onCheck?.(!checked); return }
         if (onCardClick) { onCardClick(); return }

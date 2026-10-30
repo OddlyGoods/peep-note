@@ -109,7 +109,6 @@ export default function Trash() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-medium text-gray-100 truncate">{item.title || t('untitled')}</h3>
-                    {!!item.is_secret && <div className="mt-1 text-xs text-gray-500">••••••••••••</div>}
                     <div className="flex flex-wrap items-center gap-2 mt-2 text-xs text-gray-400">
                       <span className="flex items-center gap-1" title={t('deletedOn')}><Clock className="w-3 h-3" />{new Date(item.deleted_at * 1000).toLocaleString(language, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                       <span className="tag border bg-indigo-500/10 border-indigo-500/20 text-indigo-400 inline-flex items-center gap-1 max-w-48" title={item.workspace_is_default ? t('defaultWorkspace') : (item.workspace_name || t('defaultWorkspace'))}><FolderOpen className="w-3 h-3 shrink-0" /><span className="truncate">{item.workspace_is_default ? t('defaultWorkspace') : (item.workspace_name || t('defaultWorkspace'))}</span></span>

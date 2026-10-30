@@ -1,5 +1,5 @@
 import { useScreenActive } from '../lib/screenActivity'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useId } from 'react'
 import { X, Camera, Video, FileText, Text as TextIcon, Code2, Globe, StopCircle, Hash, SlidersHorizontal, Lock } from 'lucide-react'
 import { useLogStore } from '../stores/logStore'
 import { useI18n } from '../i18n'
@@ -29,6 +29,7 @@ const FORMATS: { value: ContentFormat; label: string; icon: React.ElementType }[
 ]
 
 export default function NewLogModal({ onClose, workspaceId, workspaceName }: { onClose: () => void; workspaceId?: string | null; workspaceName?: string }) {
+  const fieldId = useId()
   const active = useScreenActive()
   const { t } = useI18n()
   const { createLog } = useLogStore()
@@ -340,21 +341,23 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
           </div>
 
           {/* 제목 */}
-          <input type="text" className="input" placeholder={t('titleOptional')}
-            value={title} onChange={e => setTitle(e.target.value)} />
+          <div className="bordered-field flex">
+            <label className="bordered-field-label" htmlFor={`${fieldId}-title`}>{t('fieldTitle')}</label>
+            <input id={`${fieldId}-title`} type="text" className="input" placeholder={t('fieldOptional')}
+              value={title} onChange={e => setTitle(e.target.value)} />
+          </div>
 
           {/* 내용 */}
-          <textarea
-            className={`input resize-none h-28 ${
-              format === 'code' && type === 'note' ? 'code-input font-mono text-emerald-400 bg-gray-950' :
-              format === 'html' && type === 'note' ? 'code-input font-mono text-sky-300 bg-gray-950' : ''
-            }`}
-            placeholder={
-              format === 'code' ? t('codeInput') :
-              format === 'html' ? t('htmlInput') :
-              type === 'note' ? t('enterContent') : t('descriptionOptional')
-            }
-            value={content} onChange={e => setContent(e.target.value)} />
+          <div className="bordered-field flex">
+            <label className="bordered-field-label" htmlFor={`${fieldId}-content`}>{t('fieldContent')}</label>
+            <textarea id={`${fieldId}-content`}
+              className={`input resize-none h-28 ${
+                format === 'code' && type === 'note' ? 'code-input font-mono text-emerald-400 bg-gray-950' :
+                format === 'html' && type === 'note' ? 'code-input font-mono text-sky-300 bg-gray-950' : ''
+              }`}
+              placeholder=""
+              value={content} onChange={e => setContent(e.target.value)} />
+          </div>
 
           {/* 스크린샷 */}
           {type === 'screenshot' && (
@@ -396,13 +399,16 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
           {attachmentPicker.input}
           {attachmentPicker.dialog}
           <div className="space-y-4">
-            <TagInput value={tags} onChange={setTags} disabled={saving} />
+            <div className="bordered-field">
+              <label className="bordered-field-label" htmlFor={`${fieldId}-tags`}>{t('fieldTag')}</label>
+              <TagInput inputId={`${fieldId}-tags`} placeholder={t('fieldTagHint')} value={tags} onChange={setTags} disabled={saving} />
+            </div>
             {attachments.length > 0 && <div className="flex max-h-40 flex-col gap-1.5 overflow-y-auto">
               {attachments.map((file, index) => <AttachmentFileRow key={`${file.path}-${index}`} reference={file.path}
                 url={file.url} name={file.name} size={file.size} compact disabled={saving}
                 onRemove={() => removeAttachment(index)} />)}
             </div>}
-            <FileDropZone onSelect={attachmentPicker.selectFiles} busy={importingFiles || saving} dragging={draggingFiles} compact />
+            <FileDropZone onSelect={attachmentPicker.selectFiles} busy={importingFiles || saving} dragging={draggingFiles} compact borderLabel={t('fieldFiles')} />
             {attachmentError && <p role="alert" className="text-xs text-red-400">{t('fileImportFailed')}</p>}
           </div>
         </div>

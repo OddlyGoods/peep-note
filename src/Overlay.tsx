@@ -527,31 +527,27 @@ export default function Overlay() {
           )}
 
           {/* 입력 영역 */}
-          <div className="flex-1 flex flex-col overflow-y-auto px-3 pt-2.5 pb-2 gap-2 min-h-0">
-            <div className="overlay-field shrink-0">
-              <label className="overlay-field-label" htmlFor={`${fieldId}-title`}>TITLE</label>
-              <input id={`${fieldId}-title`} type="text" className="input py-1.5 text-sm" placeholder={t('titleOptional')}
+          <div className="flex-1 flex flex-col overflow-y-auto px-3 pt-2.5 pb-2 gap-3 min-h-0">
+            <div className="bordered-field shrink-0">
+              <label className="bordered-field-label" htmlFor={`${fieldId}-title`}>{t('fieldTitle')}</label>
+              <input id={`${fieldId}-title`} type="text" className="input py-1.5 text-sm" placeholder={t('fieldOptional')}
                 value={title} onChange={e => setTitle(e.target.value)} />
             </div>
 
-            <div className="overlay-field flex flex-1 min-h-0" style={{ minHeight: previewUrl ? '36px' : '64px' }}>
-              <label className="overlay-field-label" htmlFor={`${fieldId}-content`}>CONTENT</label>
+            <div className="bordered-field flex flex-1 min-h-0" style={{ minHeight: previewUrl ? '36px' : '64px' }}>
+              <label className="bordered-field-label" htmlFor={`${fieldId}-content`}>{t('fieldContent')}</label>
               <textarea id={`${fieldId}-content`} ref={contentRef}
                 className={`input resize-none text-sm flex-1 min-h-0 ${
                   format === 'code' && type === 'note' ? 'code-input font-mono text-emerald-400 bg-gray-950' :
                   format === 'html' && type === 'note' ? 'code-input font-mono text-sky-300 bg-gray-950' : ''
                 }`}
-                placeholder={
-                  format === 'code' ? t('codeInput') :
-                  format === 'html' ? t('htmlInput') :
-                  type === 'note' ? t('overlayContent') : t('descriptionOptional')
-                }
+                placeholder=""
                 value={content} onChange={e => setContent(e.target.value)} />
             </div>
 
-            <div className="overlay-field shrink-0">
-              <label className="overlay-field-label" htmlFor={`${fieldId}-tags`}>TAG</label>
-              <TagInput inputId={`${fieldId}-tags`} key={tagInputKey} value={tags} onChange={setTags} disabled={saving || saved} />
+            <div className="bordered-field shrink-0">
+              <label className="bordered-field-label" htmlFor={`${fieldId}-tags`}>{t('fieldTag')}</label>
+              <TagInput inputId={`${fieldId}-tags`} placeholder={t('fieldTagHint')} key={tagInputKey} value={tags} onChange={setTags} disabled={saving || saved} />
             </div>
 
             <div className="flex flex-col gap-1.5 shrink-0">
@@ -561,7 +557,7 @@ export default function Overlay() {
                 {attachments.map((attachment, index) => <AttachmentFileRow key={`${attachment.path}-${index}`} reference={attachment.path}
                   name={attachment.name} url={attachment.url} size={attachment.size} compact onRemove={() => removeAttachment(index)} />)}
               </div>}
-              <FileDropZone onSelect={attachmentPicker.selectFiles} busy={importingFiles} dragging={draggingFiles} compact />
+              <FileDropZone onSelect={attachmentPicker.selectFiles} busy={importingFiles} dragging={draggingFiles} compact borderLabel={t('fieldFiles')} />
             </div>
             {attachmentError && <p className="shrink-0 text-right text-[11px] text-red-400">{t('fileImportFailed')}</p>}
 

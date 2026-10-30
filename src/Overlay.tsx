@@ -520,7 +520,7 @@ export default function Overlay() {
               <button type="button" onClick={() => setIsSecret(value => !value)} aria-pressed={isSecret}
                 className={`ml-auto flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs transition-colors ${isSecret ? 'border-violet-500/50 bg-violet-500/15 text-violet-300' : 'text-slate-400 hover:text-slate-200'}`}
                 style={!isSecret ? { borderColor: 'var(--soft-border)', background: 'var(--side-panel-bg)', color: 'var(--title-text)' } : undefined}>
-                <Lock className="h-3.5 w-3.5" />
+                <Lock className="h-3 w-3" />
                 {t('secret')}
               </button>
             </div>

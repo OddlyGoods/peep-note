@@ -33,6 +33,7 @@ import { dataStorageCopy, dataStorageErrorKey, type DataLocationResult } from '.
 import { getActiveHotkeys, resolveHotkeys } from '../shared/hotkeys'
 import { handleFavoritesShortcut } from './favoritesShortcut'
 import { openHtmlPreview } from './htmlPreview'
+import { APP_DEVELOPER, APP_GITHUB_URL, APP_WEBSITE_URL } from '../shared/appInfo'
 
 // Register the internal app scheme before Electron is ready.
 protocol.registerSchemesAsPrivileged([
@@ -367,12 +368,12 @@ function showAboutWindow() {
         label: '#64748b', value: '#cbd5e1', link: '#a5b4fc', linkHover: '#c4b5fd'
       }
   const text = appLanguage === 'ko'
-    ? { about: '앱 정보', platform: '플랫폼', version: '버전', developer: '개발자' }
+    ? { about: '앱 정보', platform: '플랫폼', version: '버전', developer: '개발자', website: '웹사이트' }
     : appLanguage === 'ja'
-      ? { about: 'アプリ情報', platform: 'プラットフォーム', version: 'バージョン', developer: '開発者' }
+      ? { about: 'アプリ情報', platform: 'プラットフォーム', version: 'バージョン', developer: '開発者', website: 'ウェブサイト' }
       : appLanguage === 'zh'
-        ? { about: '应用信息', platform: '平台', version: '版本', developer: '开发者' }
-        : { about: 'About', platform: 'Platform', version: 'Version', developer: 'Developer' }
+        ? { about: '应用信息', platform: '平台', version: '版本', developer: '开发者', website: '网站' }
+        : { about: 'About', platform: 'Platform', version: 'Version', developer: 'Developer', website: 'Website' }
   const iconPath = isDev
     ? path.join(__dirname, '../public/icon.png')
     : path.join(process.resourcesPath, 'resources/icon.png')
@@ -431,8 +432,9 @@ function showAboutWindow() {
       <div class="meta">
         <div class="meta-row"><span class="meta-label">${text.platform}</span><span class="meta-value">${platform} (Electron)</span></div>
         <div class="meta-row"><span class="meta-label">${text.version}</span><span class="meta-value">${version}</span></div>
-        <div class="meta-row"><span class="meta-label">${text.developer}</span><span class="meta-value">chYoo01</span></div>
-        <div class="meta-row"><span class="meta-label">GitHub</span><a class="meta-link" href="https://github.com/OddlyGoods/peep-note" target="_blank">github.com/OddlyGoods/peep-note</a></div>
+        <div class="meta-row"><span class="meta-label">${text.developer}</span><span class="meta-value">${APP_DEVELOPER}</span></div>
+        <div class="meta-row"><span class="meta-label">GitHub</span><a class="meta-link" href="${APP_GITHUB_URL}" target="_blank" rel="noopener noreferrer">${APP_GITHUB_URL.replace('https://', '')}</a></div>
+        <div class="meta-row"><span class="meta-label">${text.website}</span><a class="meta-link" href="${APP_WEBSITE_URL}" target="_blank" rel="noopener noreferrer">${APP_WEBSITE_URL.replace('https://', '').replace(/\/$/, '')}</a></div>
       </div>
     </div>
   </body></html>`

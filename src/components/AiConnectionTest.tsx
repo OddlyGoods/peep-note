@@ -96,13 +96,15 @@ export default function AiConnectionTest(input: AiConnectionInput) {
   }
 
   return <div className="space-y-2 border-t border-gray-800 pt-3">
-    <div className="flex items-center justify-between gap-4">
+    <div className="space-y-2">
       <p className="text-xs leading-relaxed text-gray-400">{copy.hint}</p>
-      <button type="button" onClick={() => void test()} disabled={testing} aria-busy={testing}
-        className="btn-secondary flex shrink-0 items-center gap-1.5 text-xs disabled:opacity-50">
-        {testing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PlugZap className="h-3.5 w-3.5" />}
-        {testing ? copy.testing : copy.button}
-      </button>
+      <div className="flex justify-end">
+        <button type="button" onClick={() => void test()} disabled={testing} aria-busy={testing}
+          className="btn-secondary flex shrink-0 items-center gap-1.5 text-xs disabled:opacity-50">
+          {testing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PlugZap className="h-3.5 w-3.5" />}
+          {testing ? copy.testing : copy.button}
+        </button>
+      </div>
     </div>
     {result && <div role={result.ok ? 'status' : 'alert'} data-state={result.ok ? 'success' : 'error'} className={`ai-connection-result flex items-start gap-2 rounded-lg border p-3 text-xs leading-relaxed ${result.ok ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-400' : 'border-red-500/30 bg-red-500/5 text-red-400'}`}>
       {result.ok ? <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" /> : <XCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />}

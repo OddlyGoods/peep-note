@@ -1,6 +1,6 @@
 import { useScreenActive } from '../lib/screenActivity'
 import { useEffect, useRef, useState } from 'react'
-import { Save, Keyboard, Cloud, User, RotateCcw, Sparkles, Eye, EyeOff, Check, ChevronDown, Lock, KeyRound, Loader2, MoreHorizontal, Settings2 } from 'lucide-react'
+import { Save, Keyboard, Cloud, User, RotateCcw, Sparkles, Eye, EyeOff, Check, ChevronDown, Lock, KeyRound, Loader2, MoreHorizontal, Settings2, Code2, ExternalLink } from 'lucide-react'
 import { api, Settings as SettingsType } from '../lib/api'
 import { Language, useI18n } from '../i18n'
 import { useLogStore } from '../stores/logStore'
@@ -10,6 +10,7 @@ import ConfirmModal from '../components/ConfirmModal'
 import { dataStorageErrorKey } from '../../shared/dataStorage'
 import DataLocationField from '../components/DataLocationField'
 import AiConnectionTest from '../components/AiConnectionTest'
+import { APP_DEVELOPER, APP_GITHUB_URL, APP_WEBSITE_URL } from '../../shared/appInfo'
 import { DEFAULT_TRASH_RETENTION_DAYS, TRASH_RETENTION_OPTIONS, normalizeTrashRetentionDays } from '../../shared/trashRetention'
 import { AI_MODELS, DEFAULT_AI_MODELS, getAiModelSelection, type AiProvider } from '../../shared/aiModels'
 import { resolveHotkeys, type HotkeyAction, type Hotkeys } from '../../shared/hotkeys'
@@ -104,7 +105,7 @@ function HotkeyInput({ value, label, disabled, onChange, onDisabledChange }: {
           window.electronAPI?.setHotkeysEnabled(true)
         }}
         onKeyDown={listening ? handleKeyDown : undefined}
-        className={`settings-hotkey-input px-3 py-1.5 text-sm font-mono select-none min-w-24 text-center transition-colors ${listening ? 'is-listening' : ''}`}
+        className={`settings-hotkey-input px-3 py-1.5 text-[13px] leading-5 font-mono select-none min-w-24 text-center transition-colors ${listening ? 'is-listening' : ''}`}
       >
         {listening ? t('pressKey') : value || '—'}
       </button>
@@ -713,6 +714,31 @@ export default function Settings() {
               </div>
             </div>
             <UpdatePanel />
+          </section>
+          <section className="card p-5">
+            <div className="mb-4 flex items-center gap-2">
+              <Code2 className="h-4 w-4 text-violet-400" />
+              <h2 className="text-sm font-semibold text-white">{t('developerInfo')}</h2>
+            </div>
+            <div className="space-y-3 text-sm">
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-gray-400">{t('developer')}</span>
+                <span className="text-gray-300">{APP_DEVELOPER}</span>
+              </div>
+              {[{ label: 'GitHub', url: APP_GITHUB_URL }, { label: t('website'), url: APP_WEBSITE_URL }].map(({ label, url }) => (
+                <div key={url} className="flex items-center justify-between gap-4">
+                  <span className="shrink-0 text-gray-400">{label}</span>
+                  <a href={url} target="_blank" rel="noopener noreferrer"
+                    onClick={event => {
+                      if (window.electronAPI?.openExternal) { event.preventDefault(); void window.electronAPI.openExternal(url) }
+                    }}
+                    className="flex min-w-0 items-center gap-1.5 text-xs text-violet-400 transition-colors hover:text-violet-300 hover:underline">
+                    <span className="truncate">{url.replace(/^https:\/\//, '').replace(/\/$/, '')}</span>
+                    <ExternalLink className="h-3 w-3 shrink-0" />
+                  </a>
+                </div>
+              ))}
+            </div>
           </section>
         </div>
       </div>

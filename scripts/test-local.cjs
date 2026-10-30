@@ -1,5 +1,13 @@
 const fs = require('node:fs')
 const { transformSync } = require('esbuild')
+const realFetch = globalThis.fetch
+globalThis.fetch = (input, ...args) => {
+  const url = new URL(typeof input === 'string' || input instanceof URL ? input : input.url)
+  if (['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname) && url.port === '3848') {
+    return Promise.reject(new Error('Unmocked PeepNote API request in a test; use a test double instead of the running app'))
+  }
+  return realFetch(input, ...args)
+}
 require.extensions['.ts'] = (module, filename) => module._compile(transformSync(fs.readFileSync(filename, 'utf8'), {
   loader: 'ts', format: 'cjs', target: 'node18', sourcefile: filename,
   supported: { 'dynamic-import': false },

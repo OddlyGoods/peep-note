@@ -183,8 +183,16 @@ test('revealing a favorite includes its group date, clears filters and loads pag
   const { useLogStore } = await import('../src/stores/logStore')
   const { useWorkspaceStore } = await import('../src/stores/workspaceStore')
   const list = api.logs.list
+  const groupList = api.groups.list
+  const previousLogs = useLogStore.getState()
+  const previousWorkspace = useWorkspaceStore.getState()
+  const { invalidateExploreCache } = await import('../src/lib/exploreCache')
   const target = { id: 'favorite-target', created_at: new Date('2020-02-02T12:00:00').getTime() / 1000, group_created_at: new Date('2019-01-02T12:00:00').getTime() / 1000, workspace_id: 'research' } as any
   try {
+    // Selecting a workspace also starts a fetch; install both doubles before changing it.
+    api.logs.list = async () => []
+    api.groups.list = async () => []
+    invalidateExploreCache()
     useWorkspaceStore.setState({ selectedId: 'research' })
     useLogStore.setState({ dateFrom: '2026-10-01', dateTo: '2026-10-27', filterType: 'video', searchQuery: 'hidden by search' })
     useLogStore.getState().revealLog(target, 'research')
@@ -206,7 +214,12 @@ test('revealing a favorite includes its group date, clears filters and loads pag
     assert.equal(useLogStore.getState().logs.at(-1)?.id, target.id)
     assert.equal(useLogStore.getState().loading, false)
   } finally {
+    useLogStore.setState({ fetchLogs: async () => {} })
+    useWorkspaceStore.setState(previousWorkspace)
     api.logs.list = list
+    api.groups.list = groupList
+    useLogStore.setState(previousLogs)
+    invalidateExploreCache()
     ;(globalThis as any).localStorage = previousStorage
   }
 })

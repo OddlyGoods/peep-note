@@ -432,7 +432,7 @@ export default function Settings() {
               selectSection(categories[next].id)
               categoryTabs.current[categories[next].id]?.focus()
             }}
-            className={`flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-left text-[13px] leading-5 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-400 ${section === id ? 'text-indigo-300' : 'workspace-list-item border-transparent text-gray-400 hover:bg-gray-800 hover:text-gray-200'}`}
+            className={`settings-category-button flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-left text-[13px] leading-5 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-400 ${section === id ? 'text-indigo-300' : 'border-transparent text-gray-400'}`}
             style={section === id ? { background: 'rgba(99,102,241,0.20)', borderColor: 'rgba(99,102,241,0.30)', color: 'var(--workspace-badge-text)' } : undefined}>
             <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             <span className="truncate">{label}</span>

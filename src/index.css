@@ -522,6 +522,17 @@ html[data-theme='light'] .detail-delete-button:hover {
   border-color: rgba(244,63,94,.24);
 }
 
+.settings-category-button[aria-selected='false']:is(:hover, :focus-visible) {
+  background: rgba(255,255,255,.08);
+  color: var(--title-text);
+  border-color: rgba(255,255,255,.12);
+}
+
+html[data-theme='light'] .settings-category-button[aria-selected='false']:is(:hover, :focus-visible) {
+  background: rgba(255,255,255,.9);
+  border-color: var(--soft-border);
+}
+
 html[data-theme='light'] .sidebar-filter-item:hover,
 html[data-theme='light'] .workspace-list-item:hover {
   background: #e0e7ff !important;

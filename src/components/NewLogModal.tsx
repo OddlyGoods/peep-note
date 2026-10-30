@@ -331,7 +331,7 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
                 ))}
                 </div>
                 <button type="button" onClick={() => setIsSecret(value => !value)} aria-pressed={isSecret}
-                  className={`new-log-secret-button flex shrink-0 items-center gap-1 rounded-md border px-2 py-1.5 text-xs transition-all ${isSecret ? 'border-violet-500/50 bg-violet-500/15 text-violet-300' : 'text-gray-400 hover:text-gray-200'}`}>
+                  className={`new-log-secret-button flex shrink-0 items-center gap-1.5 rounded-md border px-2 py-1.5 text-xs transition-all ${isSecret ? 'border-violet-500/50 bg-violet-500/15 text-violet-300' : 'text-gray-400 hover:text-gray-200'}`}>
                   <Lock className="h-3.5 w-3.5" />
                   {t('secret')}
                 </button>

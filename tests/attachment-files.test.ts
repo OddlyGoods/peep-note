@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { importLocalAttachments } from '../electron/attachmentFiles'
+import { importLocalAttachments, attachmentFileSize } from '../electron/attachmentFiles'
 import { directoryUsage } from '../electron/dataUsage'
 import { attachmentFilename, attachmentPath, isImageAttachment, isLinkedAttachment } from '../shared/attachments'
 
@@ -53,4 +53,26 @@ test('data folder usage counts nested files without following links to external 
   if (process.platform !== 'win32') fs.symlinkSync(external, path.join(directory, 'linked'))
   assert.deepEqual(await directoryUsage(directory), { bytes: 10, partial: false })
   assert.deepEqual(await directoryUsage(path.join(root, 'missing')), { bytes: 0, partial: true })
+})
+
+test('attachment sizes use real bytes, follow authorized links, and leave copied sizes independent', async context => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'peepnote-file-size-'))
+  context.after(() => fs.rmSync(root, { recursive: true, force: true }))
+  const source = path.join(root, 'sample.txt')
+  fs.writeFileSync(source, '한글')
+  const [linked] = await importLocalAttachments([{ path: source }], 'link', path.join(root, 'attachments'))
+  const [copied] = await importLocalAttachments([{ path: source }], 'copy', path.join(root, 'attachments'))
+  const allowed = new Set([linked.path, copied.path])
+  const resolve = (reference: string) => allowed.has(reference) ? attachmentPath(reference) : null
+  assert.equal(await attachmentFileSize(linked.path, resolve), Buffer.byteLength('한글'))
+  fs.writeFileSync(source, 'updated original')
+  assert.equal(await attachmentFileSize(linked.path, resolve), Buffer.byteLength('updated original'))
+  assert.equal(await attachmentFileSize(copied.path, resolve), Buffer.byteLength('한글'))
+  fs.writeFileSync(source, '')
+  assert.equal(await attachmentFileSize(linked.path, resolve), 0)
+  assert.equal(await attachmentFileSize(source, resolve), null, 'an unauthorized original must not expose metadata')
+  assert.equal(await attachmentFileSize(null, resolve), null)
+  assert.equal(await attachmentFileSize(root, value => value), null, 'directories are not attachments')
+  fs.unlinkSync(source)
+  assert.equal(await attachmentFileSize(linked.path, resolve), null, 'missing links are handled without throwing')
 })

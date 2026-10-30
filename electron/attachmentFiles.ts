@@ -29,3 +29,14 @@ export async function importLocalAttachments(entries: unknown, mode: unknown, di
   }
   return imported
 }
+
+// Authorization is supplied by the same resolver used for opening attachments.
+export async function attachmentFileSize(reference: unknown, resolve: (reference: string) => string | null): Promise<number | null> {
+  if (typeof reference !== 'string') return null
+  try {
+    const source = resolve(reference)
+    if (!source) return null
+    const stat = await fs.stat(source)
+    return stat.isFile() ? stat.size : null
+  } catch { return null }
+}

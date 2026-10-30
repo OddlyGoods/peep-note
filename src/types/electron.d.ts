@@ -12,6 +12,7 @@ declare global {
       readFileAsBase64: (filepath: string) => Promise<string | null>
       importAttachments: (files: File[], mode?: 'copy' | 'link') => Promise<Array<{ path: string; name: string; size: number; isImage: boolean; mimeType: string | null }>>
       deleteAttachmentFile: (filepath: string) => Promise<boolean>
+      getAttachmentSize?: (filepath: string) => Promise<number | null>
       openAttachment: (filepath: string) => Promise<boolean>
       showAttachmentInFolder: (filepath: string) => Promise<boolean>
       downloadAttachment: (filepath: string) => Promise<boolean>

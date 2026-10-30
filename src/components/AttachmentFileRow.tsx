@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+import { useScreenActive } from '../lib/screenActivity'
 import { Download, File as FileIcon, FileOutput, FolderOpen, Image as ImageIcon, Trash2, X } from 'lucide-react'
 import { attachmentFilename, formatBytes, isImageAttachment } from '../../shared/attachments'
 import { useI18n } from '../i18n'
@@ -16,6 +18,17 @@ export default function AttachmentFileRow({ reference, url, name, size, compact 
   disabled?: boolean
 }) {
   const { t } = useI18n()
+  const active = useScreenActive()
+  const [measuredSize, setMeasuredSize] = useState<{ reference: string; bytes: number | null } | null>(null)
+  const bytes = size ?? (measuredSize?.reference === reference ? measuredSize.bytes : null)
+  useEffect(() => {
+    if (!active || size !== undefined) return
+    let cancelled = false
+    void window.electronAPI?.getAttachmentSize?.(reference).then(bytes => {
+      if (!cancelled) setMeasuredSize({ reference, bytes: typeof bytes === 'number' && Number.isFinite(bytes) && bytes >= 0 ? bytes : null })
+    }).catch(() => {})
+    return () => { cancelled = true }
+  }, [reference, size, active])
   const filename = name ?? attachmentFilename(reference)
   const image = isImageAttachment(reference)
   const thumbnail = <span className={`flex shrink-0 items-center justify-center overflow-hidden rounded-lg ${compact ? 'h-10 w-12' : 'h-14 w-20'}`}
@@ -30,9 +43,11 @@ export default function AttachmentFileRow({ reference, url, name, size, compact 
     <div className="min-w-0 flex-1 space-y-1">
       <div className="flex min-w-0 items-center gap-2">
         <AttachmentModeBadge reference={reference} />
-        <p className={`min-w-0 truncate ${compact ? 'text-xs' : 'text-sm'}`} style={{ color: 'var(--title-text)' }} title={filename}>{filename}</p>
+        <div className="flex min-w-0 items-baseline gap-1">
+          <p className={`min-w-0 truncate ${compact ? 'text-xs' : 'text-sm'}`} style={{ color: 'var(--title-text)' }} title={filename}>{filename}</p>
+          {bytes !== null && Number.isFinite(bytes) && bytes >= 0 && <span className="shrink-0 text-[11px] text-gray-400">({formatBytes(bytes)})</span>}
+        </div>
       </div>
-      {!!size && <p className="text-[10px] text-gray-400">{formatBytes(size)}</p>}
     </div>
     <div className={`attachment-actions flex shrink-0 items-center gap-1.5 ${actionsOnHover ? 'opacity-0 pointer-events-none transition-opacity group-hover/file:opacity-100 group-hover/file:pointer-events-auto group-focus-within/file:opacity-100 group-focus-within/file:pointer-events-auto' : ''}`}>
       {allowOpen && <>

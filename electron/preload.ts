@@ -42,6 +42,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     name: file.name
   })), mode),
   deleteAttachmentFile: (filepath: string) => ipcRenderer.invoke('delete-attachment-file', filepath),
+  getAttachmentSize: (filepath: string) => ipcRenderer.invoke('get-attachment-size', filepath),
   openAttachment: (filepath: string) => ipcRenderer.invoke('open-attachment', filepath),
   showAttachmentInFolder: (filepath: string) => ipcRenderer.invoke('show-attachment-in-folder', filepath),
   downloadAttachment: (filepath: string) => ipcRenderer.invoke('download-attachment', filepath),

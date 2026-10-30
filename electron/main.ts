@@ -23,7 +23,7 @@ import { installDebAndRestart } from './installDeb'
 import { UPDATE_STATE_CHANNEL } from '../shared/updates'
 import { startServer } from '../server/index'
 import { attachmentPath, isLinkedAttachment } from '../shared/attachments'
-import { importLocalAttachments } from './attachmentFiles'
+import { importLocalAttachments, attachmentFileSize } from './attachmentFiles'
 import { directoryUsage } from './dataUsage'
 import { queryAll } from '../server/db'
 import { cleanupUnreferencedMedia } from '../server/media'
@@ -1196,6 +1196,8 @@ function setupIPC() {
     cleanupUnreferencedMedia([resolved])
     return !fs.existsSync(resolved)
   })
+
+  ipcMain.handle('get-attachment-size', (_e, reference: unknown) => attachmentFileSize(reference, readableAttachmentFile))
 
   ipcMain.handle('open-attachment', async (_e, filepath: unknown) => {
     if (typeof filepath !== 'string') return false

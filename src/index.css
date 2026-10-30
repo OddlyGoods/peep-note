@@ -1098,6 +1098,10 @@ html[data-theme='light'] .code-input {
   border-color: #d9e1f2 !important;
   color: #1f2937 !important;
 }
+html[data-theme='light'] textarea.code-input,
+html[data-theme='light'] .detail-content.font-mono {
+  background: #fff !important;
+}
 html[data-theme='light'] .markdown-content .markdown-code-block pre code,
 html[data-theme='light'] .ai-summary-content .markdown-code-block pre code {
   background: transparent !important;

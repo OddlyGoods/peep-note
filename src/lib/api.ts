@@ -1,6 +1,7 @@
 import { invalidateExploreCache } from './exploreCache'
 import type { TrashRetentionDays } from '../../shared/trashRetention'
 import type { Hotkeys } from '../../shared/hotkeys'
+import type { AiConnectionInput, AiConnectionResult } from '../../shared/aiConnection'
 
 const configuredPort = Number(import.meta.env.VITE_LOCAL_SERVER_PORT)
 const LOCAL_SERVER_PORT = Number.isInteger(configuredPort) && configuredPort >= 1024 && configuredPort <= 65535 ? configuredPort : 3848
@@ -107,6 +108,9 @@ export const api = {
 
   // AI
   ai: {
+    testConnection: (input: AiConnectionInput, signal?: AbortSignal) => request<AiConnectionResult>('/api/ai/test-connection', {
+      method: 'POST', body: JSON.stringify(input), signal
+    }),
     keyStatus: () => request<{ has_key: boolean; provider: string }>('/api/ai/key-status'),
     summarize: (group_id: string, language?: Settings['language']) =>
       request<{ ok: boolean; summary: string }>('/api/ai/summarize', {

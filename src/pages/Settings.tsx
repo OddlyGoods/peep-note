@@ -9,6 +9,7 @@ import UpdatePanel from '../components/UpdatePanel'
 import ConfirmModal from '../components/ConfirmModal'
 import { dataStorageErrorKey } from '../../shared/dataStorage'
 import DataLocationField from '../components/DataLocationField'
+import AiConnectionTest from '../components/AiConnectionTest'
 import { DEFAULT_TRASH_RETENTION_DAYS, TRASH_RETENTION_OPTIONS, normalizeTrashRetentionDays } from '../../shared/trashRetention'
 import { AI_MODELS, DEFAULT_AI_MODELS, getAiModelSelection, type AiProvider } from '../../shared/aiModels'
 import { resolveHotkeys, type HotkeyAction, type Hotkeys } from '../../shared/hotkeys'
@@ -687,6 +688,9 @@ export default function Settings() {
                   <p className="text-xs text-gray-400 mt-1.5">{t('qwenEndpointHint')}</p>
                 </div>
               )}
+              <AiConnectionTest provider={aiProvider} model={aiModel}
+                apiKey={aiProvider === 'openai' ? openaiKey : aiProvider === 'anthropic' ? anthropicKey : aiProvider === 'gemini' ? geminiKey : qwenKey}
+                baseUrl={aiProvider === 'qwen' ? qwenBaseUrl : undefined} />
             </div>
           </section>
 

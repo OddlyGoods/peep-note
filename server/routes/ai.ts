@@ -4,6 +4,8 @@ import { LOCAL_PROFILE_ID } from '../localProfile'
 import fs from 'fs'
 import { parseAiSummaryResult } from '../../shared/aiSummary'
 import { DEFAULT_AI_MODELS, type AiProvider } from '../../shared/aiModels'
+import { qwenChatEndpoint } from '../../shared/aiConnection'
+import { testAiConnection } from '../aiConnection'
 
 const ai = new Hono()
 const MAX_SUMMARY_TOKENS = 3000
@@ -47,7 +49,7 @@ async function callQwen(apiKey: string, logsText: string, images: string[], mode
     { type: 'text', text: `Organize the following records:\n\n${logsText}` },
     ...images.map(b64 => ({ type: 'image_url', image_url: { url: `data:image/png;base64,${b64}` } }))
   ]
-  const endpoint = `${(baseUrl || 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1').replace(/\/+$/, '')}/chat/completions`
+  const endpoint = qwenChatEndpoint(baseUrl)
   const res = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
@@ -108,6 +110,11 @@ async function callGemini(apiKey: string, logsText: string, images: string[], mo
   const data = await res.json() as any
   return data.candidates?.[0]?.content?.parts?.filter((part: any) => !part.thought && typeof part.text === 'string').map((part: any) => part.text).join('') || '{}'
 }
+
+ai.post('/test-connection', async c => {
+  const input = await c.req.json().catch(() => null)
+  return c.json(await testAiConnection(input, c.req.raw.signal))
+})
 
 // POST /api/ai/summarize  { group_id, language? }
 ai.post('/summarize', async (c) => {

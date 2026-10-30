@@ -73,6 +73,25 @@ test('custom and older model IDs survive settings save and reload without preset
   run("DELETE FROM settings WHERE user_id = 'local'")
 })
 
+test('AI connection tests use unsaved input without changing saved settings or creating a note', async () => {
+  const saved = await json('/api/settings')
+  const count = queryAll('SELECT id FROM logs').length
+  const original = globalThis.fetch
+  globalThis.fetch = async (url, options) => {
+    assert.equal(String(url), 'https://workspace.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1/chat/completions')
+    const body = JSON.parse(String(options?.body))
+    assert.equal(body.model, 'draft-model')
+    assert.deepEqual(body.messages, [{ role: 'user', content: 'Reply with OK.' }])
+    return Response.json({ choices: [{ message: { content: 'OK' } }] })
+  }
+  try {
+    const result = await json('/api/ai/test-connection', 'POST', { provider: 'qwen', model: 'draft-model', apiKey: 'test-key', baseUrl: 'https://workspace.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1' })
+    assert.equal(result.ok, true)
+    assert.deepEqual(await json('/api/settings'), saved)
+    assert.equal(queryAll('SELECT id FROM logs').length, count)
+  } finally { globalThis.fetch = original }
+})
+
 test('AI requests forward preset and custom model IDs, using modern OpenAI parameters and visible response text', async () => {
   insert('model-request-one'); insert('model-request-two')
   const group = await json('/api/groups', 'POST', { name: 'Model requests', log_ids: ['model-request-one', 'model-request-two'] })

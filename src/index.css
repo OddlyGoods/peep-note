@@ -759,6 +759,7 @@ html[data-theme='light'] .text-rose-200 { color: #9f1239 !important; }
 html[data-theme='light'] .border-blue-400\/20 { border-color: rgba(37,99,235,.38) !important; }
 html[data-theme='light'] .bg-blue-400\/10 { background-color: rgba(37,99,235,.1) !important; }
 html[data-theme='light'] .text-emerald-400 { color: #047857 !important; }
+html[data-theme='light'] .ai-connection-result[data-state='error'] { color: #b91c1c; }
 html[data-theme='light'] .text-amber-300 { color: #92400e !important; }
 html[data-theme='light'] .text-amber-200 { color: #78350f !important; }
 html[data-theme='light'] .text-amber-400 { color: #92400e !important; }

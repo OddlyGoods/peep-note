@@ -6,7 +6,7 @@ import { format } from 'date-fns'
 import { ko, ja, zhCN } from 'date-fns/locale'
 import {
   ArrowLeft, Save, Trash2, Pin, X, Camera,
-  Video, FileText, Text as TextIcon, BookOpen, Code2, Globe, Hash, Clock, Tag, Maximize2, Sparkles, Layers, Pencil, SquarePen, Copy, Check, ArrowUp, Lock, Play, MessageCircle, Paperclip
+  Video, FileText, Text as TextIcon, BookOpen, Code2, Globe, Eye, Hash, Clock, Tag, Maximize2, Sparkles, Layers, Pencil, SquarePen, Copy, Check, ArrowUp, Lock, Play, MessageCircle, Paperclip
 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -789,52 +789,55 @@ export default function LogDetail() {
                 <BookOpen className="h-3.5 w-3.5" aria-hidden="true" />
                 {t('content')}
               </label>
-              {!editing && log.content && (!log.is_secret || secretGate === 'open') && (
-                <button
-                  onClick={handleCopyContent}
-                  className="flex items-center gap-1.5 px-2 py-0.5 rounded text-xs text-gray-400 hover:text-violet-300 hover:bg-violet-500/10 transition-colors"
-                  title={t('copy')}
-                >
-                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                  {copied ? t('copied') : t('copy')}
-                </button>
-              )}
-              {/* 편집 모드 + 노트일 때 포맷 토글 */}
-              {editing && isNote && (
-                <div className="flex items-center gap-1">
-                  {FORMATS.map(f => {
-                    const fc = FORMAT_CONFIG[f]
-                    return (
-                      <button
-                        key={f}
-                        onClick={() => setForm(prev => ({ ...prev, content_format: f }))}
-                        className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs transition-all ${
-                          form.content_format === f
-                            ? 'text-violet-300 bg-violet-500/15 border border-violet-500/30'
-                            : 'text-gray-400 hover:text-gray-400 border border-transparent'
-                        }`}
-                      >
-                        <fc.icon className="w-3 h-3" />
-                        {fc.label === 'html' ? 'HTML' : t(fc.label as 'text' | 'markdown' | 'code')}
-                      </button>
-                    )
-                  })}
-                  <button type="button" onClick={() => setForm(prev => ({ ...prev, is_secret: !prev.is_secret }))} aria-pressed={form.is_secret}
-                    className={`ml-2 flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs transition-colors ${form.is_secret ? 'border-violet-500/50 bg-violet-500/15 text-violet-300' : 'text-gray-400 hover:text-gray-200'}`}
-                    style={!form.is_secret ? { borderColor: 'var(--soft-border)', background: 'var(--side-panel-bg)', color: 'var(--title-text)' } : undefined}>
-                    <Lock className="h-3.5 w-3.5" />{t('secret')}
+              <div className="detail-content-actions ml-auto flex items-center gap-2">
+                {/* 편집 모드 + 노트일 때 포맷 토글 */}
+                {editing && isNote && (
+                  <div className="flex items-center gap-1">
+                    {FORMATS.map(f => {
+                      const fc = FORMAT_CONFIG[f]
+                      return (
+                        <button
+                          key={f}
+                          onClick={() => setForm(prev => ({ ...prev, content_format: f }))}
+                          className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs transition-all ${
+                            form.content_format === f
+                              ? 'text-violet-300 bg-violet-500/15 border border-violet-500/30'
+                              : 'text-gray-400 hover:text-gray-400 border border-transparent'
+                          }`}
+                        >
+                          <fc.icon className="w-3 h-3" />
+                          {fc.label === 'html' ? 'HTML' : t(fc.label as 'text' | 'markdown' | 'code')}
+                        </button>
+                      )
+                    })}
+                    <button type="button" onClick={() => setForm(prev => ({ ...prev, is_secret: !prev.is_secret }))} aria-pressed={form.is_secret}
+                      className={`ml-2 flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs transition-colors ${form.is_secret ? 'border-violet-500/50 bg-violet-500/15 text-violet-300' : 'text-gray-400 hover:text-gray-200'}`}
+                      style={!form.is_secret ? { borderColor: 'var(--soft-border)', background: 'var(--side-panel-bg)', color: 'var(--title-text)' } : undefined}>
+                      <Lock className="h-3.5 w-3.5" />{t('secret')}
+                    </button>
+                  </div>
+                )}
+                {/* 뷰 모드 + HTML일 때 편집/미리보기 토글 */}
+                {!editing && isNote && log.content_format === 'html' && (
+                  <button
+                    onClick={() => setHtmlPreview(v => !v)}
+                    className="flex items-center gap-1.5 px-2 py-0.5 rounded text-xs text-gray-400 hover:text-violet-300 hover:bg-violet-500/10 transition-colors"
+                  >
+                    {htmlPreview ? <Code2 className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    {htmlPreview ? t('viewSource') : t('preview')}
                   </button>
-                </div>
-              )}
-              {/* 뷰 모드 + HTML일 때 편집/미리보기 토글 */}
-              {!editing && isNote && log.content_format === 'html' && (
-                <button
-                  onClick={() => setHtmlPreview(v => !v)}
-                  className="text-xs text-sky-400 hover:text-sky-300 transition-colors"
-                >
-                  {htmlPreview ? t('viewSource') : t('preview')}
-                </button>
-              )}
+                )}
+                {!editing && log.content && (!log.is_secret || secretGate === 'open') && (
+                  <button
+                    onClick={handleCopyContent}
+                    className="flex items-center gap-1.5 px-2 py-0.5 rounded text-xs text-gray-400 hover:text-violet-300 hover:bg-violet-500/10 transition-colors"
+                    title={t('copy')}
+                  >
+                    {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    {copied ? t('copied') : t('copy')}
+                  </button>
+                )}
+              </div>
             </div>
 
             {editing ? (

@@ -723,7 +723,11 @@ export default function Settings() {
             <div className="space-y-3 text-sm">
               <div className="flex items-center justify-between gap-4">
                 <span className="text-gray-400">{t('developer')}</span>
-                <span className="text-gray-300">{APP_DEVELOPER}</span>
+                <span className="flex items-center gap-2 text-gray-300">
+                  <img src="/developer-avatar.png" alt="" aria-hidden="true" width={24} height={24}
+                    className="h-6 w-6 shrink-0 rounded-full border border-gray-700 object-cover" />
+                  {APP_DEVELOPER}
+                </span>
               </div>
               {[{ label: 'GitHub', url: APP_GITHUB_URL }, { label: t('website'), url: APP_WEBSITE_URL }].map(({ label, url }) => (
                 <div key={url} className="flex items-center justify-between gap-4">

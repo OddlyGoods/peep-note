@@ -4,6 +4,7 @@ import { api } from '../lib/api'
 import { useI18n } from '../i18n'
 import { useScreenActive } from '../lib/screenActivity'
 import { MCP_CLIENTS, isMcpClient, type McpClient } from '../../shared/mcpClients'
+import { useMcpStatusStore } from '../stores/mcpStatusStore'
 
 const copy = {
   en: {
@@ -64,7 +65,9 @@ export default function McpPanel() {
   const { language, t } = useI18n()
   const text = copy[language]
   const active = useScreenActive()
-  const [status, setStatus] = useState<{ enabled: boolean; endpoint: string } | null>(null)
+  const status = useMcpStatusStore(state => state.status)
+  const refreshStatus = useMcpStatusStore(state => state.refresh)
+  const setEnabled = useMcpStatusStore(state => state.setEnabled)
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -79,15 +82,15 @@ export default function McpPanel() {
   useEffect(() => {
     if (!active) return
     const current = ++request.current
-    void api.mcp.status().then(value => { if (current === request.current) { setStatus(value); setFailed(false) } })
+    void refreshStatus().then(() => { if (current === request.current) setFailed(false) })
       .catch(() => { if (current === request.current) setFailed(true) })
     return () => { request.current++ }
-  }, [active])
+  }, [active, refreshStatus])
   async function toggle() {
     if (!status || busy) return
     request.current++
     setBusy(true); setFailed(false); setCopied(false)
-    try { setStatus(await api.mcp.setEnabled(!status.enabled)) }
+    try { await setEnabled(!status.enabled) }
     catch { setFailed(true) }
     finally { setBusy(false) }
   }

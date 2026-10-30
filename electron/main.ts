@@ -221,7 +221,7 @@ function createOverlayWindow() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize
   const margin = 20
   const winW = 480
-  const winH = 540
+  const winH = 548
 
   overlayWindow = new BrowserWindow({
     width: winW,
@@ -241,6 +241,15 @@ function createOverlayWindow() {
       nodeIntegration: false
     }
   })
+
+  const overlay = overlayWindow
+  const notifyMaximized = (maximized: boolean) => {
+    if (!overlay.isDestroyed() && !overlay.webContents.isDestroyed()) {
+      overlay.webContents.send('overlay-maximized-changed', maximized)
+    }
+  }
+  overlay.on('maximize', () => notifyMaximized(true))
+  overlay.on('unmaximize', () => notifyMaximized(false))
 
   protectAppNavigation(overlayWindow.webContents, url => shell.openExternal(url))
   if (isDev) {

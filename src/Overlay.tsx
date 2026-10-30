@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef, useId } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef, useId } from 'react'
 import { X, Maximize2, Minimize2, Camera, Video, FileText, Text as TextIcon, StopCircle, Code2, Globe, Hash, Lock, SlidersHorizontal, ChevronDown, Check, Loader2 } from 'lucide-react'
 import { api, type Workspace } from './lib/api'
 import { useI18n } from './i18n'
 import { startRegionRecording, RecordingRegion } from './lib/regionRecording'
-import { attachmentFilename, type AttachmentMode } from '../shared/attachments'
+import type { AttachmentMode } from '../shared/attachments'
 import { useAttachmentPicker } from './lib/useAttachmentPicker'
 import AttachmentFileRow from './components/AttachmentFileRow'
 import FileDropZone from './components/FileDropZone'
@@ -49,6 +49,7 @@ export default function Overlay() {
   const [draggingFiles, setDraggingFiles] = useState(false)
   const [importingFiles, setImportingFiles] = useState(false)
   const [attachmentError, setAttachmentError] = useState(false)
+  const [contentHeight, setContentHeight] = useState<number>()
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [recording, setRecording] = useState(false)
@@ -68,6 +69,9 @@ export default function Overlay() {
   const timerRef = useRef<number | null>(null)
   const recordingStartedAtRef = useRef<number | null>(null)
   const contentRef = useRef<HTMLTextAreaElement>(null)
+  const inputAreaRef = useRef<HTMLDivElement>(null)
+  const contentFieldRef = useRef<HTMLDivElement>(null)
+  const attachmentListRef = useRef<HTMLDivElement>(null)
   const filePickerHostRef = useRef<HTMLDivElement>(null)
   const attachmentsRef = useRef<Attachment[]>([])
   const savedAttachmentsRef = useRef(false)
@@ -77,6 +81,44 @@ export default function Overlay() {
   const discardRecordedVideoRef = useRef(false)
   const savedVideoLogRef = useRef(false)
   const workspaceMenuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    let active = true
+    let receivedEvent = false
+    const update = (value: unknown) => {
+      if (active && typeof value === 'boolean') setMaximized(value)
+    }
+    const onMaximized = (value: unknown) => { receivedEvent = true; update(value) }
+    window.electronAPI?.on('overlay-maximized-changed', onMaximized)
+    void window.electronAPI?.overlayIsMaximized().then(value => {
+      if (!receivedEvent) update(value)
+    }).catch(() => {})
+    return () => {
+      active = false
+      window.electronAPI?.off('overlay-maximized-changed', onMaximized)
+    }
+  }, [])
+
+  // Size content from the viewport without letting attachments consume its space.
+  useLayoutEffect(() => {
+    const area = inputAreaRef.current
+    const field = contentFieldRef.current
+    if (!area || !field) return
+    const fixedFields = Array.from(area.children).filter((child): child is HTMLElement =>
+      child instanceof HTMLElement && child !== field && child !== attachmentListRef.current &&
+      !child.hasAttribute('data-attachment-error') && getComputedStyle(child).display !== 'none')
+    const measure = () => {
+      const style = getComputedStyle(area)
+      const reserved = fixedFields.reduce((height, child) => height + child.getBoundingClientRect().height, 0) +
+        parseFloat(style.paddingTop) + parseFloat(style.paddingBottom) + parseFloat(style.rowGap) * fixedFields.length
+      setContentHeight(Math.max(previewUrl ? 36 : 64, Math.floor(area.clientHeight - reserved)))
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(area)
+    fixedFields.forEach(child => observer.observe(child))
+    return () => observer.disconnect()
+  }, [type, previewUrl, attachmentError, attachments.length > 0])
 
   const resetTags = () => {
     setTags([])
@@ -206,14 +248,6 @@ export default function Overlay() {
       const b64 = await window.electronAPI?.readFileAsBase64(path)
       if (b64) setPreviewUrl(`data:image/png;base64,${b64}`)
     }
-  }
-
-  const handleSnip = async () => {
-    const path = await window.electronAPI?.startSnipping()
-    if (!path) return
-    const b64 = await window.electronAPI?.readFileAsBase64(path)
-    if (!b64) return
-    updateAttachments(prev => [...prev, { path, name: attachmentFilename(path), url: `data:image/png;base64,${b64}` }])
   }
 
   const removeAttachment = (i: number) => {
@@ -392,8 +426,8 @@ export default function Overlay() {
 
   return (
     <div
-      className="relative h-screen w-screen flex items-stretch"
-      style={{ background: 'transparent' } as React.CSSProperties}
+      className="relative h-screen w-screen flex items-stretch overflow-hidden"
+      style={{ background: 'transparent', borderRadius: maximized ? 0 : 12 } as React.CSSProperties}
       onKeyDown={handleKeyDown}
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
@@ -401,8 +435,8 @@ export default function Overlay() {
       onDrop={handleDrop}
     >
       <div
-        className={`flex-1 flex flex-col overflow-hidden ${maximized ? 'rounded-none' : 'rounded-xl'}`}
-        style={{ background: 'var(--overlay-bg)', border: '1px solid var(--medium-border)' }}
+        className="flex-1 flex flex-col overflow-hidden"
+        style={{ background: 'var(--overlay-bg)', border: '1px solid var(--medium-border)', borderRadius: 'inherit' }}
       >
         {/* 드래그 타이틀바 */}
         <div
@@ -422,55 +456,6 @@ export default function Overlay() {
             <span className="text-[11px] font-bold tracking-wider translate-y-px" style={{ color: 'var(--title-text)' }}>
               PeepNote
             </span>
-            <div ref={workspaceMenuRef} className="relative" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
-              <button
-                type="button"
-                aria-haspopup="listbox"
-                aria-expanded={workspaceMenuOpen}
-                onClick={() => {
-                  setWorkspaceMenuOpen(open => !open)
-                  if (workspaces.length === 0) void refreshWorkspaces()
-                }}
-                className="flex max-w-44 items-center gap-1 rounded px-1.5 py-1 text-[10px] leading-none transition-colors hover:brightness-110"
-                style={{ background: 'var(--workspace-badge-bg)', color: 'var(--workspace-badge-text)', border: '1px solid var(--workspace-badge-border)' }}
-              >
-                <span className="truncate">{workspace ? (workspace.is_default ? t('defaultWorkspace') : workspace.name) : t('workspaces')}</span>
-                <ChevronDown className={`h-2.5 w-2.5 shrink-0 transition-transform ${workspaceMenuOpen ? 'rotate-180' : ''}`} />
-              </button>
-
-              {workspaceMenuOpen && (
-                <div
-                  role="listbox"
-                  aria-label={t('workspaces')}
-                  className="absolute left-0 top-full z-40 mt-1 min-w-44 max-w-64 overflow-hidden rounded-lg p-1 shadow-xl"
-                  style={{ background: 'var(--overlay-bg)', border: '1px solid var(--medium-border)' }}
-                >
-                  <div className="max-h-48 overflow-y-auto">
-                    {workspaceLoading && workspaces.length === 0 ? (
-                      <div className="flex items-center justify-center px-3 py-3" style={{ color: 'var(--muted-text)' }}>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      </div>
-                    ) : workspaces.map(item => {
-                      const selected = item.id === workspace?.id
-                      return (
-                        <button
-                          key={item.id}
-                          type="button"
-                          role="option"
-                          aria-selected={selected}
-                          onClick={() => selectWorkspace(item)}
-                          className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs transition-colors hover:bg-violet-500/15"
-                          style={{ color: selected ? 'var(--workspace-badge-text)' : 'var(--title-text)' }}
-                        >
-                          <span className="min-w-0 flex-1 truncate">{item.is_default ? t('defaultWorkspace') : item.name}</span>
-                          {selected && <Check className="h-3.5 w-3.5 shrink-0 text-violet-400" />}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
           </div>
           <div className="flex items-center gap-1" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
             <button onClick={async () => {
@@ -491,7 +476,7 @@ export default function Overlay() {
           <div className={`flex items-center gap-1 px-3 pt-2 ${type === 'note' ? 'pb-1' : 'pb-2'} shrink-0`}
             style={{ borderBottom: type === 'note' ? 'none' : '1px solid rgba(99,102,241,0.1)' }}>
             {TYPES.map(({ value, label, icon: Icon, color, accent }) => (
-              <button key={value} onClick={() => handleTypeChange(value)}
+              <button key={value} onClick={() => handleTypeChange(value)} aria-pressed={type === value}
                 className={`overlay-tab ${type !== value ? 'overlay-tab-inactive' : ''} flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex-1 justify-center ${
                   type === value ? 'text-white' : 'text-slate-500 hover:text-slate-300'
                 }`}
@@ -507,7 +492,7 @@ export default function Overlay() {
             <div className="flex items-center gap-1 px-3 pt-1 pb-2 shrink-0"
               style={{ borderBottom: '1px solid rgba(99,102,241,0.1)' }}>
               {FORMATS.map(({ value, label, icon: Icon }) => (
-                <button key={value} onClick={() => setFormat(value)}
+                <button key={value} onClick={() => setFormat(value)} aria-pressed={format === value}
                   className={`overlay-tab flex items-center gap-1 px-2.5 py-1 rounded-md text-xs transition-all ${
                     format === value
                       ? 'text-violet-300 bg-violet-500/15 border border-violet-500/30'
@@ -518,8 +503,8 @@ export default function Overlay() {
                 </button>
               ))}
               <button type="button" onClick={() => setIsSecret(value => !value)} aria-pressed={isSecret}
-                className={`ml-auto flex items-center gap-1 rounded-md border px-2 py-1 text-xs transition-colors ${isSecret ? 'border-violet-500/50 bg-violet-500/15 text-violet-300' : 'text-slate-400 hover:text-slate-200'}`}
-                style={!isSecret ? { borderColor: 'var(--soft-border)', background: 'var(--side-panel-bg)', color: 'var(--title-text)' } : undefined}>
+                className={`overlay-secret-button ml-auto flex items-center gap-1 rounded-md border px-2 py-1 text-xs transition-colors ${isSecret ? 'border-violet-500/50 bg-violet-500/15 text-violet-300' : 'text-slate-400 hover:text-slate-200'}`}
+                style={!isSecret ? { borderColor: 'var(--soft-border)', background: 'transparent', color: 'var(--title-text)' } : undefined}>
                 <Lock className="h-3 w-3" />
                 {t('secret')}
               </button>
@@ -527,14 +512,14 @@ export default function Overlay() {
           )}
 
           {/* 입력 영역 */}
-          <div className="flex-1 flex flex-col overflow-y-auto px-3 pt-2.5 pb-2 gap-3 min-h-0">
+          <div ref={inputAreaRef} className="flex-1 flex flex-col overflow-y-auto px-3 pt-2.5 pb-2 gap-3 min-h-0">
             <div className="bordered-field shrink-0">
               <label className="bordered-field-label" htmlFor={`${fieldId}-title`}>{t('fieldTitle')}</label>
               <input id={`${fieldId}-title`} type="text" className="input py-1.5 text-sm" placeholder={t('fieldOptional')}
                 value={title} onChange={e => setTitle(e.target.value)} />
             </div>
 
-            <div className="bordered-field flex flex-1 min-h-0" style={{ minHeight: previewUrl ? '36px' : '64px' }}>
+            <div ref={contentFieldRef} className="bordered-field flex shrink-0" style={{ height: contentHeight, minHeight: previewUrl ? '36px' : '64px' }}>
               <label className="bordered-field-label" htmlFor={`${fieldId}-content`}>{t('fieldContent')}</label>
               <textarea id={`${fieldId}-content`} ref={contentRef}
                 className={`input resize-none text-sm flex-1 min-h-0 ${
@@ -550,16 +535,14 @@ export default function Overlay() {
               <TagInput inputId={`${fieldId}-tags`} placeholder={t('fieldTagHint')} key={tagInputKey} value={tags} onChange={setTags} disabled={saving || saved} />
             </div>
 
-            <div className="flex flex-col gap-1.5 shrink-0">
-              {attachmentPicker.input}
-              {attachmentPicker.dialog}
-              {attachments.length > 0 && <div className="flex max-h-40 flex-col gap-1.5 overflow-y-auto">
-                {attachments.map((attachment, index) => <AttachmentFileRow key={`${attachment.path}-${index}`} reference={attachment.path}
-                  name={attachment.name} url={attachment.url} size={attachment.size} compact onRemove={() => removeAttachment(index)} />)}
-              </div>}
-              <FileDropZone onSelect={attachmentPicker.selectFiles} busy={importingFiles} dragging={draggingFiles} compact borderLabel={t('fieldFiles')} />
-            </div>
-            {attachmentError && <p className="shrink-0 text-right text-[11px] text-red-400">{t('fileImportFailed')}</p>}
+            {attachmentPicker.input}
+            {attachmentPicker.dialog}
+            {attachments.length > 0 && <div ref={attachmentListRef} className="flex shrink-0 flex-col gap-1.5">
+              {attachments.map((attachment, index) => <AttachmentFileRow key={`${attachment.path}-${index}`} reference={attachment.path}
+                name={attachment.name} url={attachment.url} size={attachment.size} compact onRemove={() => removeAttachment(index)} />)}
+            </div>}
+            <FileDropZone onSelect={attachmentPicker.selectFiles} busy={importingFiles} dragging={draggingFiles} compact borderLabel={t('fieldFiles')} />
+            {attachmentError && <p data-attachment-error className="shrink-0 text-right text-[11px] text-red-400">{t('fileImportFailed')}</p>}
 
             {/* 스크린샷 캡처 버튼 */}
             {type === 'screenshot' && (
@@ -630,18 +613,65 @@ export default function Overlay() {
           </div>
 
           {/* 하단 툴바 */}
-          <div className="flex items-center gap-2 px-3 py-2 shrink-0"
+          <div className="flex items-center gap-2 px-3 py-3 shrink-0"
             style={{ borderTop: '1px solid rgba(99,102,241,0.1)' }}>
 
-            {/* 노트 타입: 스니핑 캡처 버튼 */}
-            {type === 'note' && (
-              <button onClick={handleSnip} title={t('regionCapture')}
-                className="p-1.5 text-indigo-800 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors">
-                <Camera className="w-3.5 h-3.5" />
+            <div ref={workspaceMenuRef} className="relative" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+              <button
+                type="button"
+                aria-haspopup="listbox"
+                aria-expanded={workspaceMenuOpen}
+                onClick={() => {
+                  setWorkspaceMenuOpen(open => !open)
+                  if (workspaces.length === 0) void refreshWorkspaces()
+                }}
+                className="flex h-7 max-w-44 items-center gap-1 rounded-md px-2.5 text-xs leading-none transition-colors hover:brightness-110"
+                style={{ background: 'var(--workspace-badge-bg)', color: 'var(--workspace-badge-text)', border: '1px solid var(--workspace-badge-border)' }}
+              >
+                <span className="truncate">{workspace ? (workspace.is_default ? t('defaultWorkspace') : workspace.name) : t('workspaces')}</span>
+                <ChevronDown className={`h-3 w-3 shrink-0 transition-transform ${workspaceMenuOpen ? 'rotate-180' : ''}`} />
               </button>
-            )}
+
+              {workspaceMenuOpen && (
+                <div
+                  role="listbox"
+                  aria-label={t('workspaces')}
+                  className="absolute bottom-full left-0 z-40 mb-1 min-w-44 max-w-64 overflow-hidden rounded-lg p-1 shadow-xl"
+                  style={{ background: 'var(--overlay-bg)', border: '1px solid var(--medium-border)' }}
+                >
+                  <div className="max-h-48 overflow-y-auto">
+                    {workspaceLoading && workspaces.length === 0 ? (
+                      <div className="flex items-center justify-center px-3 py-3" style={{ color: 'var(--muted-text)' }}>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      </div>
+                    ) : workspaces.map(item => {
+                      const selected = item.id === workspace?.id
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          role="option"
+                          aria-selected={selected}
+                          onClick={() => selectWorkspace(item)}
+                          className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs transition-colors hover:bg-violet-500/15"
+                          style={{ color: selected ? 'var(--workspace-badge-text)' : 'var(--title-text)' }}
+                        >
+                          <span className="min-w-0 flex-1 truncate">{item.is_default ? t('defaultWorkspace') : item.name}</span>
+                          {selected && <Check className="h-3.5 w-3.5 shrink-0 text-violet-400" />}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
 
             <div className="flex-1" />
+
+            <button type="button" onClick={handleClose} disabled={saving}
+              className="overlay-close btn-secondary h-7 px-3 py-0 text-xs">
+              {t('close')}
+            </button>
 
             <button onClick={handleSave} disabled={saving || saved || recording}
               className="overlay-save btn-primary flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold"

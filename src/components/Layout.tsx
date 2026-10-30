@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { LayoutDashboard, Search, Star, Trash2, Settings, ChevronLeft, ChevronRight, Power } from 'lucide-react'
 import TitleBar from './TitleBar'
@@ -9,6 +9,7 @@ import { useLogStore } from '../stores/logStore'
 import { useMenuMemoryStore } from '../stores/menuMemoryStore'
 import type { MenuPath } from '../lib/menuMemory'
 import ConfirmModal from './ConfirmModal'
+import McpSidebarStatus from './McpSidebarStatus'
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { t } = useI18n()
@@ -82,7 +83,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 || (to === '/favorites' && location.pathname.startsWith('/favorites/'))
                 || (to === '/search' && location.pathname.startsWith('/search/'))
               return (
-                <div key={to} className={`relative group ${to === '/settings' ? 'mt-auto' : ''}`}>
+                <Fragment key={to}>
+                {to === '/settings' && <div className="mt-auto mb-1"><McpSidebarStatus collapsed={collapsed} /></div>}
+                <div className="relative group">
                   <Link
                     to={active ? to : remembered[to as MenuPath] ?? to}
                     aria-label={label}
@@ -118,6 +121,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     </div>
                   )}
                 </div>
+                </Fragment>
               )
             })}
             <div className="relative group mt-2 border-t pt-2" style={{ borderColor: 'var(--soft-border)' }}>

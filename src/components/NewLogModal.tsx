@@ -9,7 +9,7 @@ import ModalLayer from './ModalLayer'
 import { useAttachmentPicker } from '../lib/useAttachmentPicker'
 import FileDropZone from './FileDropZone'
 import AttachmentFileRow from './AttachmentFileRow'
-import { attachmentFilename, type AttachmentMode, type ImportedAttachment } from '../../shared/attachments'
+import type { AttachmentMode, ImportedAttachment } from '../../shared/attachments'
 
 type LogType = 'note' | 'screenshot' | 'video'
 type ContentFormat = 'text' | 'markdown' | 'code' | 'html'
@@ -141,15 +141,6 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
     const b64 = await window.electronAPI?.readFileAsBase64(path)
     if (b64) setPreviewUrl(`data:image/png;base64,${b64}`)
   }
-  const handleSnip = async () => {
-    if (savePending.current || closed.current) return
-    const path = await window.electronAPI?.startSnipping()
-    if (!path) return
-    const b64 = await window.electronAPI?.readFileAsBase64(path)
-    if (!b64 || closed.current || savePending.current) { void window.electronAPI?.deleteAttachmentFile(path); return }
-    updateAttachments([...attachmentsRef.current, { path, name: attachmentFilename(path), url: `data:image/png;base64,${b64}` }])
-  }
-
   const removeAttachment = (i: number) => {
     if (savePending.current) return
     const file = attachmentsRef.current[i]
@@ -281,18 +272,8 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
     <ModalLayer className="new-log-overlay p-4" onClose={handleClose}>
       <div role="dialog" aria-modal="true" aria-label={t('newRecord')} className="relative w-full max-w-lg bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl max-h-[90vh] flex flex-col">
         {/* 헤더 */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800 shrink-0">
-          <div className="flex items-center gap-2 min-w-0">
-            <h2 className="text-sm font-semibold text-white">{t('newRecord')}</h2>
-            {workspaceName && (
-              <span
-                className="max-w-48 truncate text-[10px] leading-none px-1.5 py-0.5 rounded"
-                style={{ background: 'var(--workspace-badge-bg)', color: 'var(--workspace-badge-text)', border: '1px solid var(--workspace-badge-border)' }}
-              >
-                {workspaceName}
-              </span>
-            )}
-          </div>
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-800 shrink-0">
+          <h2 className="text-sm font-semibold text-white">{t('newRecord')}</h2>
           <button onClick={handleClose} aria-label={t('cancel')} className="new-log-close-button btn-ghost p-1.5"><X className="w-4 h-4" /></button>
         </div>
 
@@ -305,7 +286,7 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
                 <button key={value} onClick={() => handleTypeChange(value)} aria-pressed={type === value}
                   className={`new-log-type-tab flex items-center justify-center gap-1.5 py-2.5 rounded-xl border text-xs font-medium transition-all ${
                     type === value
-                      ? 'bg-gray-800 border-violet-500/50 text-white'
+                      ? 'bg-violet-500/15 border-violet-500/50 text-violet-300'
                       : 'bg-gray-800/50 border-gray-700 text-gray-400 hover:border-gray-600 hover:text-gray-300'
                   }`}>
                   <Icon className={`w-4 h-4 ${type === value ? color : ''}`} />
@@ -347,11 +328,11 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
               value={title} onChange={e => setTitle(e.target.value)} />
           </div>
 
-          {/* 내용 */}
+          {/* 내용: 캡처·녹화 버튼 영역만큼 노트 입력란 확장 */}
           <div className="bordered-field flex">
             <label className="bordered-field-label" htmlFor={`${fieldId}-content`}>{t('fieldContent')}</label>
             <textarea id={`${fieldId}-content`}
-              className={`input resize-none h-40 ${
+              className={`input resize-none ${type === 'note' ? 'h-44' : 'h-40'} ${
                 format === 'code' && type === 'note' ? 'code-input font-mono text-emerald-400 bg-gray-950' :
                 format === 'html' && type === 'note' ? 'code-input font-mono text-sky-300 bg-gray-950' : ''
               }`}
@@ -414,14 +395,12 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
         </div>
 
         {/* 푸터 */}
-        <div className="flex items-center justify-between px-5 py-4 border-t border-gray-800 shrink-0">
-          <div>
-            {type === 'note' && (
-              <button onClick={handleSnip} title={t('regionCapture')}
-                className="new-log-camera-button p-2 rounded-lg text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 transition-all">
-                <Camera className="w-4 h-4" />
-              </button>
-            )}
+        <div className="flex items-center justify-between px-5 py-3 border-t border-gray-800 shrink-0">
+          <div className="min-w-0 pr-3">
+            <span className="inline-flex h-7 max-w-48 items-center rounded-md px-2.5 align-middle text-xs leading-none"
+              style={{ background: 'var(--workspace-badge-bg)', color: 'var(--workspace-badge-text)', border: '1px solid var(--workspace-badge-border)' }}>
+              <span className="truncate">{workspaceName ?? t('defaultWorkspace')}</span>
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <button onClick={handleClose} className="new-log-cancel-button btn-secondary">{t('cancel')}</button>

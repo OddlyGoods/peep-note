@@ -93,7 +93,7 @@ export default function SecretPasswordModal({ mode, requireCurrent = false, onSu
   return (
     <ModalLayer className="secret-password-overlay p-4" onClose={onCancel}>
       <div role="dialog" aria-modal="true" aria-label={isUnlock ? t('secretPassword') : requireCurrent ? t('changeSecretPassword') : t('setSecretPassword')} className="relative w-full max-w-sm rounded-xl border border-gray-700 bg-gray-900 shadow-2xl" style={{ background: 'var(--modal-bg)', borderColor: 'var(--medium-border)' }}>
-        <div className="flex items-center justify-between border-b px-5 py-4" style={{ borderColor: 'var(--soft-border)' }}>
+        <div className="flex items-center justify-between border-b px-5 py-3" style={{ borderColor: 'var(--soft-border)' }}>
           <div className="flex items-center gap-2.5"><span className="flex h-7 w-7 items-center justify-center rounded-lg border border-violet-500/30 bg-violet-500/10"><Lock className="h-3.5 w-3.5 text-violet-400" /></span><h3 className="text-sm font-semibold text-gray-100">{isUnlock ? t('secretPassword') : requireCurrent ? t('changeSecretPassword') : t('setSecretPassword')}</h3></div>
           <button type="button" onClick={onCancel} className="btn-ghost p-1"><X className="h-4 w-4" /></button>
         </div>
@@ -105,7 +105,7 @@ export default function SecretPasswordModal({ mode, requireCurrent = false, onSu
           </div>
           {error && <p className="text-center text-xs text-red-400">{error}</p>}
         </div>
-        <div className="flex justify-end border-t px-5 py-4" style={{ borderColor: 'var(--soft-border)' }}>
+        <div className="flex justify-end border-t px-5 py-3" style={{ borderColor: 'var(--soft-border)' }}>
           <button type="button" onClick={onCancel} className="btn-ghost">{t('cancel')}</button>
         </div>
       </div>

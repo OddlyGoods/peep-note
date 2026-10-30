@@ -6,6 +6,9 @@ export type Language = 'en' | 'ko' | 'ja' | 'zh'
 
 const messages = {
   en: {
+    mcpSidebarEnabled: 'MCP enabled', mcpSidebarDisabled: 'MCP disabled',
+    mcpSidebarActiveHint: 'Search, save and edit notes', mcpSidebarInactiveHint: 'Enable MCP in settings.',
+    close: 'Close',
     fieldTitle: 'TITLE', fieldContent: 'CONTENT', fieldTag: 'TAG', fieldFiles: 'FILES',
     fieldOptional: '(Optional)', fieldTagHint: 'Type and press Enter',
     quitApp: 'Quit', quitAppConfirm: 'Quit PeepNote? Unsaved changes will be lost.', quitAppFailed: 'Could not quit PeepNote. Please try again.',
@@ -77,6 +80,9 @@ const messages = {
     keyStorage: 'Used for AI group summaries. Keys are saved in the local database.', content: 'Content', title: 'Title', attachments: 'Attachments', includedRecords: 'Grouped records ({count})', noTags: 'No tags', noTagsInRange: 'No tags in this date range', preview: 'Preview', viewSource: 'View source', enlarge: 'Enlarge', copy: 'Copy', copied: 'Copied', collapseContent: 'Collapse content', expandContent: 'Expand content', deleteSummaryMessage: 'Delete this AI summary? It will be permanently deleted and cannot be restored.', deleteRecordMessage: 'Delete this log? It will be moved to Trash.', dateRange: 'Date range', reset: 'Reset', startDate: 'Start', endDate: 'End', days3: '3 days', week1: '1 week', month1: '1 month', searchPlaceholder: 'Search title, content, or filename...', enterSearch: 'Enter a search term', noSearchResults: 'No search results', results: '{count} results', apiKey: '{provider} API Key', qwenEndpoint: 'Qwen API endpoint', qwenEndpointHint: 'Use your Alibaba Model Studio region or workspace endpoint.', backToTop: 'Back to top', comments: 'Comments', editComment: 'Edit comment', unsavedChanges: 'Unsaved changes', discardChangesMessage: 'You have unsaved changes. Discard them?', discardChanges: 'Discard changes', keepEditing: 'Keep editing', deleteCommentFileMessage: 'Remove this file from the comment?', deleteNoteFileMessage: 'Remove this file from the note?', deleteComment: 'Delete comment', deleteCommentMessage: 'Delete this comment? Deleted comments cannot be restored.', commentPlaceholder: 'Add a comment...', addComment: 'Add comment',
   },
   ko: {
+    mcpSidebarEnabled: 'MCP 사용 중', mcpSidebarDisabled: 'MCP 사용 안함',
+    mcpSidebarActiveHint: '메모 검색·저장·수정', mcpSidebarInactiveHint: '설정에서 MCP 연결을 허용하세요.',
+    close: '닫기',
     fieldTitle: '제목', fieldContent: '내용', fieldTag: '태그', fieldFiles: '파일',
     fieldOptional: '(선택사항)', fieldTagHint: '입력 후 Enter',
     quitApp: '앱 종료', quitAppConfirm: '피프노트를 종료할까요? 저장하지 않은 내용은 사라집니다.', quitAppFailed: '앱을 종료하지 못했습니다. 다시 시도해 주세요.',
@@ -148,6 +154,9 @@ const messages = {
     keyStorage: '그룹 AI 정리 기능에 사용됩니다. 키는 로컬 DB에 저장됩니다.', content: '내용', title: '제목', attachments: '첨부 이미지', includedRecords: '함께 그룹된 목록 ({count})', noTags: '태그 없음', noTagsInRange: '현재 조회 기간에 태그가 없습니다', preview: '미리보기', viewSource: '소스 보기', enlarge: '크게 보기', copy: '복사', copied: '복사됨', collapseContent: '내용 접기', expandContent: '내용 펼치기', deleteSummaryMessage: '이 AI 요약을 삭제할까요? 바로 삭제되며 복원할 수 없습니다.', deleteRecordMessage: '이 로그를 삭제하시겠습니까? 삭제한 항목은 휴지통으로 이동합니다.', dateRange: '날짜 범위', reset: '초기화', startDate: '시작', endDate: '종료', days3: '3일', week1: '1주일', month1: '1개월', searchPlaceholder: '제목, 내용 또는 파일명으로 검색...', enterSearch: '검색어를 입력하세요', noSearchResults: '검색 결과가 없습니다', results: '{count}개의 결과', apiKey: '{provider} API 키', qwenEndpoint: 'Qwen API 엔드포인트', qwenEndpointHint: 'Alibaba Model Studio의 지역 또는 워크스페이스 엔드포인트를 입력하세요.', backToTop: '맨 위로', comments: '댓글', editComment: '댓글 수정', unsavedChanges: '저장하지 않은 변경 사항', discardChangesMessage: '수정 중인 내용이 있습니다. 변경 사항을 취소할까요?', discardChanges: '수정 취소', keepEditing: '계속 수정', deleteCommentFileMessage: '댓글에서 이 파일을 삭제할까요?', deleteNoteFileMessage: '메모에서 이 파일을 삭제할까요?', deleteComment: '댓글 삭제', deleteCommentMessage: '이 댓글을 삭제할까요? 삭제한 댓글은 복원할 수 없습니다.', commentPlaceholder: '댓글을 입력하세요...', addComment: '댓글 추가',
   },
   ja: {
+    mcpSidebarEnabled: 'MCP 有効', mcpSidebarDisabled: 'MCP 無効',
+    mcpSidebarActiveHint: 'メモの検索・保存・編集', mcpSidebarInactiveHint: '設定で MCP を有効にできます。',
+    close: '閉じる',
     fieldTitle: 'タイトル', fieldContent: '内容', fieldTag: 'タグ', fieldFiles: 'ファイル',
     fieldOptional: '（任意）', fieldTagHint: '入力後 Enter',
     quitApp: 'アプリを終了', quitAppConfirm: 'PeepNote を終了しますか？保存していない内容は失われます。', quitAppFailed: 'アプリを終了できませんでした。もう一度お試しください。',
@@ -219,6 +228,9 @@ const messages = {
     keyStorage: 'グループAI要約に使用します。キーはローカルデータベースに保存されます。', content: '内容', title: 'タイトル', attachments: '添付画像', includedRecords: '同じグループの記録（{count}）', noTags: 'タグなし', noTagsInRange: '現在の期間にタグはありません', preview: 'プレビュー', viewSource: 'ソースを表示', enlarge: '拡大', copy: 'コピー', copied: 'コピーしました', collapseContent: '内容を折りたたむ', expandContent: '内容を展開', deleteSummaryMessage: 'このAI要約を削除しますか？完全に削除され、復元できません。', deleteRecordMessage: 'この記録を削除しますか？削除した項目はゴミ箱に移動します。', dateRange: '日付範囲', reset: 'リセット', startDate: '開始', endDate: '終了', days3: '3日', week1: '1週間', month1: '1か月', searchPlaceholder: 'タイトル、内容、ファイル名を検索...', enterSearch: '検索語を入力してください', noSearchResults: '検索結果がありません', results: '{count}件の結果', apiKey: '{provider} APIキー', qwenEndpoint: 'Qwen APIエンドポイント', qwenEndpointHint: 'Alibaba Model Studioのリージョンまたはワークスペースのエンドポイントを入力してください。', backToTop: '一番上へ', comments: 'コメント', editComment: 'コメントを編集', unsavedChanges: '未保存の変更', discardChangesMessage: '保存していない変更があります。破棄しますか？', discardChanges: '変更を破棄', keepEditing: '編集を続ける', deleteCommentFileMessage: 'コメントからこのファイルを削除しますか？', deleteNoteFileMessage: 'このファイルをメモから削除しますか？', deleteComment: 'コメントを削除', deleteCommentMessage: 'このコメントを削除しますか？削除したコメントは復元できません。', commentPlaceholder: 'コメントを入力...', addComment: 'コメントを追加',
   },
   zh: {
+    mcpSidebarEnabled: 'MCP 已启用', mcpSidebarDisabled: 'MCP 未启用',
+    mcpSidebarActiveHint: '搜索、保存和编辑笔记', mcpSidebarInactiveHint: '可在设置中启用 MCP。',
+    close: '关闭',
     fieldTitle: '标题', fieldContent: '内容', fieldTag: '标签', fieldFiles: '文件',
     fieldOptional: '（选填）', fieldTagHint: '输入后按 Enter',
     quitApp: '退出应用', quitAppConfirm: '要退出 PeepNote 吗？未保存的内容将丢失。', quitAppFailed: '无法退出应用，请重试。',

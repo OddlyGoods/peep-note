@@ -109,6 +109,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 이벤트 리스너
   on: (channel: string, callback: (...args: unknown[]) => void) => {
     const validChannels = [
+      'overlay-maximized-changed',
       'hotkey-triggered',
       'screenshot-captured',
       'start-recording',

@@ -62,7 +62,7 @@ export default function ConfirmModal({
       >
         {/* 헤더 */}
         <div
-          className="flex items-center justify-between px-5 py-4"
+          className="flex items-center justify-between px-5 py-3"
           style={{ borderBottom: '1px solid rgba(99,102,241,0.12)' }}
         >
           <div className="flex items-center gap-2.5">
@@ -95,7 +95,7 @@ export default function ConfirmModal({
 
         {/* 버튼 */}
         <div
-          className="flex items-center justify-end gap-2 px-5 py-4"
+          className="flex items-center justify-end gap-2 px-5 py-3"
           style={{ borderTop: '1px solid rgba(99,102,241,0.1)' }}
         >
           <button

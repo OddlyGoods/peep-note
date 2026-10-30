@@ -34,6 +34,7 @@ import { restartAfterDataLocationChange } from './restart'
 import { dataStorageCopy, dataStorageErrorKey, type DataLocationResult } from '../shared/dataStorage'
 import { getActiveHotkeys, resolveHotkeys } from '../shared/hotkeys'
 import { handleFavoritesShortcut } from './favoritesShortcut'
+import { createCaptureAction } from './captureAction'
 import { openHtmlPreview } from './htmlPreview'
 import { APP_DEVELOPER, APP_GITHUB_URL, APP_WEBSITE_URL } from '../shared/appInfo'
 
@@ -93,6 +94,8 @@ let updateController: UpdateController
 let quickSwitchAccelerator = 'Alt+Q'
 let quickSwitchPreviousAccelerator = 'Alt+E'
 let globalHotkeysEnabled = true
+const captureToOverlay = createCaptureAction(() => startSnipping(), () => overlayWindow,
+  error => console.error('Capture action failed:', error))
 
 // A restored Linux compositor can accept show/focus before Chromium's surface
 // is ready. Request a few frames so the window does not remain transparent.
@@ -484,7 +487,7 @@ function createTray() {
     { label: text.open, click: () => showMainWindow() },
     { type: 'separator' },
     { label: text.quick, click: () => toggleOverlay() },
-    { label: text.screenshot, click: () => captureScreenshot() },
+    { label: text.screenshot, click: () => { void captureToOverlay() } },
     { label: text.video, click: () => startRecordingFromTray() },
     { type: 'separator' },
     { label: text.about, click: () => showAboutWindow() },
@@ -921,15 +924,7 @@ function registerHotkeys() {
       })
     }
     if (hk.takeScreenshot) {
-      globalShortcut.register(hk.takeScreenshot, async () => {
-
-        const filepath = await startSnipping()
-        if (filepath) {
-          overlayWindow?.show()
-          overlayWindow?.focus()
-          overlayWindow?.webContents.send('screenshot-captured', filepath)
-        }
-      })
+      globalShortcut.register(hk.takeScreenshot, () => { void captureToOverlay() })
     }
     if (hk.startRecording) {
       globalShortcut.register(hk.startRecording, async () => {

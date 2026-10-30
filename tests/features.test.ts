@@ -18,7 +18,7 @@ import groups from '../server/routes/groups'
 import ai from '../server/routes/ai'
 import workspaces from '../server/routes/workspaces'
 import settings from '../server/routes/settings'
-import { AI_MODELS, DEFAULT_AI_MODELS, getAiModelSelection, type AiProvider } from '../shared/aiModels'
+import { AI_MODELS, DEFAULT_AI_MODELS, getAiModels, getAiModelSelection, type AiProvider } from '../shared/aiModels'
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'peep-note-test-'))
 const app = new Hono().route('/api/logs', logs).route('/api/trash', trash).route('/api/groups', groups).route('/api/workspaces', workspaces).route('/api/ai', ai).route('/api/settings', settings)
@@ -57,6 +57,7 @@ test('custom and older model IDs survive settings save and reload without preset
     const saved = await json('/api/settings')
     assert.equal(saved.ai_provider, provider)
     assert.equal(saved.ai_model, model)
+    assert.equal(saved.ai_models[provider], model)
     assert.deepEqual(getAiModelSelection(provider, saved.ai_model), { model, custom: true })
     const preset = AI_MODELS[provider][0].value
     assert.deepEqual(getAiModelSelection(provider, preset), { model: preset, custom: false })
@@ -69,8 +70,38 @@ test('custom and older model IDs survive settings save and reload without preset
     assert.equal((await json('/api/settings')).ai_model, 'gpt-4o-mini')
   }
   await json('/api/settings', 'PUT', { ai_provider: 'gemini' })
-  assert.equal((await json('/api/settings')).ai_model, DEFAULT_AI_MODELS.gemini)
+  assert.equal((await json('/api/settings')).ai_model, 'gemini-custom-model-snapshot')
   run("DELETE FROM settings WHERE user_id = 'local'")
+})
+
+test('provider models survive switches, inactive edits and unrelated settings saves', async () => {
+  assert.deepEqual((await json('/api/settings')).ai_models, DEFAULT_AI_MODELS)
+  await json('/api/settings', 'PUT', { ai_provider: 'openai', ai_model: 'gpt-6.1-sol' })
+  await json('/api/settings', 'PUT', { ai_provider: 'qwen', ai_model: 'qwen3.8-flash' })
+  await json('/api/settings', 'PUT', { ai_models: { anthropic: 'custom-claude-snapshot' } })
+  await json('/api/settings', 'PUT', { language: 'en' })
+  const saved = await json('/api/settings')
+  assert.equal(saved.ai_provider, 'qwen')
+  assert.equal(saved.ai_model, 'qwen3.8-flash')
+  assert.equal(saved.ai_models.openai, 'gpt-6.1-sol')
+  assert.equal(saved.ai_models.anthropic, 'custom-claude-snapshot')
+  assert.deepEqual(JSON.parse(queryOne<any>("SELECT ai_models FROM settings WHERE user_id = 'local'")!.ai_models), saved.ai_models)
+  await json('/api/settings', 'PUT', { ai_provider: 'openai' })
+  assert.equal((await json('/api/settings')).ai_model, 'gpt-6.1-sol')
+  await json('/api/settings', 'PUT', { ai_provider: 'qwen' })
+  assert.equal((await json('/api/settings')).ai_model, 'qwen3.8-flash')
+  for (const invalid of [null, [], 'bad', { openai: '' }, { openai: 42 }, { unsupported: 'model' }]) {
+    assert.equal((await request('/api/settings', 'PUT', { ai_models: invalid })).status, 400)
+    assert.deepEqual((await json('/api/settings')).ai_models, saved.ai_models)
+  }
+  run("DELETE FROM settings WHERE user_id = 'local'")
+})
+
+test('legacy model settings remain usable when per-provider preferences are missing or malformed', () => {
+  for (const previous of [null, undefined, '{}', 'broken JSON', { openai: 42, qwen: ' ' }]) {
+    assert.deepEqual(getAiModels(previous, 'openai', '  legacy-custom-model  '), { ...DEFAULT_AI_MODELS, openai: 'legacy-custom-model' })
+  }
+  assert.equal(getAiModels('{"openai":"gpt-6.1-sol"}', 'qwen', 'custom-qwen').openai, 'gpt-6.1-sol')
 })
 
 test('AI connection tests use unsaved input without changing saved settings or creating a note', async () => {

@@ -12,7 +12,7 @@ import DataLocationField from '../components/DataLocationField'
 import AiConnectionTest from '../components/AiConnectionTest'
 import { APP_DEVELOPER, APP_GITHUB_URL, APP_WEBSITE_URL } from '../../shared/appInfo'
 import { DEFAULT_TRASH_RETENTION_DAYS, TRASH_RETENTION_OPTIONS, normalizeTrashRetentionDays } from '../../shared/trashRetention'
-import { AI_MODELS, DEFAULT_AI_MODELS, getAiModelSelection, type AiProvider } from '../../shared/aiModels'
+import { AI_MODELS, DEFAULT_AI_MODELS, getAiModels, getAiModelSelection, type AiProvider } from '../../shared/aiModels'
 import { resolveHotkeys, type HotkeyAction, type Hotkeys } from '../../shared/hotkeys'
 
 function HotkeyInput({ value, label, disabled, onChange, onDisabledChange }: {
@@ -149,8 +149,12 @@ export default function Settings() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [aiProvider, setAiProvider] = useState<AiProvider>('openai')
-  const [aiModel, setAiModel] = useState(DEFAULT_AI_MODELS.openai)
-  const [customAiModel, setCustomAiModel] = useState(false)
+  const [aiModelChoices, setAiModelChoices] = useState(() => Object.fromEntries(
+    (Object.keys(DEFAULT_AI_MODELS) as AiProvider[]).map(provider => [provider, getAiModelSelection(provider)])
+  ) as Record<AiProvider, { model: string; custom: boolean }>)
+  const { model: aiModel, custom: customAiModel } = aiModelChoices[aiProvider]
+  const setAiModel = (model: string) => setAiModelChoices(previous => ({ ...previous, [aiProvider]: { ...previous[aiProvider], model } }))
+  const setCustomAiModel = (custom: boolean) => setAiModelChoices(previous => ({ ...previous, [aiProvider]: { ...previous[aiProvider], custom } }))
   const customModelInputRef = useRef<HTMLInputElement>(null)
   const [openaiKey, setOpenaiKey] = useState('')
   const [anthropicKey, setAnthropicKey] = useState('')
@@ -185,9 +189,8 @@ export default function Settings() {
       setBackupUrl(s.backup_url ?? '')
       const provider = s.ai_provider ?? 'openai'
       setAiProvider(provider)
-      const selection = getAiModelSelection(provider, s.ai_model)
-      setAiModel(selection.model)
-      setCustomAiModel(selection.custom)
+      const models = getAiModels(s.ai_models, provider, s.ai_model)
+      setAiModelChoices(Object.fromEntries((Object.keys(models) as AiProvider[]).map(value => [value, getAiModelSelection(value, models[value])])) as Record<AiProvider, { model: string; custom: boolean }>)
       if (s.openai_api_key) setOpenaiKey(s.openai_api_key)
       if (s.anthropic_api_key) setAnthropicKey(s.anthropic_api_key)
       if (s.gemini_api_key) setGeminiKey(s.gemini_api_key)
@@ -254,6 +257,7 @@ export default function Settings() {
         backup_url: backupUrl || null,
         ai_provider: aiProvider,
         ai_model: aiModel.trim(),
+        ai_models: Object.fromEntries(Object.entries(aiModelChoices).filter(([, choice]) => choice.model.trim()).map(([provider, choice]) => [provider, choice.model.trim()])),
         openai_api_key: openaiKey || null,
         anthropic_api_key: anthropicKey || null,
         gemini_api_key: geminiKey || null,
@@ -533,8 +537,6 @@ export default function Settings() {
                       onClick={() => {
                         if (value === aiProvider) return
                         setAiProvider(value)
-                        setAiModel(DEFAULT_AI_MODELS[value])
-                        setCustomAiModel(false)
                         setModelMenuOpen(false)
                       }}
                       className={`settings-provider-button flex-1 py-2 rounded-lg text-xs font-medium transition-all border ${

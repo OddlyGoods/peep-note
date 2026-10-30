@@ -41,6 +41,25 @@ export const DEFAULT_AI_MODELS: Record<AiProvider, string> = {
   qwen: 'qwen3.7-plus'
 }
 
+export type AiModelMap = Record<AiProvider, string>
+
+export function getAiModels(saved: unknown, legacyProvider?: unknown, legacyModel?: unknown): AiModelMap {
+  let values = saved
+  if (typeof values === 'string') {
+    try { values = JSON.parse(values) } catch { values = null }
+  }
+  const models = { ...DEFAULT_AI_MODELS }
+  for (const provider of Object.keys(models) as AiProvider[]) {
+    const value = values && typeof values === 'object' ? (values as Record<string, unknown>)[provider] : undefined
+    if (typeof value === 'string' && value.trim()) models[provider] = value.trim()
+  }
+  // The legacy field remains the active provider's model for older clients and summaries.
+  if (typeof legacyProvider === 'string' && Object.prototype.hasOwnProperty.call(models, legacyProvider) && typeof legacyModel === 'string' && legacyModel.trim()) {
+    models[legacyProvider as AiProvider] = legacyModel.trim()
+  }
+  return models
+}
+
 export function getAiModelSelection(provider: AiProvider, savedModel?: string | null) {
   const model = savedModel?.trim() || DEFAULT_AI_MODELS[provider]
   return { model, custom: !AI_MODELS[provider].some(option => option.value === model) }

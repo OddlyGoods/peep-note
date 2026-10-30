@@ -2,6 +2,7 @@ import { invalidateExploreCache } from './exploreCache'
 import type { TrashRetentionDays } from '../../shared/trashRetention'
 import type { Hotkeys } from '../../shared/hotkeys'
 import type { AiConnectionInput, AiConnectionResult } from '../../shared/aiConnection'
+import type { AiModelMap } from '../../shared/aiModels'
 
 const configuredPort = Number(import.meta.env.VITE_LOCAL_SERVER_PORT)
 const LOCAL_SERVER_PORT = Number.isInteger(configuredPort) && configuredPort >= 1024 && configuredPort <= 65535 ? configuredPort : 3848
@@ -223,6 +224,7 @@ export interface Settings {
   theme: string
   ai_provider: 'openai' | 'anthropic' | 'gemini' | 'qwen'
   ai_model: string
+  ai_models?: Partial<AiModelMap>
   openai_api_key: string | null
   anthropic_api_key: string | null
   gemini_api_key: string | null

@@ -7,6 +7,7 @@ import { attachmentFilename, type AttachmentMode } from '../shared/attachments'
 import { useAttachmentPicker } from './lib/useAttachmentPicker'
 import AttachmentFileRow from './components/AttachmentFileRow'
 import FileDropZone from './components/FileDropZone'
+import TagInput from './components/TagInput'
 
 type LogType = 'note' | 'screenshot' | 'video'
 type ContentFormat = 'text' | 'markdown' | 'code' | 'html'
@@ -39,6 +40,8 @@ export default function Overlay() {
   const [type, setType] = useState<LogType>('note')
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
+  const [tags, setTags] = useState<string[]>([])
+  const [tagInputKey, setTagInputKey] = useState(0)
   const [filePath, setFilePath] = useState<string | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [attachments, setAttachments] = useState<Attachment[]>([])
@@ -73,6 +76,11 @@ export default function Overlay() {
   const discardRecordedVideoRef = useRef(false)
   const savedVideoLogRef = useRef(false)
   const workspaceMenuRef = useRef<HTMLDivElement>(null)
+
+  const resetTags = () => {
+    setTags([])
+    setTagInputKey(value => value + 1)
+  }
 
   const refreshWorkspaces = async () => {
     setWorkspaceLoading(true)
@@ -158,6 +166,7 @@ export default function Overlay() {
         setType('note')
         setTitle('')
         setContent('')
+        resetTags()
         setFilePath(null)
         setPreviewUrl(null)
         setFormat('text')
@@ -342,7 +351,7 @@ export default function Overlay() {
         log_type: type,
         content_format: type === 'note' ? format : 'text',
         file_path: filePath,
-        tags: [],
+        tags,
         attachments: attachments.map(a => a.path),
         workspace_id: workspace?.id ?? null,
         is_secret: type === 'note' && isSecret
@@ -364,6 +373,7 @@ export default function Overlay() {
     stopRecording()
     window.electronAPI?.closeOverlay()
     setTitle(''); setContent(''); setFilePath(null); setPreviewUrl(null)
+    resetTags()
     setType('note'); setFormat('text'); setIsSecret(false); setRecording(false)
     setAttachmentError(false); setDraggingFiles(false)
     setWorkspaceMenuOpen(false)
@@ -532,6 +542,10 @@ export default function Overlay() {
                 type === 'note' ? t('overlayContent') : t('descriptionOptional')
               }
               value={content} onChange={e => setContent(e.target.value)} />
+
+            <div className="shrink-0">
+              <TagInput key={tagInputKey} value={tags} onChange={setTags} disabled={saving || saved} />
+            </div>
 
             <div className="space-y-1.5 shrink-0">
               <div className="flex items-center gap-1.5 text-xs font-medium text-gray-400"><Paperclip className="h-3.5 w-3.5" /><span>{t('attachmentFiles')}</span></div>

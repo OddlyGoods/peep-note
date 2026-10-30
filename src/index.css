@@ -522,8 +522,17 @@ html[data-theme='light'] .detail-delete-button:hover {
   border-color: rgba(244,63,94,.24);
 }
 
+.app-nav-link:not([aria-current='page']):is(:hover, :focus-visible),
+.settings-category-sidebar [role='tab'][aria-selected='false']:is(:hover, :focus-visible) {
+  background: rgba(255,255,255,.025);
+}
+
+html[data-theme='light'] .app-nav-link:not([aria-current='page']):is(:hover, :focus-visible),
+html[data-theme='light'] .settings-category-sidebar [role='tab'][aria-selected='false']:is(:hover, :focus-visible) {
+  background: rgba(124,58,237,.05) !important;
+}
+
 html[data-theme='light'] .app-nav-link:not([aria-current='page']):is(:hover, :focus-visible) {
-  background: rgba(124,58,237,.10) !important;
   color: #6d28d9 !important;
   border-color: rgba(124,58,237,.20);
 }

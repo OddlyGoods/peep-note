@@ -87,7 +87,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     to={active ? to : remembered[to as MenuPath] ?? to}
                     aria-label={label}
                     aria-current={active ? 'page' : undefined}
-                    title={count === undefined ? label : `${label} (${count})`}
                     className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                       collapsed ? 'justify-center gap-0' : 'gap-2.5'
                     } ${
@@ -122,7 +121,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               )
             })}
             <div className="relative group mt-2 border-t pt-2" style={{ borderColor: 'var(--soft-border)' }}>
-              <button type="button" aria-label={t('quitApp')} title={t('quitApp')}
+              <button type="button" aria-label={t('quitApp')}
                 disabled={!window.electronAPI?.quitApp || quitting}
                 onClick={() => { setQuitFailed(false); setShowQuitConfirm(true) }}
                 className={`app-quit-button flex w-full items-center rounded-lg border border-transparent px-3 py-2 text-sm font-medium text-slate-500 transition-colors disabled:opacity-40 ${collapsed ? 'justify-center gap-0' : 'gap-2.5'}`}>

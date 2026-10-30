@@ -60,6 +60,7 @@ export default function CommentCard({ comment, date, draft, files, busy, error, 
           className="btn-ghost flex h-7 w-7 items-center justify-center p-0 text-red-400 hover:bg-red-500/15 hover:text-red-300 disabled:opacity-40"><Trash2 className="h-3.5 w-3.5" /></button>
       </div>
     </>}
+    {files.length > 0 && <hr className="mt-3 border-0 border-t" style={{ borderColor: 'var(--soft-border)' }} />}
     <CommentFiles files={files} busy={busy} onRemove={onRemoveFile} />
     <p className="mt-1.5 text-[11px] text-gray-500">{date}</p>
     {error && <p role="alert" className="mt-2 text-xs text-red-400">{t('operationFailed')}</p>}

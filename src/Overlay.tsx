@@ -642,14 +642,8 @@ export default function Overlay() {
             <div className="flex-1" />
 
             <button onClick={handleSave} disabled={saving || saved || recording}
-              className="overlay-save flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-all disabled:opacity-50"
-              style={saved ? {
-                background: 'linear-gradient(135deg, #10b981, #059669)',
-                boxShadow: '0 0 10px rgba(16,185,129,0.3)'
-              } : {
-                background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
-                boxShadow: '0 0 10px rgba(79,70,229,0.3)'
-              }}>
+              className="overlay-save btn-primary flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold"
+              style={saved ? { background: '#059669' } : undefined}>
               {saving
                 ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 : null

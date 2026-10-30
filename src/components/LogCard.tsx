@@ -227,7 +227,7 @@ export default function LogCard({ log, basePath = '/log', showCheckbox = false, 
               <span className={`format-badge tag border bg-gray-800 border-gray-700 ${fmtBadge.color}`}>{fmtBadge.label === 'html' ? 'HTML' : t(fmtBadge.label as 'markdown' | 'code')}</span>
             )}
             {(log.comment_count ?? 0) > 0 && (
-              <span className="flex items-center gap-1 text-gray-400" title={t('comments')}>
+              <span className="tag flex items-center gap-1 border border-gray-700 bg-gray-800 text-gray-400" title={t('comments')}>
                 <MessageCircle className="h-3 w-3" />
                 {log.comment_count}
               </span>

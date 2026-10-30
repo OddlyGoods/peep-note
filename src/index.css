@@ -1068,6 +1068,9 @@ html[data-theme='dark'] .selection-toggle:hover {
   background: var(--side-panel-bg);
   color: var(--quick-meta);
 }
+html[data-theme='light'] .file-drop-zone:not(:hover):not([data-dragging='true']) {
+  background: #fff;
+}
 .file-drop-zone:hover {
   border-color: #8b5cf6;
   background: rgb(139 92 246 / .08);

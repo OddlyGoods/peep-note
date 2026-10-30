@@ -87,7 +87,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     to={active ? to : remembered[to as MenuPath] ?? to}
                     aria-label={label}
                     aria-current={active ? 'page' : undefined}
-                    className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                    className={`app-nav-link flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                       collapsed ? 'justify-center gap-0' : 'gap-2.5'
                     } ${
                       active

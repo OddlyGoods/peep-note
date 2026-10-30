@@ -528,6 +528,12 @@ html[data-theme='light'] .detail-delete-button:hover {
   border-color: rgba(255,255,255,.12);
 }
 
+html[data-theme='light'] .app-nav-link:not([aria-current='page']):is(:hover, :focus-visible) {
+  background: rgba(124,58,237,.10) !important;
+  color: #6d28d9 !important;
+  border-color: rgba(124,58,237,.20);
+}
+
 html[data-theme='light'] .settings-category-button[aria-selected='false']:is(:hover, :focus-visible) {
   background: rgba(124,58,237,.10);
   color: #6d28d9;

@@ -199,52 +199,52 @@ export default function GroupCard({ group, onRefresh, startEditing = false, onSt
             <div className="flex items-center gap-1 flex-1 min-w-0">
               <span className="text-sm font-medium text-violet-200 truncate">{group.name}</span>
             </div>
-            <div className="flex items-center gap-0.5 shrink-0">
+            <div className="flex items-center gap-1 shrink-0">
               {/* AI 요약 버튼 */}
               <button
                 onClick={handleAiSummaryClick}
                 disabled={aiLoading || nonSummaryLogs.length === 0}
-                className="p-1 rounded text-amber-400/80 hover:text-amber-300 hover:bg-amber-500/10 transition-colors disabled:opacity-40"
+                className="p-1.5 rounded-lg text-amber-400/80 hover:text-amber-300 hover:bg-amber-500/10 transition-colors disabled:opacity-40"
                 title={t('summary')}
                 aria-label={t('summary')}
                 aria-busy={aiLoading}
               >
                 {aiLoading
-                  ? <Loader2 className="w-3 h-3 animate-spin" />
-                  : <Sparkles className="w-3 h-3" />
+                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  : <Sparkles className="w-3.5 h-3.5" />
                 }
               </button>
-              <div className="w-px h-3 bg-violet-500/30 mx-0.5" />
+              <div className="w-px h-3.5 bg-violet-500/30 mx-0.5" />
               <button
                 onClick={() => setConfirmAction('ungroup')}
-                className="p-1 rounded text-violet-400/60 hover:text-violet-300 hover:bg-violet-500/20 transition-colors"
+                className="p-1.5 rounded-lg text-violet-400/60 hover:text-violet-300 hover:bg-violet-500/20 transition-colors"
                 title={t('ungroup')}
               >
-                <Unlink className="w-3 h-3" />
+                <Unlink className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={() => { setEditing(true); setEditName(group.name) }}
-                className="p-1 rounded text-violet-400/60 hover:text-violet-300 hover:bg-violet-500/20 transition-colors"
+                className="p-1.5 rounded-lg text-violet-400/60 hover:text-violet-300 hover:bg-violet-500/20 transition-colors"
                 title={t('rename')}
                 aria-label={t('rename')}
               >
-                <Pencil className="w-3 h-3" />
+                <Pencil className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={() => setConfirmAction('delete')}
-                className="p-1 rounded text-violet-400/60 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                className="p-1.5 rounded-lg text-violet-400/60 hover:text-red-400 hover:bg-red-500/10 transition-colors"
                 title={t('deleteGroup')}
               >
-                <Trash2 className="w-3 h-3" />
+                <Trash2 className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={() => setGroupExpanded(group.id, !expanded)}
                 title={t(expanded ? 'collapseContent' : 'expandContent')}
                 aria-label={t(expanded ? 'collapseContent' : 'expandContent')}
                 aria-expanded={expanded}
-                className="p-1 rounded text-violet-400/60 hover:text-violet-300 hover:bg-violet-500/20 transition-colors"
+                className="p-1.5 rounded-lg text-violet-400/60 hover:text-violet-300 hover:bg-violet-500/20 transition-colors"
               >
-                {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
               </button>
             </div>
           </>

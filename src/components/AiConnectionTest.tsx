@@ -96,7 +96,7 @@ export default function AiConnectionTest(input: AiConnectionInput) {
   }
 
   return <div className="space-y-2 border-t border-gray-800 pt-3">
-    <div className="space-y-2">
+    <div className="space-y-4">
       <p className="text-xs leading-relaxed text-gray-400">{copy.hint}</p>
       <div className="flex justify-end">
         <button type="button" onClick={() => void test()} disabled={testing} aria-busy={testing}

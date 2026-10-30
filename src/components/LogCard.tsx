@@ -193,9 +193,9 @@ export default function LogCard({ log, basePath = '/log', showCheckbox = false, 
           {log.is_secret ? (
             <div className="mt-1 text-xs text-gray-500">••••••••••••</div>
           ) : displayContent && (log.log_type === 'note' ? (
-            <NoteExcerpt content={displayContent} code={log.content_format === 'code'} markdown={log.content_format === 'markdown'} />
+            <NoteExcerpt content={displayContent} code={log.content_format === 'code' || log.content_format === 'html'} markdown={log.content_format === 'markdown'} />
           ) : (
-            <NoteExcerpt content={displayContent} code={log.content_format === 'code'} markdown={isAiSummary || log.content_format === 'markdown'} maxLines={2} />
+            <NoteExcerpt content={displayContent} code={log.content_format === 'code' || log.content_format === 'html'} markdown={isAiSummary || log.content_format === 'markdown'} maxLines={2} />
           ))}
           {/* 태그 */}
           {log.tags?.length > 0 && (
@@ -226,7 +226,7 @@ export default function LogCard({ log, basePath = '/log', showCheckbox = false, 
               </span>
             )}
             {!isAiSummary && fmtBadge && (
-              <span className={`format-badge tag border bg-gray-800 border-gray-700 ${fmtBadge.color}`}>{fmtBadge.label === 'html' ? 'HTML' : t(fmtBadge.label as 'markdown' | 'code')}</span>
+              <span className={`format-badge tag border bg-gray-800 border-gray-700 ${fmtBadge.color}`}>{log.content_format === 'html' ? 'HTML' : t(fmtBadge.label as 'markdown' | 'code')}</span>
             )}
             {commentCount > 0 && (
               <span className="tag flex items-center gap-1 border border-gray-700 bg-gray-800 text-gray-400" title={t('comments')}>

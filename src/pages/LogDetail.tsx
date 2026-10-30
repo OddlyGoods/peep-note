@@ -706,7 +706,7 @@ export default function LogDetail() {
             {isNote && (
               <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg border bg-gray-800/50 border-gray-700">
                 <fmtCfg.icon className="w-3.5 h-3.5 text-gray-400" />
-                <span className="text-xs font-medium text-gray-400">{fmtCfg.label === 'html' ? 'HTML' : t(fmtCfg.label as 'text' | 'markdown' | 'code')}</span>
+                <span className="text-xs font-medium text-gray-400">{log.content_format === 'html' ? 'HTML' : t(fmtCfg.label as 'text' | 'markdown' | 'code')}</span>
               </div>
             )}
             </div>
@@ -806,7 +806,7 @@ export default function LogDetail() {
                           }`}
                         >
                           <fc.icon className="w-3 h-3" />
-                          {fc.label === 'html' ? 'HTML' : t(fc.label as 'text' | 'markdown' | 'code')}
+                          {f === 'html' ? 'HTML' : t(fc.label as 'text' | 'markdown' | 'code')}
                         </button>
                       )
                     })}

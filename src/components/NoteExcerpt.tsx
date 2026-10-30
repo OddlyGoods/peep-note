@@ -29,7 +29,7 @@ const NoteExcerpt = memo(function NoteExcerpt({ content, code, markdown = false,
   return (
     <div className="mt-1">
       <div ref={contentRef}
-        className={`text-xs text-gray-400 leading-5 ${markdown ? 'note-markdown-preview' : code ? 'font-mono bg-gray-900 px-2 py-1 rounded text-emerald-400' : ''}`}
+        className={`text-xs text-gray-400 leading-5 ${markdown ? 'note-markdown-preview' : code ? 'font-mono' : ''}`}
         style={{
           maxHeight: `${maxLines * 1.25}rem`,
           overflow: 'hidden',

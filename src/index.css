@@ -873,6 +873,10 @@ html[data-theme='light'] .markdown-content h1,
 html[data-theme='light'] .markdown-content h2,
 html[data-theme='light'] .markdown-content h3,
 html[data-theme='light'] .markdown-content strong { color: #172033 !important; }
+.markdown-content > :first-child,
+.ai-summary-content > :first-child {
+  margin-top: 0;
+}
 .markdown-content > :is(ul, ol) + p,
 .ai-summary-content > :is(ul, ol) + p {
   margin-top: 0.75rem;

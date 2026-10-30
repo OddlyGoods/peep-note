@@ -24,6 +24,8 @@ function saveRange(range: SavedRange) {
 
 interface LogState {
   logs: Log[]
+  commentCounts: Record<string, number>
+  setCommentCount: (id: string, count: number) => void
   dateFrom: string
   dateTo: string
   rangeTarget: RangeTarget
@@ -57,6 +59,11 @@ const savedRange = initialRange()
 
 export const useLogStore = create<LogState>((set, get) => ({
   logs: [],
+  commentCounts: {},
+  setCommentCount: (id, count) => set(state => state.commentCounts[id] === count ? state : ({
+    commentCounts: { ...state.commentCounts, [id]: count },
+    logs: state.logs.map(log => log.id === id ? { ...log, comment_count: count } : log)
+  })),
   dateFrom: savedRange.dateFrom,
   dateTo: savedRange.dateTo,
   rangeTarget: 'end',

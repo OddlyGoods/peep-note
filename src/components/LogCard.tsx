@@ -97,7 +97,8 @@ function MediaThumbnail({ log }: { log: Log }) {
 export default function LogCard({ log, basePath = '/log', showCheckbox = false, checked = false, onCheck, onCardClick, inGroup = false, isDeleting = false, isCollapsing = false, onMoved, onReveal }: LogCardProps) {
   const { language, t } = useI18n()
   const openLog = useOpenLog()
-  const { deleteLog, updateLog, recentlyCreatedIds } = useLogStore()
+  const { deleteLog, updateLog, recentlyCreatedIds, commentCounts } = useLogStore()
+  const commentCount = commentCounts[log.id] ?? log.comment_count ?? 0
   const [deleting, setDeleting] = useState(false)
   const [collapsing, setCollapsing] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
@@ -226,10 +227,10 @@ export default function LogCard({ log, basePath = '/log', showCheckbox = false, 
             {!isAiSummary && fmtBadge && (
               <span className={`format-badge tag border bg-gray-800 border-gray-700 ${fmtBadge.color}`}>{fmtBadge.label === 'html' ? 'HTML' : t(fmtBadge.label as 'markdown' | 'code')}</span>
             )}
-            {(log.comment_count ?? 0) > 0 && (
+            {commentCount > 0 && (
               <span className="tag flex items-center gap-1 border border-gray-700 bg-gray-800 text-gray-400" title={t('comments')}>
                 <MessageCircle className="h-3 w-3" />
-                {log.comment_count}
+                {commentCount}
               </span>
             )}
             {log.pinned ? <Pin className="w-3 h-3 text-violet-400" /> : null}

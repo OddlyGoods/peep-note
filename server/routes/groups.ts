@@ -58,7 +58,7 @@ groups.get('/', async (c) => {
   const groupRows = queryAll<any>(groupSql, groupParams)
 
   const result = groupRows.map(g => {
-    let logSql = "SELECT * FROM logs WHERE deleted_at IS NULL AND group_id = ? AND user_id = ?"
+    let logSql = "SELECT logs.*, (SELECT COUNT(*) FROM comments WHERE comments.log_id = logs.id AND comments.user_id = logs.user_id) AS comment_count FROM logs WHERE deleted_at IS NULL AND group_id = ? AND user_id = ?"
     const logParams: unknown[] = [g.id, userId]
     if (date) {
       const start = Math.floor(new Date(date + 'T00:00:00').getTime() / 1000)
@@ -124,7 +124,7 @@ groups.post('/', async (c) => {
   }
 
   const group = queryOne<any>('SELECT * FROM log_groups WHERE id = ?', [id])!
-  const logs = queryAll<any>('SELECT * FROM logs WHERE deleted_at IS NULL AND group_id = ? ORDER BY created_at DESC', [id]).map(parseLog)
+  const logs = queryAll<any>('SELECT logs.*, (SELECT COUNT(*) FROM comments WHERE comments.log_id = logs.id AND comments.user_id = logs.user_id) AS comment_count FROM logs WHERE deleted_at IS NULL AND group_id = ? ORDER BY created_at DESC', [id]).map(parseLog)
   return c.json({ ...group, logs }, 201)
 })
 

@@ -23,6 +23,7 @@ import FileDropZone from '../components/FileDropZone'
 import { useAttachmentPicker } from '../lib/useAttachmentPicker'
 import type { AttachmentMode } from '../../shared/attachments'
 import ConfirmModal from '../components/ConfirmModal'
+import CommentCard from '../components/CommentCard'
 import SecretPasswordModal from '../components/SecretPasswordModal'
 import { useI18n } from '../i18n'
 import { useTheme } from '../theme'
@@ -83,7 +84,7 @@ export default function LogDetail() {
   const navigate = useNavigate()
   const openLog = useOpenLog()
   const location = useLocation()
-  const { updateLog, deleteLog } = useLogStore()
+  const { updateLog, deleteLog, setCommentCount } = useLogStore()
   const [log, setLog] = useState<Log | null>(null)
   const [editing, setEditing] = useState(false)
   const editingRef = useRef(editing)
@@ -103,6 +104,11 @@ export default function LogDetail() {
   const [comments, setComments] = useState<LogComment[]>([])
   const [commentDraft, setCommentDraft] = useState('')
   const [addingComment, setAddingComment] = useState(false)
+  const [commentEditor, setCommentEditor] = useState<{ id: string; content: string } | null>(null)
+  const [commentToDelete, setCommentToDelete] = useState<LogComment | null>(null)
+  const [commentBusyId, setCommentBusyId] = useState<string | null>(null)
+  const [commentErrorId, setCommentErrorId] = useState<string | null>(null)
+  const commentsRequest = useRef(0)
   const [addingFiles, setAddingFiles] = useState(false)
   const [fileAddFailed, setFileAddFailed] = useState(false)
   const [draggingFiles, setDraggingFiles] = useState(false)
@@ -129,6 +135,12 @@ export default function LogDetail() {
     setGroupLogs([])
     setComments([])
     setCommentDraft('')
+    setCommentEditor(null)
+    setCommentToDelete(null)
+    setCommentBusyId(null)
+    setCommentErrorId(null)
+    setAddingComment(false)
+    ++commentsRequest.current
     setFileAddFailed(false)
     setDraggingFiles(false)
     dragDepthRef.current = 0
@@ -210,9 +222,6 @@ export default function LogDetail() {
         ) ?? [])
       }).catch(() => {})
     }
-    void api.logs.comments(log.id).then(comments => {
-      if (!cancelled) setComments(comments)
-    }).catch(() => {})
     return () => { cancelled = true }
   }, [id, log?.id, log?.file_path, log?.attachments, log?.group_id, log?.log_type, secretGate, loading])
 
@@ -263,20 +272,91 @@ export default function LogDetail() {
     } catch {}
   }
 
+  const syncCommentCount = (logId: string, count: number) => {
+    setCommentCount(logId, count)
+    if (recordIdRef.current === logId) setLog(previous => previous?.id === logId ? { ...previous, comment_count: count } : previous)
+  }
+
+  const reloadComments = async (logId: string) => {
+    const request = ++commentsRequest.current
+    const rows = await api.logs.comments(logId)
+    if (request !== commentsRequest.current || recordIdRef.current !== logId) return
+    setComments(rows)
+    syncCommentCount(logId, rows.length)
+  }
+
+  useEffect(() => {
+    if (!active || loading || !log || log.id !== id || secretGate !== 'open') return
+    void reloadComments(log.id).catch(() => {})
+    return () => { ++commentsRequest.current }
+  }, [active, loading, id, log?.id, secretGate])
+
+  const refreshChangedComments = (logId: string) => {
+    if (recordIdRef.current !== logId) return
+    ++commentsRequest.current
+    if (recordIdRef.current === logId && activeRef.current) void reloadComments(logId).catch(() => {})
+  }
+
   const handleAddComment = async () => {
     if (!log || !commentDraft.trim() || addingComment) return
+    const logId = log.id
     setAddingComment(true)
+    setCommentErrorId(null)
     try {
-      const comment = await api.logs.addComment(log.id, commentDraft)
-      if (recordIdRef.current === log.id) {
+      const comment = await api.logs.addComment(logId, commentDraft)
+      if (recordIdRef.current === logId) {
         setComments(previous => [...previous, comment])
         setCommentDraft(current => current === commentDraft ? '' : current)
-        setLog(previous => previous ? { ...previous, comment_count: (previous.comment_count ?? 0) + 1 } : previous)
       }
-    } catch (error) {
-      console.error('Failed to add comment:', error)
+      syncCommentCount(logId, comment.comment_count)
+      refreshChangedComments(logId)
+    } catch {
+      if (recordIdRef.current === logId) setCommentErrorId('new')
     } finally {
-      setAddingComment(false)
+      if (recordIdRef.current === logId) setAddingComment(false)
+    }
+  }
+
+  const handleSaveComment = async () => {
+    if (!log || !commentEditor?.content.trim() || commentBusyId) return
+    const logId = log.id
+    const editor = commentEditor
+    setCommentBusyId(editor.id)
+    setCommentErrorId(null)
+    try {
+      const updated = await api.logs.updateComment(logId, editor.id, editor.content)
+      if (recordIdRef.current === logId) {
+        setComments(previous => previous.map(comment => comment.id === updated.id ? updated : comment))
+        setCommentEditor(current => current?.id === editor.id ? null : current)
+      }
+      syncCommentCount(logId, updated.comment_count)
+      refreshChangedComments(logId)
+    } catch {
+      if (recordIdRef.current === logId) setCommentErrorId(editor.id)
+    } finally {
+      if (recordIdRef.current === logId) setCommentBusyId(null)
+    }
+  }
+
+  const handleDeleteComment = async () => {
+    if (!log || !commentToDelete || commentBusyId) return
+    const logId = log.id
+    const commentId = commentToDelete.id
+    setCommentBusyId(commentId)
+    setCommentToDelete(null)
+    setCommentErrorId(null)
+    try {
+      const result = await api.logs.deleteComment(logId, commentId)
+      if (recordIdRef.current === logId) {
+        setComments(previous => previous.filter(comment => comment.id !== commentId))
+        setCommentEditor(current => current?.id === commentId ? null : current)
+      }
+      syncCommentCount(logId, result.comment_count)
+      refreshChangedComments(logId)
+    } catch {
+      if (recordIdRef.current === logId) setCommentErrorId(commentId)
+    } finally {
+      if (recordIdRef.current === logId) setCommentBusyId(null)
     }
   }
 
@@ -715,18 +795,22 @@ export default function LogDetail() {
             {comments.length > 0 && (
               <div className="mb-3 space-y-2">
                 {comments.map(comment => (
-                  <div key={comment.id} className="rounded-lg border border-gray-700 bg-gray-800/40 px-3 py-2.5">
-                    <p className="whitespace-pre-wrap break-words text-sm text-gray-200">{comment.content}</p>
-                    <p className="mt-1.5 text-[11px] text-gray-500">
-                      {format(new Date(comment.created_at * 1000), detailDateFormat, dateLocale ? { locale: dateLocale } : undefined)}
-                    </p>
-                  </div>
+                  <CommentCard key={comment.id} comment={comment}
+                    date={format(new Date(comment.created_at * 1000), detailDateFormat, dateLocale ? { locale: dateLocale } : undefined)}
+                    draft={commentEditor?.id === comment.id ? commentEditor.content : null}
+                    busy={commentBusyId !== null} error={commentErrorId === comment.id}
+                    onEdit={() => { setCommentEditor({ id: comment.id, content: comment.content }); setCommentErrorId(null) }}
+                    onChange={content => setCommentEditor(current => current?.id === comment.id ? { ...current, content } : current)}
+                    onSave={() => void handleSaveComment()}
+                    onCancel={() => { setCommentEditor(null); setCommentErrorId(null) }}
+                    onDelete={() => { setCommentToDelete(comment); setCommentErrorId(null) }} />
                 ))}
               </div>
             )}
             <div className="flex items-end gap-2">
               <textarea
                 value={commentDraft}
+                maxLength={2000}
                 onChange={event => setCommentDraft(event.target.value)}
                 onKeyDown={event => {
                   if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
@@ -749,9 +833,13 @@ export default function LogDetail() {
                 <Pencil className="h-4 w-4" />
               </button>
             </div>
+            {commentErrorId === 'new' && <p role="alert" className="mt-2 text-xs text-red-400">{t('operationFailed')}</p>}
           </div>
         </div>
       </div>
+
+      {commentToDelete && <ConfirmModal title={t('deleteComment')} message={t('deleteCommentMessage')}
+        onConfirm={() => void handleDeleteComment()} onCancel={() => setCommentToDelete(null)} />}
 
       {showScrollTop && (
         <button

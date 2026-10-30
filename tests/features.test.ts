@@ -713,3 +713,71 @@ test('changing retention recalculates existing trash from its original deletion 
   assert.equal(restoreTrash('local', ['retention-change']), 0)
   await json('/api/settings', 'PUT', { trash_retention_days: 10 })
 })
+
+test('comments can be edited and deleted without changing their date or the note; counts stay consistent', async () => {
+  insert('comment-crud', { favorite: 1 }); insert('comment-group-peer')
+  const first = await json('/api/logs/comment-crud/comments', 'POST', { content: 'First comment' })
+  const second = await json('/api/logs/comment-crud/comments', 'POST', { content: 'Second comment' })
+  assert.equal(first.comment_count, 1)
+  assert.equal(second.comment_count, 2)
+  const group = await json('/api/groups', 'POST', { name: 'Comment counts', log_ids: ['comment-crud', 'comment-group-peer'] })
+  assert.equal(group.logs.find((log: any) => log.id === 'comment-crud').comment_count, 2)
+  const noteDate = row('comment-crud').updated_at
+  const edited = await json(`/api/logs/comment-crud/comments/${first.id}`, 'PUT', { content: '  Revised comment\nwith a second line.  ' })
+  assert.equal(edited.content, 'Revised comment\nwith a second line.')
+  assert.equal(edited.created_at, first.created_at)
+  assert.equal(edited.comment_count, 2)
+  assert.equal(row('comment-crud').updated_at, noteDate)
+  assert.equal((await json('/api/logs/comment-crud/comments')).find((comment: any) => comment.id === first.id).content, edited.content)
+  assert.equal((await json(`/api/logs/comment-crud/comments/${first.id}`, 'DELETE')).comment_count, 1)
+  assert.equal((await json('/api/logs/comment-crud')).comment_count, 1)
+  assert.equal((await json('/api/logs?favorite=true')).find((log: any) => log.id === 'comment-crud').comment_count, 1)
+  assert.equal((await json('/api/groups')).find((item: any) => item.id === group.id).logs.find((log: any) => log.id === 'comment-crud').comment_count, 1)
+  assert.equal((await json(`/api/logs/comment-crud/comments/${second.id}`, 'DELETE')).comment_count, 0)
+  assert.deepEqual(await json('/api/logs/comment-crud/comments'), [])
+  assert.equal((await request(`/api/logs/comment-crud/comments/${second.id}`, 'DELETE')).status, 404)
+})
+
+test('comment edits reject empty, oversized and malformed content without overwriting the original', async () => {
+  insert('comment-validation')
+  const comment = await json('/api/logs/comment-validation/comments', 'POST', { content: 'Keep this comment' })
+  const url = `/api/logs/comment-validation/comments/${comment.id}`
+  for (const content of ['', ' \n ', null, 14, {}, 'x'.repeat(2001)]) {
+    assert.equal((await request(url, 'PUT', { content })).status, 400)
+  }
+  assert.equal((await app.request(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: '{' })).status, 400)
+  assert.equal((await json('/api/logs/comment-validation/comments'))[0].content, 'Keep this comment')
+  assert.equal((await json(url, 'PUT', { content: 'x'.repeat(2000) })).content.length, 2000)
+  assert.equal((await request('/api/logs/comment-validation/comments', 'POST', { content: null })).status, 400)
+})
+
+test('comment mutations cannot address another note, a legacy profile or an incorrectly owned comment', async () => {
+  insert('comment-scope'); insert('comment-other-note'); insert('comment-other-profile', { user_id: 'legacy-profile' })
+  const comment = await json('/api/logs/comment-scope/comments', 'POST', { content: 'Scoped comment' })
+  run('INSERT INTO comments (id, log_id, user_id, content, created_at) VALUES (?, ?, ?, ?, ?)', ['comment-legacy', 'comment-other-profile', 'legacy-profile', 'Legacy comment', now])
+  run('INSERT INTO comments (id, log_id, user_id, content, created_at) VALUES (?, ?, ?, ?, ?)', ['comment-misowned', 'comment-scope', 'legacy-profile', 'Not local', now])
+  for (const method of ['PUT', 'DELETE']) {
+    for (const [logId, commentId] of [
+      ['comment-other-note', comment.id], ['missing-note', comment.id], ['comment-scope', 'missing-comment'],
+      ['comment-other-profile', 'comment-legacy'], ['comment-scope', 'comment-misowned']
+    ]) {
+      assert.equal((await request(`/api/logs/${logId}/comments/${commentId}`, method, { content: 'Unauthorized edit' })).status, 404)
+    }
+  }
+  assert.equal((await json('/api/logs/comment-scope/comments'))[0].content, 'Scoped comment')
+  assert.equal((await json('/api/logs/comment-scope')).comment_count, 1)
+  assert.equal(queryOne<any>('SELECT content FROM comments WHERE id = ?', ['comment-legacy']).content, 'Legacy comment')
+  assert.equal(queryOne<any>('SELECT content FROM comments WHERE id = ?', ['comment-misowned']).content, 'Not local')
+})
+
+test('comments in Trash cannot be changed and remain intact after restoring their note', async () => {
+  insert('comment-trash')
+  const comment = await json('/api/logs/comment-trash/comments', 'POST', { content: 'Restore me' })
+  const url = `/api/logs/comment-trash/comments/${comment.id}`
+  await json('/api/logs/comment-trash', 'DELETE')
+  assert.equal((await request(url, 'PUT', { content: 'Changed in Trash' })).status, 404)
+  assert.equal((await request(url, 'DELETE')).status, 404)
+  await json('/api/trash/restore', 'POST', { ids: ['comment-trash'] })
+  assert.equal((await json('/api/logs/comment-trash/comments'))[0].content, 'Restore me')
+  assert.equal((await json(url, 'PUT', { content: 'After restore' })).content, 'After restore')
+})

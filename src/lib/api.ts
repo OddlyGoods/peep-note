@@ -53,7 +53,11 @@ export const api = {
       request<{ ok: boolean; logs: number; groups: number }>('/api/logs/bulk-move', { method: 'POST', body: JSON.stringify({ log_ids, group_ids, workspace_id }) }),
     comments: (id: string) => request<LogComment[]>(`/api/logs/${id}/comments`),
     addComment: (id: string, content: string) =>
-      request<LogComment>(`/api/logs/${id}/comments`, { method: 'POST', body: JSON.stringify({ content }) }),
+      request<LogComment & { comment_count: number }>(`/api/logs/${id}/comments`, { method: 'POST', body: JSON.stringify({ content }) }),
+    updateComment: (id: string, commentId: string, content: string) =>
+      request<LogComment & { comment_count: number }>(`/api/logs/${id}/comments/${commentId}`, { method: 'PUT', body: JSON.stringify({ content }) }),
+    deleteComment: (id: string, commentId: string) =>
+      request<{ ok: boolean; comment_count: number }>(`/api/logs/${id}/comments/${commentId}`, { method: 'DELETE' }),
     statsDates: () =>
       request<{ date: string; count: number }[]>('/api/logs/stats/dates'),
     statsTypes: (params?: { date_from?: string; date_to?: string; workspace_id?: string }) => {

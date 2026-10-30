@@ -7,13 +7,23 @@ import { cleanupUnreferencedMedia, imageMediaPaths, mediaPaths } from '../media'
 
 const logs = new Hono()
 
+const commentCount = (logId: string, userId: string) => queryOne<{ count: number }>(
+  'SELECT COUNT(*) as count FROM comments WHERE log_id = ? AND user_id = ?', [logId, userId]
+)!.count
+
+const ownedComment = (logId: string, commentId: string, userId: string) => queryOne(
+  `SELECT comments.id FROM comments JOIN logs ON logs.id = comments.log_id
+   WHERE logs.id = ? AND logs.user_id = ? AND logs.deleted_at IS NULL
+   AND comments.id = ? AND comments.user_id = ?`, [logId, userId, commentId, userId]
+)
+
 
 // GET /api/logs
 logs.get('/', async (c) => {
   const userId = LOCAL_PROFILE_ID
 
   const { date, date_from, date_to, type, search, workspace_id, page = '1', limit = '50', sort, favorite } = c.req.query()
-  let sql = 'SELECT logs.*, (SELECT COUNT(*) FROM comments WHERE comments.log_id = logs.id) AS comment_count, (SELECT created_at FROM log_groups WHERE log_groups.id = logs.group_id) AS group_created_at FROM logs WHERE deleted_at IS NULL AND user_id = ?'
+  let sql = 'SELECT logs.*, (SELECT COUNT(*) FROM comments WHERE comments.log_id = logs.id AND comments.user_id = logs.user_id) AS comment_count, (SELECT created_at FROM log_groups WHERE log_groups.id = logs.group_id) AS group_created_at FROM logs WHERE deleted_at IS NULL AND user_id = ?'
   const params: unknown[] = [userId]
 
   if (favorite === 'true') {
@@ -72,14 +82,37 @@ logs.get('/:id/comments', async (c) => {
 logs.post('/:id/comments', async (c) => {
   const userId = LOCAL_PROFILE_ID
   const logId = c.req.param('id')
+  const body = await c.req.json().catch(() => null)
   if (!queryOne('SELECT id FROM logs WHERE deleted_at IS NULL AND id = ? AND user_id = ?', [logId, userId])) return c.json({ error: '로그를 찾을 수 없습니다.' }, 404)
-  const body = await c.req.json()
-  const content = typeof body.content === 'string' ? body.content.trim() : ''
+  const content = typeof body?.content === 'string' ? body.content.trim() : ''
   if (!content) return c.json({ error: '댓글 내용을 입력하세요.' }, 400)
   if (content.length > 2000) return c.json({ error: '댓글은 2,000자까지 입력할 수 있습니다.' }, 400)
   const comment = { id: generateId(), log_id: logId, user_id: userId, content, created_at: Math.floor(Date.now() / 1000) }
   run('INSERT INTO comments (id, log_id, user_id, content, created_at) VALUES (?, ?, ?, ?, ?)', [comment.id, comment.log_id, comment.user_id, comment.content, comment.created_at])
-  return c.json(comment, 201)
+  return c.json({ ...comment, comment_count: commentCount(logId, userId) }, 201)
+})
+
+logs.put('/:id/comments/:commentId', async c => {
+  const userId = LOCAL_PROFILE_ID
+  const logId = c.req.param('id')
+  const commentId = c.req.param('commentId')
+  const body = await c.req.json().catch(() => null)
+  if (!ownedComment(logId, commentId, userId)) return c.json({ error: '댓글을 찾을 수 없습니다.' }, 404)
+  const content = typeof body?.content === 'string' ? body.content.trim() : ''
+  if (!content) return c.json({ error: '댓글 내용을 입력하세요.' }, 400)
+  if (content.length > 2000) return c.json({ error: '댓글은 2,000자까지 입력할 수 있습니다.' }, 400)
+  run('UPDATE comments SET content = ? WHERE id = ? AND log_id = ? AND user_id = ?', [content, commentId, logId, userId])
+  const comment = queryOne('SELECT id, log_id, user_id, content, created_at FROM comments WHERE id = ?', [commentId])!
+  return c.json({ ...comment, comment_count: commentCount(logId, userId) })
+})
+
+logs.delete('/:id/comments/:commentId', c => {
+  const userId = LOCAL_PROFILE_ID
+  const logId = c.req.param('id')
+  const commentId = c.req.param('commentId')
+  if (!ownedComment(logId, commentId, userId)) return c.json({ error: '댓글을 찾을 수 없습니다.' }, 404)
+  run('DELETE FROM comments WHERE id = ? AND log_id = ? AND user_id = ?', [commentId, logId, userId])
+  return c.json({ ok: true, comment_count: commentCount(logId, userId) })
 })
 
 // GET /api/logs/stats/dates
@@ -212,7 +245,7 @@ logs.post('/:id/move', async (c) => {
   if (!workspace) return c.json({ error: '워크스페이스를 찾을 수 없습니다.' }, 404)
 
   run('UPDATE logs SET workspace_id = ?, group_id = NULL, updated_at = ? WHERE id = ? AND user_id = ?', [workspaceId, Math.floor(Date.now() / 1000), logId, userId])
-  const updated = queryOne<any>('SELECT logs.*, (SELECT COUNT(*) FROM comments WHERE comments.log_id = logs.id) AS comment_count FROM logs WHERE logs.id = ?', [logId])!
+  const updated = queryOne<any>('SELECT logs.*, (SELECT COUNT(*) FROM comments WHERE comments.log_id = logs.id AND comments.user_id = logs.user_id) AS comment_count FROM logs WHERE logs.id = ?', [logId])!
   return c.json({ ...updated, tags: JSON.parse(updated.tags || '[]'), attachments: JSON.parse(updated.attachments || '[]'), pinned: !!updated.pinned, is_secret: !!updated.is_secret })
 })
 
@@ -220,7 +253,7 @@ logs.post('/:id/move', async (c) => {
 logs.get('/:id', async (c) => {
   const userId = LOCAL_PROFILE_ID
 
-  const row = queryOne<any>('SELECT logs.*, (SELECT COUNT(*) FROM comments WHERE comments.log_id = logs.id) AS comment_count FROM logs WHERE logs.deleted_at IS NULL AND logs.id = ? AND logs.user_id = ?', [c.req.param('id'), userId])
+  const row = queryOne<any>('SELECT logs.*, (SELECT COUNT(*) FROM comments WHERE comments.log_id = logs.id AND comments.user_id = logs.user_id) AS comment_count FROM logs WHERE logs.deleted_at IS NULL AND logs.id = ? AND logs.user_id = ?', [c.req.param('id'), userId])
   if (!row) return c.json({ error: '로그를 찾을 수 없습니다.' }, 404)
   return c.json({ ...row, tags: JSON.parse(row.tags || '[]'), attachments: JSON.parse(row.attachments || '[]'), pinned: !!row.pinned, is_secret: !!row.is_secret })
 })
@@ -238,7 +271,7 @@ logs.post('/', async (c) => {
     [id, userId, title, content, log_type, content_format, file_path, JSON.stringify(tags), JSON.stringify(attachments), workspace_id, log_type === 'note' && is_secret ? 1 : 0, now, now, 'idle']
   )
 
-  const row = queryOne<any>('SELECT logs.*, (SELECT COUNT(*) FROM comments WHERE comments.log_id = logs.id) AS comment_count FROM logs WHERE logs.id = ?', [id])!
+  const row = queryOne<any>('SELECT logs.*, (SELECT COUNT(*) FROM comments WHERE comments.log_id = logs.id AND comments.user_id = logs.user_id) AS comment_count FROM logs WHERE logs.id = ?', [id])!
   return c.json({ ...row, tags: JSON.parse(row.tags || '[]'), attachments: JSON.parse(row.attachments || '[]'), pinned: !!row.pinned, is_secret: !!row.is_secret }, 201)
 })
 
@@ -280,7 +313,7 @@ logs.put('/:id', async (c) => {
     run("UPDATE logs SET ocr_text = '', ocr_status = 'idle' WHERE id = ?", [c.req.param('id')])
   }
 
-  const updated = queryOne<any>('SELECT logs.*, (SELECT COUNT(*) FROM comments WHERE comments.log_id = logs.id) AS comment_count FROM logs WHERE logs.id = ?', [c.req.param('id')])!
+  const updated = queryOne<any>('SELECT logs.*, (SELECT COUNT(*) FROM comments WHERE comments.log_id = logs.id AND comments.user_id = logs.user_id) AS comment_count FROM logs WHERE logs.id = ?', [c.req.param('id')])!
   const updatedMedia = new Set(mediaPaths(updated))
   cleanupUnreferencedMedia(mediaPaths(row).filter(filePath => !updatedMedia.has(filePath)))
   return c.json({ ...updated, tags: JSON.parse(updated.tags || '[]'), attachments: JSON.parse(updated.attachments || '[]'), pinned: !!updated.pinned, is_secret: !!updated.is_secret })

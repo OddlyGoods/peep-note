@@ -533,18 +533,9 @@ export default function Settings() {
         </SettingsPane>
         <SettingsPane section="shortcuts" selected={section === 'shortcuts'}>
           <section className="card p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Keyboard className="w-4 h-4 text-violet-400" />
-                <h2 className="text-sm font-semibold text-white">{t('globalShortcuts')}</h2>
-              </div>
-              <button
-                onClick={resetHotkeys}
-                className="btn-secondary flex shrink-0 items-center gap-1.5 text-xs"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                {t('resetDefaults')}
-              </button>
+            <div className="flex items-center gap-2 mb-4">
+              <Keyboard className="w-4 h-4 text-violet-400" />
+              <h2 className="text-sm font-semibold text-white">{t('globalShortcuts')}</h2>
             </div>
             <p className="text-xs text-gray-400 mb-4">
               {t('shortcutDescription')}
@@ -574,6 +565,15 @@ export default function Settings() {
                   />
                 </div>
               ))}
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={resetHotkeys}
+                className="btn-secondary flex shrink-0 items-center gap-1.5 text-xs"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                {t('resetDefaults')}
+              </button>
             </div>
           </section>
         </SettingsPane>

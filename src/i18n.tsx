@@ -7,6 +7,7 @@ export type Language = 'en' | 'ko' | 'ja' | 'zh'
 const messages = {
   en: {
     quitApp: 'Quit', quitAppConfirm: 'Quit PeepNote? Unsaved changes will be lost.', quitAppFailed: 'Could not quit PeepNote. Please try again.',
+    settingsSaving: 'Saving…', settingsSaveFailed: 'Could not save settings.', settingsLoadFailed: 'Could not load settings.', settingsRetry: 'Retry',
     openLinkFailed: 'Could not open this link.',
     showInDashboard: 'Show in Explore',
     customAiModel: 'Enter manually', customAiModelId: 'Model ID', customAiModelHint: 'Enter the exact model ID provided by your AI provider.', customAiModelRequired: 'Enter a model ID before saving.',
@@ -75,6 +76,7 @@ const messages = {
   },
   ko: {
     quitApp: '앱 종료', quitAppConfirm: '피프노트를 종료할까요? 저장하지 않은 내용은 사라집니다.', quitAppFailed: '앱을 종료하지 못했습니다. 다시 시도해 주세요.',
+    settingsSaving: '저장 중…', settingsSaveFailed: '설정을 저장하지 못했습니다.', settingsLoadFailed: '설정을 불러오지 못했습니다.', settingsRetry: '다시 시도',
     openLinkFailed: '링크를 열지 못했습니다.',
     showInDashboard: '탐색에서 보기',
     customAiModel: '직접 입력', customAiModelId: '모델 ID', customAiModelHint: 'AI 공급처에서 제공하는 정확한 모델 ID를 입력하세요.', customAiModelRequired: '저장하려면 모델 ID를 입력하세요.',
@@ -143,6 +145,7 @@ const messages = {
   },
   ja: {
     quitApp: 'アプリを終了', quitAppConfirm: 'PeepNote を終了しますか？保存していない内容は失われます。', quitAppFailed: 'アプリを終了できませんでした。もう一度お試しください。',
+    settingsSaving: '保存中…', settingsSaveFailed: '設定を保存できませんでした。', settingsLoadFailed: '設定を読み込めませんでした。', settingsRetry: '再試行',
     openLinkFailed: 'リンクを開けませんでした。',
     showInDashboard: '探索で表示',
     customAiModel: '直接入力', customAiModelId: 'モデルID', customAiModelHint: 'AIプロバイダーが指定する正確なモデルIDを入力してください。', customAiModelRequired: '保存するにはモデルIDを入力してください。',
@@ -211,6 +214,7 @@ const messages = {
   },
   zh: {
     quitApp: '退出应用', quitAppConfirm: '要退出 PeepNote 吗？未保存的内容将丢失。', quitAppFailed: '无法退出应用，请重试。',
+    settingsSaving: '保存中…', settingsSaveFailed: '无法保存设置。', settingsLoadFailed: '无法加载设置。', settingsRetry: '重试',
     openLinkFailed: '无法打开链接。',
     showInDashboard: '在探索中查看',
     customAiModel: '手动输入', customAiModelId: '模型 ID', customAiModelHint: '请输入 AI 提供商指定的准确模型 ID。', customAiModelRequired: '请先输入模型 ID 再保存。',

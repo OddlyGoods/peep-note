@@ -1,6 +1,6 @@
 import { ScreenActivity, useScreenActive } from '../lib/screenActivity'
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { Save, Keyboard, Cloud, User, RotateCcw, Sparkles, Eye, EyeOff, Check, ChevronDown, Lock, KeyRound, Loader2, MoreHorizontal, Settings2, Code2, ExternalLink } from 'lucide-react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Keyboard, Cloud, User, RotateCcw, Sparkles, Eye, EyeOff, Check, ChevronDown, Lock, KeyRound, Loader2, MoreHorizontal, Settings2, Code2, ExternalLink } from 'lucide-react'
 import { api, Settings as SettingsType } from '../lib/api'
 import { Language, useI18n } from '../i18n'
 import { useLogStore } from '../stores/logStore'
@@ -15,6 +15,7 @@ import { APP_DEVELOPER, APP_GITHUB_URL, APP_WEBSITE_URL } from '../../shared/app
 import { DEFAULT_TRASH_RETENTION_DAYS, TRASH_RETENTION_OPTIONS, normalizeTrashRetentionDays } from '../../shared/trashRetention'
 import { AI_MODELS, DEFAULT_AI_MODELS, getAiModels, getAiModelSelection, type AiProvider } from '../../shared/aiModels'
 import { resolveHotkeys, type HotkeyAction, type Hotkeys } from '../../shared/hotkeys'
+import { createSettingsAutosave, type AutosaveStatus } from '../lib/settingsAutosave'
 
 function HotkeyInput({ value, label, disabled, onChange, onDisabledChange }: {
   value: string
@@ -188,11 +189,9 @@ export default function Settings() {
   }
   const [settings, setSettings] = useState<SettingsType | null>(null)
   const [hotkeys, setHotkeys] = useState<Hotkeys>(() => resolveHotkeys())
-  const [backupEnabled, setBackupEnabled] = useState(false)
-  const [backupUrl, setBackupUrl] = useState('')
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
+  const [saveStatus, setSaveStatus] = useState<AutosaveStatus>('idle')
+  const [loadFailed, setLoadFailed] = useState(false)
   const [aiProvider, setAiProvider] = useState<AiProvider>('openai')
   const [aiModelChoices, setAiModelChoices] = useState(() => Object.fromEntries(
     (Object.keys(DEFAULT_AI_MODELS) as AiProvider[]).map(provider => [provider, getAiModelSelection(provider)])
@@ -225,13 +224,77 @@ export default function Settings() {
   const [secretPasswordSet, setSecretPasswordSet] = useState(false)
   const [showSecretPasswordModal, setShowSecretPasswordModal] = useState(false)
   const setStoreDateNavigation = useLogStore(s => s.setDateNavigation)
+  const [autosave] = useState(() => createSettingsAutosave<SettingsType>(async patch => {
+    await api.settings.update(patch)
+    if (patch.hotkeys !== undefined || patch.language !== undefined) {
+      const local = await window.electronAPI?.getSettings()
+      await window.electronAPI?.saveSettings({ ...(local ?? {}),
+        ...(patch.hotkeys !== undefined ? { hotkeys: patch.hotkeys } : {}),
+        ...(patch.language !== undefined ? { language: patch.language } : {}) })
+    }
+    if (patch.language !== undefined) setLanguage(patch.language)
+    if (patch.auto_advance_date_range !== undefined || patch.fixed_start_date !== undefined) {
+      const current = useLogStore.getState()
+      setStoreDateNavigation({
+        autoAdvanceDateRange: patch.auto_advance_date_range ?? current.autoAdvanceDateRange,
+        fixedStartDate: patch.fixed_start_date ?? current.fixedStartDate,
+      })
+    }
+  }, setSaveStatus))
+  const draft = useMemo<Partial<SettingsType>>(() => ({
+    hotkeys, language: selectedLanguage, auto_advance_date_range: autoAdvanceDateRange,
+    fixed_start_date: fixedStartDate, trash_retention_days: trashRetentionDays,
+    openai_api_key: openaiKey || null, anthropic_api_key: anthropicKey || null,
+    gemini_api_key: geminiKey || null, qwen_api_key: qwenKey || null,
+    qwen_base_url: qwenBaseUrl.trim() || 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
+  }), [hotkeys, selectedLanguage, autoAdvanceDateRange, fixedStartDate, trashRetentionDays,
+    openaiKey, anthropicKey, geminiKey, qwenKey, qwenBaseUrl])
+  const aiSelection = useMemo<Partial<SettingsType> | null>(() => aiModel.trim() ? ({
+    ai_provider: aiProvider, ai_model: aiModel.trim(),
+    ai_models: Object.fromEntries(Object.entries(aiModelChoices).filter(([, choice]) => choice.model.trim()).map(([provider, choice]) => [provider, choice.model.trim()])),
+  }) : null, [aiProvider, aiModel, aiModelChoices])
+  const previousDraft = useRef<Partial<SettingsType> | null>(null)
+  const previousAi = useRef<Partial<SettingsType> | null>(null)
+  const previousProvider = useRef(aiProvider)
+  const loadRequest = useRef(0)
 
   useEffect(() => {
-    api.settings.get().then(s => {
+    if (loading || !settings) return
+    if (!previousDraft.current) {
+      previousDraft.current = draft
+      previousAi.current = aiSelection
+      previousProvider.current = aiProvider
+      return
+    }
+    for (const key of Object.keys(draft) as (keyof SettingsType)[]) {
+      if (JSON.stringify(draft[key]) === JSON.stringify(previousDraft.current[key])) continue
+      const immediate = ['hotkeys', 'language', 'auto_advance_date_range', 'fixed_start_date', 'trash_retention_days'].includes(key)
+      autosave.schedule({ [key]: draft[key] }, immediate ? 0 : 500)
+    }
+    previousDraft.current = draft
+    if (JSON.stringify(aiSelection) !== JSON.stringify(previousAi.current)) {
+      if (aiSelection) autosave.schedule(aiSelection, !customAiModel || previousProvider.current !== aiProvider ? 0 : 500)
+      else autosave.cancel(['ai_provider', 'ai_model', 'ai_models'])
+      previousAi.current = aiSelection
+    }
+    previousProvider.current = aiProvider
+  }, [loading, settings, draft, aiSelection, customAiModel, aiProvider, autosave])
+
+  useEffect(() => { if (!active) void autosave.flush() }, [active, autosave])
+  useEffect(() => {
+    const flush = () => { void autosave.flush() }
+    window.addEventListener('blur', flush)
+    return () => window.removeEventListener('blur', flush)
+  }, [autosave])
+  useEffect(() => () => { void autosave.flush() }, [autosave])
+
+  const loadSettings = () => {
+    const request = ++loadRequest.current
+    setLoading(true)
+    void api.settings.get().then(s => {
+      if (request !== loadRequest.current) return
       setSettings(s)
       setHotkeys(resolveHotkeys(s.hotkeys))
-      setBackupEnabled(s.backup_enabled)
-      setBackupUrl(s.backup_url ?? '')
       const provider = s.ai_provider ?? 'openai'
       setAiProvider(provider)
       const models = getAiModels(s.ai_models, provider, s.ai_model)
@@ -250,9 +313,12 @@ export default function Settings() {
       setStoreDateNavigation({ autoAdvanceDateRange: autoAdvance, fixedStartDate: fixedStart })
       setTrashRetentionDays(normalizeTrashRetentionDays(s.trash_retention_days))
       setSecretPasswordSet(!!s.secret_password_set)
+      setLoadFailed(false)
+      setSaveStatus('idle')
       setLoading(false)
-    }).catch(() => setLoading(false))
-  }, [])
+    }).catch(() => { if (request === loadRequest.current) { setLoadFailed(true); setLoading(false) } })
+  }
+  useEffect(() => { loadSettings(); return () => { loadRequest.current++ } }, [])
 
   useEffect(() => {
     if (!active) return
@@ -294,41 +360,6 @@ export default function Settings() {
     }
   }, [languageMenuOpen, modelMenuOpen])
 
-  const handleSave = async () => {
-    if (!aiModel.trim()) return
-    setSaving(true)
-    try {
-      await api.settings.update({
-        hotkeys,
-        backup_enabled: backupEnabled,
-        backup_url: backupUrl || null,
-        ai_provider: aiProvider,
-        ai_model: aiModel.trim(),
-        ai_models: Object.fromEntries(Object.entries(aiModelChoices).filter(([, choice]) => choice.model.trim()).map(([provider, choice]) => [provider, choice.model.trim()])),
-        openai_api_key: openaiKey || null,
-        anthropic_api_key: anthropicKey || null,
-        gemini_api_key: geminiKey || null,
-        qwen_api_key: qwenKey || null,
-        qwen_base_url: qwenBaseUrl.trim() || 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
-        language: selectedLanguage,
-        auto_advance_date_range: autoAdvanceDateRange,
-        fixed_start_date: fixedStartDate,
-        trash_retention_days: trashRetentionDays
-      })
-      // Electron에도 단축키 업데이트
-      const localSettings = await window.electronAPI?.getSettings()
-      await window.electronAPI?.saveSettings({ ...(localSettings ?? {}), hotkeys, language: selectedLanguage })
-      setLanguage(selectedLanguage)
-      setStoreDateNavigation({ autoAdvanceDateRange, fixedStartDate })
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setSaving(false)
-    }
-  }
-
   const resetHotkeys = () => setHotkeys(resolveHotkeys())
 
   const chooseDataPath = async () => {
@@ -345,6 +376,7 @@ export default function Settings() {
     setPendingDataPath(null)
     setChangingDataPath(true)
     try {
+      if (!await autosave.flush()) { setChangingDataPath(false); return }
       const result = await window.electronAPI?.changeDataLocation(directory)
       if (result?.status === 'restarting') return
       setDataPathError(dataStorageErrorKey(result?.error))
@@ -358,9 +390,14 @@ export default function Settings() {
       <div className="w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
     </div>
   )
+  if (loadFailed) return <div className="flex h-full flex-col items-center justify-center gap-3" role="alert">
+    <p className="text-sm text-red-400">{t('settingsLoadFailed')}</p>
+    <button type="button" className="btn-secondary flex items-center gap-1.5 text-xs" onClick={loadSettings}><RotateCcw className="h-3.5 w-3.5" />{t('settingsRetry')}</button>
+  </div>
 
   return (
-    <div className="settings-page flex h-full min-h-0 flex-col overflow-hidden">
+    <div className="settings-page flex h-full min-h-0 flex-col overflow-hidden"
+      onBlurCapture={event => { if (event.target instanceof HTMLInputElement) void autosave.flush() }}>
       {/* 헤더 */}
       <div className="flex h-20 shrink-0 items-center justify-between px-6 border-b" style={{ borderColor: 'rgba(99,102,241,0.12)' }}>
         <div>
@@ -372,17 +409,11 @@ export default function Settings() {
             zh: '管理 PeepNote 的使用偏好和连接设置。'
           }[language]}</p>
         </div>
-        <button
-          onClick={handleSave}
-          disabled={saving || saved || !aiModel.trim()}
-          className="btn-primary -translate-y-px flex items-center gap-1.5"
-        >
-          {saving
-            ? <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            : <Save className="w-4 h-4" />
-          }
-          {saved ? t('settingsSaved') : t('save')}
-        </button>
+        <div className="ml-4 flex shrink-0 items-center gap-2 text-xs" role="status" aria-live="polite">
+          {saveStatus === 'saving' && <><Loader2 className="h-3.5 w-3.5 animate-spin text-violet-400" />{t('settingsSaving')}</>}
+          {saveStatus === 'saved' && <><Check className="h-3.5 w-3.5 text-violet-400" />{t('settingsSaved')}</>}
+          {saveStatus === 'error' && <><span className="text-red-400">{t('settingsSaveFailed')}</span><button type="button" className="btn-secondary flex items-center gap-1.5 text-xs" onClick={() => { void autosave.flush() }}><RotateCcw className="h-3.5 w-3.5" />{t('settingsRetry')}</button></>}
+        </div>
       </div>
 
       <div className="flex min-h-0 flex-1">
@@ -584,7 +615,7 @@ export default function Settings() {
         <SettingsPane section="ai" selected={section === 'ai'}>
           <section className="card p-5">
             <div className="flex items-center gap-2 mb-4">
-              <Sparkles className="w-4 h-4 text-amber-400" />
+              <Sparkles className="w-4 h-4 text-violet-400" />
               <h2 className="text-sm font-semibold text-white">{t('aiSettings')}</h2>
             </div>
             <div className="space-y-4">
@@ -769,7 +800,7 @@ export default function Settings() {
         <SettingsPane section="app" selected={section === 'app'}>
           <section className="card p-5">
             <div className="flex items-center gap-2 mb-4">
-              <User className="w-4 h-4 text-gray-400" />
+              <User className="w-4 h-4 text-violet-400" />
               <h2 className="text-sm font-semibold text-white">{t('appInfo')}</h2>
             </div>
             <div className="space-y-2 text-sm">
@@ -779,7 +810,7 @@ export default function Settings() {
               </div>
               <div className="py-2 border-b border-gray-800">
                 <DataLocationField directory={dataPath} usage={dataUsage} usageError={dataUsageError}
-                  changing={changingDataPath} disabled={!window.electronAPI?.chooseDataLocation || saving} onChoose={chooseDataPath} />
+                  changing={changingDataPath} disabled={!window.electronAPI?.chooseDataLocation || saveStatus === 'saving'} onChoose={chooseDataPath} />
                 <p className="mt-2 text-xs text-gray-400 leading-relaxed">{t('dataLocationHint')}</p>
                 {dataPathError && <p role="alert" className="mt-2 text-xs text-red-400">{t(dataPathError)}</p>}
               </div>

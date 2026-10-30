@@ -8,7 +8,7 @@ import type { AiConnectionInput, AiConnectionResult, AiConnectionError } from '.
 const messages = {
   en: {
     button: 'Test connection', testing: 'Testing…', success: 'Connected · {seconds}s',
-    hint: 'Tests current values without saving or sending notes. A short API request may incur charges.',
+    hint: 'Tests your AI connection without sending notes. A short API request may incur charges.',
     errors: {
       invalidSettings: 'Check your AI settings.', missingKey: 'Enter an API key first.', missingModel: 'Select or enter a model first.',
       invalidEndpoint: 'Enter a valid API endpoint URL.', unauthorized: 'The API key was rejected. Check the key and endpoint region.',
@@ -21,7 +21,7 @@ const messages = {
   },
   ko: {
     button: '연결 테스트', testing: '확인 중…', success: '연결 성공 · {seconds}초',
-    hint: '저장하지 않고 현재 입력값으로 테스트합니다. 메모는 전송하지 않으며, API 사용료가 발생할 수 있습니다.',
+    hint: '메모를 전송하지 않고 AI 연결을 테스트합니다. API 사용료가 발생할 수 있습니다.',
     errors: {
       invalidSettings: 'AI 설정값을 확인해 주세요.', missingKey: 'API 키를 먼저 입력해 주세요.', missingModel: '모델을 선택하거나 직접 입력해 주세요.',
       invalidEndpoint: '올바른 API 주소를 입력해 주세요.', unauthorized: 'API 키를 인증하지 못했습니다. 키와 엔드포인트의 리전을 확인해 주세요.',
@@ -34,7 +34,7 @@ const messages = {
   },
   ja: {
     button: '接続テスト', testing: '確認中…', success: '接続成功 · {seconds}秒',
-    hint: '設定を保存せずに現在の入力値をテストします。メモは送信しません。API利用料金が発生する場合があります。',
+    hint: 'メモを送信せずに AI 接続をテストします。API利用料金が発生する場合があります。',
     errors: {
       invalidSettings: 'AI設定を確認してください。', missingKey: 'APIキーを入力してください。', missingModel: 'モデルを選択または入力してください。',
       invalidEndpoint: '有効なAPIエンドポイントURLを入力してください。', unauthorized: 'APIキーを認証できません。キーとエンドポイントのリージョンを確認してください。',
@@ -47,7 +47,7 @@ const messages = {
   },
   zh: {
     button: '测试连接', testing: '正在检查…', success: '连接成功 · {seconds}秒',
-    hint: '使用当前输入值测试，不保存设置，也不发送笔记。可能产生API使用费用。',
+    hint: '测试 AI 连接，不发送笔记。可能产生API使用费用。',
     errors: {
       invalidSettings: '请检查AI设置。', missingKey: '请先输入API密钥。', missingModel: '请先选择或输入模型。',
       invalidEndpoint: '请输入有效的API端点地址。', unauthorized: 'API密钥验证失败，请检查密钥和端点所属区域。',

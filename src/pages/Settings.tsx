@@ -133,12 +133,13 @@ function HotkeyInput({ value, label, disabled, onChange, onDisabledChange }: {
   )
 }
 
-const SETTINGS_SECTIONS = ['general', 'shortcuts', 'ai', 'app'] as const
+const SETTINGS_SECTIONS = ['general', 'security', 'shortcuts', 'ai', 'app'] as const
 type SettingsSection = typeof SETTINGS_SECTIONS[number]
 const sectionStorageKey = 'openpeepnote_settings_section'
 function initialSection(): SettingsSection {
   try {
     const saved = localStorage.getItem(sectionStorageKey)
+    if (saved === 'secret') return 'security'
     if (saved === 'mcp') return 'ai'
     if (saved === 'developer') return 'app'
     if (SETTINGS_SECTIONS.includes(saved as SettingsSection)) return saved as SettingsSection
@@ -176,6 +177,7 @@ export default function Settings() {
   const categoryTabs = useRef<Partial<Record<SettingsSection, HTMLButtonElement>>>({})
   const categories = [
     { id: 'general' as const, label: t('general'), icon: Settings2 },
+    { id: 'security' as const, label: { en: 'Security', ko: '보안', ja: 'セキュリティ', zh: '安全' }[language], icon: Lock },
     { id: 'shortcuts' as const, label: t('globalShortcuts'), icon: Keyboard },
     { id: 'ai' as const, label: t('aiSettings'), icon: Sparkles },
     { id: 'app' as const, label: t('appInfo'), icon: User }
@@ -515,6 +517,8 @@ export default function Settings() {
               </div>
             </div>
           </section>
+        </SettingsPane>
+        <SettingsPane section="security" selected={section === 'security'}>
           <section className="card p-5">
             <div className="mb-4 flex items-center justify-between gap-4">
               <div className="flex items-center gap-2 min-w-0">

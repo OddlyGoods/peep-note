@@ -915,7 +915,7 @@ export default function LogDetail() {
               ) : log.content_format === 'code' || log.content_format === 'html' ? (
                 <HighlightedSource content={log.content} format={log.content_format} />
               ) : (
-                <div className="detail-content break-words p-4 rounded-xl border border-gray-700 text-sm whitespace-pre-wrap bg-gray-800/50 text-gray-200">
+                <div className="detail-content break-words p-6 rounded-xl border border-gray-700 text-sm whitespace-pre-wrap bg-gray-800/50 text-gray-200">
                   {log.content}
                 </div>
               )

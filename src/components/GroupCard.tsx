@@ -337,7 +337,7 @@ export default function GroupCard({ group, onRefresh, startEditing = false, onSt
       {confirmAction === 'delete' && (
         <ConfirmModal
           title={t('deleteGroup')}
-          message={`${t('deleteGroupMessage', { name: group.name, count: nonSummaryLogs.length })}${summaryLog ? `\n\n${t('ungroupSummaryWarning')}` : ''}`}
+          message={t('deleteGroupMessage', { name: group.name, count: group.logs.length })}
           confirmLabel={t('delete')}
           onConfirm={handleDelete}
           onCancel={() => setConfirmAction(null)}

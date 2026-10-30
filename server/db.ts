@@ -110,6 +110,8 @@ export async function initDb(appDataPath: string) {
   try { db.run('ALTER TABLE settings ADD COLUMN secret_password_hash TEXT') } catch {}
   try { db.run('ALTER TABLE logs ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0') } catch {}
   try { db.run('ALTER TABLE logs ADD COLUMN deleted_at INTEGER') } catch {}
+  try { db.run('ALTER TABLE logs ADD COLUMN trash_group_id TEXT') } catch {}
+  try { db.run('ALTER TABLE logs ADD COLUMN trash_group_name TEXT') } catch {}
   try { db.run("ALTER TABLE logs ADD COLUMN ocr_text TEXT NOT NULL DEFAULT ''") } catch {}
   try { db.run("ALTER TABLE logs ADD COLUMN ocr_status TEXT NOT NULL DEFAULT 'idle'") } catch {}
   // Cancel legacy automatic jobs and interrupted requests; extraction requires a new click.

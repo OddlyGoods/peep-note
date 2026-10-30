@@ -347,6 +347,79 @@ test('bulk and group deletion can be restored with group membership', async () =
   assert.equal(row('g1').group_id, null)
 })
 
+test('whole groups retain summaries, secret metadata, files and comments in Trash and restore as one unit', async () => {
+  const ids = ['whole-group-a', 'whole-group-secret', 'whole-group-summary']
+  const earlier = 'whole-group-earlier'
+  const file = path.join(root, 'attachments', 'whole-group-summary.txt')
+  fs.writeFileSync(file, 'retained summary attachment')
+  insert(ids[0]); insert(ids[1], { is_secret: 1, content: 'never return this secret' }); insert(earlier)
+  const group = await json('/api/groups', 'POST', { name: 'Whole group', log_ids: [ids[0], ids[1], earlier] })
+  insert(ids[2], { group_id: group.id, log_type: 'summary', attachments: JSON.stringify([file]), summary_provider: 'qwen', summary_model: 'custom-model', summary_duration_ms: 1234 })
+  await json(`/api/logs/${ids[2]}/comments`, 'POST', { content: 'summary comment' })
+  await json(`/api/logs/${earlier}`, 'DELETE')
+  await json(`/api/groups/${group.id}`, 'DELETE')
+  assert.equal((await json('/api/groups')).some((g: any) => g.id === group.id), false)
+  const batch = (await json('/api/trash')).filter((item: any) => item.trash_group_id === group.id)
+  assert.deepEqual(batch.map((item: any) => item.id).sort(), [...ids].sort())
+  for (const item of batch) {
+    assert.equal(item.trash_group_name, 'Whole group')
+    assert.equal('content' in item, false)
+    assert.equal('attachments' in item, false)
+    assert.equal('file_path' in item, false)
+  }
+  assert.equal(new Set(batch.map((item: any) => item.deleted_at)).size, 1)
+  assert.equal(row(earlier).trash_group_id, null)
+  assert.ok(fs.existsSync(file))
+  assert.equal((await request(`/api/logs/${ids[2]}`)).status, 404)
+  assert.equal((await json('/api/trash/restore', 'POST', { ids: [ids[1]] })).restored, 3)
+  for (const id of ids) {
+    assert.equal(row(id).deleted_at, null)
+    assert.equal(row(id).group_id, group.id)
+    assert.equal(row(id).trash_group_id, null)
+  }
+  assert.ok(row(earlier).deleted_at)
+  const restored = await json(`/api/groups/${group.id}`)
+  assert.deepEqual(restored.logs.map((item: any) => item.id).sort(), [...ids].sort())
+  assert.equal(row(ids[2]).summary_model, 'custom-model')
+  assert.equal(row(ids[2]).summary_duration_ms, 1234)
+  assert.equal((await json(`/api/logs/${ids[2]}/comments`))[0].content, 'summary comment')
+  // An individually deleted summary still bypasses Trash after group restore.
+  await json(`/api/logs/${ids[2]}`, 'DELETE')
+  assert.equal(row(ids[2]), null)
+  assert.equal(fs.existsSync(file), false)
+  await json(`/api/groups/${group.id}`, 'DELETE')
+  assert.equal((await json('/api/trash/purge', 'POST', { ids: [ids[0]] })).deleted, 2)
+  assert.equal(row(ids[0]), null)
+  assert.equal(row(ids[1]), null)
+  assert.ok(row(earlier))
+  await json('/api/trash/purge', 'POST', { ids: [earlier] })
+})
+
+test('group Trash purge and expiry remove the whole batch including summary media without crossing ownership', async () => {
+  for (const mode of ['purge', 'expiry']) {
+    const first = `batch-${mode}-first`, second = `batch-${mode}-second`, summary = `batch-${mode}-summary`
+    const file = path.join(root, 'attachments', `${summary}.txt`)
+    fs.writeFileSync(file, 'retained until group purge')
+    insert(first); insert(second)
+    const group = await json('/api/groups', 'POST', { name: `Batch ${mode}`, log_ids: [first, second] })
+    insert(summary, { log_type: 'summary', group_id: group.id, attachments: JSON.stringify([file]) })
+    await json(`/api/groups/${group.id}`, 'DELETE')
+    insert(`foreign-${mode}`, { user_id: 'bob', deleted_at: now, trash_group_id: group.id })
+    assert.equal((await json('/api/trash/restore', 'POST', { ids: [`foreign-${mode}`] })).restored, 0)
+    assert.equal((await json('/api/trash/purge', 'POST', { ids: [`foreign-${mode}`] })).deleted, 0)
+    if (mode === 'purge') {
+      assert.equal((await json('/api/trash/purge', 'POST', { ids: [summary] })).deleted, 3)
+    } else {
+      run('UPDATE logs SET deleted_at = ? WHERE user_id = ? AND trash_group_id = ?', [now - TRASH_RETENTION_SECONDS - 1, 'local', group.id])
+      await json('/api/trash')
+      assert.equal((await json('/api/trash/restore', 'POST', { ids: [first] })).restored, 0)
+    }
+    for (const id of [first, second, summary]) assert.equal(row(id), null)
+    assert.equal(fs.existsSync(file), false)
+    assert.ok(row(`foreign-${mode}`))
+  }
+})
+
 test('permanent cleanup protects shared and unmanaged files; expired trash is purged', async () => {
   const shared = path.join(root, 'screenshots/shared.png')
   const outside = path.join(root, 'private.txt')
@@ -673,8 +746,8 @@ test('summary provenance follows the actual request and is preserved after faile
   } finally { globalThis.fetch = originalFetch }
 })
 
-test('all deletion paths remove AI summaries immediately while preserving original records and shared files', async () => {
-  for (const mode of ['single', 'bulk', 'group', 'ungroup']) {
+test('individual deletion and ungrouping remove AI summaries immediately while preserving original records and shared files', async () => {
+  for (const mode of ['single', 'bulk', 'ungroup']) {
     const first = `delete-summary-original-a-${mode}`
     const second = `delete-summary-original-b-${mode}`
     const summary = `delete-summary-${mode}`
@@ -696,12 +769,6 @@ test('all deletion paths remove AI summaries immediately while preserving origin
       assert.equal((await json('/api/logs/bulk-delete', 'POST', { ids: [summary, summary, first, foreign] })).deleted, 2)
       assert.ok(row(first).deleted_at)
       assert.equal(restoreTrash('local', [first]), 1)
-    }
-    if (mode === 'group') {
-      await json(`/api/groups/${group.id}`, 'DELETE')
-      assert.ok(row(first).deleted_at)
-      assert.ok(row(second).deleted_at)
-      assert.equal(restoreTrash('local', [first, second]), 2)
     }
     if (mode === 'ungroup') await json(`/api/groups/${group.id}/ungroup`, 'POST')
 

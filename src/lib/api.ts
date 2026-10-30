@@ -156,6 +156,8 @@ export const api = {
 
 // Types
 export interface TrashItem {
+  trash_group_id?: string | null
+  trash_group_name?: string | null
   workspace_name: string | null
   workspace_is_default: boolean
   id: string

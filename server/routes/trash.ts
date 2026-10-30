@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { LOCAL_PROFILE_ID } from '../localProfile'
 import { queryAll, queryOne } from '../db'
-import { permanentlyDelete, purgeExpiredTrash, restoreTrash, getTrashRetentionDays } from '../trash'
+import { permanentlyDelete, purgeExpiredTrash, restoreTrash, getTrashRetentionDays, expandTrashGroupIds } from '../trash'
 
 const trash = new Hono<{ Variables: { userId: string } }>()
 trash.use('*', async (c, next) => {
@@ -12,7 +12,7 @@ trash.use('*', async (c, next) => {
 
 trash.get('/', c => {
   // Trash returns metadata only; secret content and file paths are never previewed.
-  const rows = queryAll(`SELECT id, title, log_type, content_format, is_secret, deleted_at,
+  const rows = queryAll(`SELECT id, title, log_type, content_format, is_secret, deleted_at, trash_group_id, trash_group_name,
     deleted_at + ? AS expires_at,
     COALESCE(
       (SELECT name FROM workspaces WHERE id = logs.workspace_id AND user_id = logs.user_id),
@@ -46,7 +46,9 @@ trash.post('/restore', async c => {
 trash.post('/purge', async c => {
   const ids = parseIds(await c.req.json())
   if (!ids.length || ids.length > 500) return c.json({ error: 'INVALID_IDS' }, 400)
-  return c.json({ deleted: permanentlyDelete(`user_id = ? AND id IN (${ids.map(() => '?').join(',')})`, [c.get('userId'), ...ids]) })
+  const expanded = expandTrashGroupIds(c.get('userId'), ids)
+  if (!expanded.length) return c.json({ deleted: 0 })
+  return c.json({ deleted: permanentlyDelete(`user_id = ? AND id IN (${expanded.map(() => '?').join(',')})`, [c.get('userId'), ...expanded]) })
 })
 
 trash.delete('/', c => c.json({ deleted: permanentlyDelete('user_id = ?', [c.get('userId')]) }))

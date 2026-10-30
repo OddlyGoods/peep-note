@@ -243,7 +243,6 @@ export default function Dashboard() {
   const ungroupedTotal = logs.filter(l => !groupedLogIds.has(l.id)).length
   const selectionCount = selectedIds.length + selectedGroupIds.length
   const selectionIncludesSummary = logs.some(log => selectedIds.includes(log.id) && log.log_type === 'summary')
-    || groups.some(group => selectedGroupIds.includes(group.id) && group.logs.some(log => log.log_type === 'summary'))
   const allChecked = selectionCount > 0 && selectedIds.length === ungroupedTotal && selectedGroupIds.length === groups.length
   const timelineItems = [
     ...normalLogs.map(log => ({ kind: 'log' as const, createdAt: log.created_at, log })),

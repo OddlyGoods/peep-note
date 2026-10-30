@@ -179,7 +179,7 @@ groups.delete('/:id', async (c) => {
   if (!g) return c.json({ error: '그룹을 찾을 수 없습니다' }, 404)
 
   const rows = queryAll<{ id: string }>('SELECT id FROM logs WHERE group_id = ? AND user_id = ? AND deleted_at IS NULL', [g.id, userId])
-  moveToTrash(userId, rows.map(row => row.id))
+  moveToTrash(userId, rows.map(row => row.id), { id: g.id, name: g.name })
   return c.json({ ok: true })
 })
 

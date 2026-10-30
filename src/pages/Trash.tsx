@@ -1,11 +1,12 @@
 import { useScreenActive } from '../lib/screenActivity'
-import { useEffect, useRef, useState } from 'react'
-import { Trash2, RotateCcw, Camera, Video, Text as TextIcon, Hash, Code2, Globe, Sparkles, Clock, Check, Search, FolderOpen } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Trash2, RotateCcw, Camera, Video, Text as TextIcon, Hash, Code2, Globe, Sparkles, Clock, Check, Search, FolderOpen, Layers, ChevronUp, ChevronDown } from 'lucide-react'
 import { api, TrashItem } from '../lib/api'
 import { useI18n } from '../i18n'
 import { useLogStore } from '../stores/logStore'
 import ConfirmModal from '../components/ConfirmModal'
 import SecretIconBadge from '../components/SecretIconBadge'
+import { trashEntries } from '../lib/trashGroups'
 import type { TrashRetentionDays } from '../../shared/trashRetention'
 
 const TYPE_CONFIG = {
@@ -30,6 +31,7 @@ export default function Trash() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(false)
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null)
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
   const working = useRef(false)
   const refresh = async () => {
     const [rows, retention] = await Promise.all([api.trash.list(), api.trash.retention()])
@@ -54,11 +56,39 @@ export default function Trash() {
     } catch { setError(true) }
     finally { working.current = false; setBusy(false) }
   }
-  const visibleItems = items.filter(item => (item.title || t('untitled')).toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()))
+  const entries = useMemo(() => trashEntries(items, query, t('untitled')), [items, query, t])
+  const visibleItems = entries.flatMap(entry => entry.items)
   const allChecked = visibleItems.length > 0 && visibleItems.every(item => selected.includes(item.id))
   const toggleItem = (id: string) => {
     if (busy) return
     setSelected(prev => prev.includes(id) ? prev.filter(value => value !== id) : [...prev, id])
+  }
+  const renderItem = (item: TrashItem, grouped = false) => {
+    const cfg = TYPE_CONFIG[item.log_type] ?? TYPE_CONFIG.note
+    const Icon = item.log_type === 'note' ? (NOTE_ICONS[item.content_format ?? 'text'] ?? TextIcon) : cfg.icon
+    const checked = selected.includes(item.id)
+    return <div key={item.id} className={`log-card group card relative overflow-hidden p-4 hover:border-gray-700 hover:bg-gray-800/50 transition-all duration-300 ${grouped ? '' : 'cursor-pointer'} ${checked ? 'border-violet-500/50 bg-violet-500/5' : ''} ${busy ? 'opacity-50' : ''}`}
+      onClick={grouped ? undefined : () => toggleItem(item.id)}>
+      <div className="flex items-start gap-3">
+        {!grouped && <button type="button" role="checkbox" aria-checked={checked} aria-label={item.title || t('untitled')} disabled={busy} onClick={event => { event.stopPropagation(); toggleItem(item.id) }} className={`shrink-0 w-4 h-4 mt-2 rounded border-2 flex items-center justify-center transition-colors ${checked ? 'bg-violet-600 border-violet-600' : 'border-gray-600 hover:border-violet-500'}`}>{checked && <Check className="w-2.5 h-2.5 text-white" />}</button>}
+        <div className={`relative shrink-0 w-8 h-8 rounded-lg border flex items-center justify-center ${cfg.bg}`}>
+          <Icon className={`w-4 h-4 ${cfg.color}`} />
+          {!!item.is_secret && <SecretIconBadge />}
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-sm font-medium text-gray-100 truncate">{item.title || t('untitled')}</h3>
+          <div className="flex flex-wrap items-center gap-2 mt-2 text-xs text-gray-400">
+            <span className="flex items-center gap-1" title={t('deletedOn')}><Clock className="w-3 h-3" />{new Date(item.deleted_at * 1000).toLocaleString(language, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+            <span className="tag border bg-indigo-500/10 border-indigo-500/20 text-indigo-400 inline-flex items-center gap-1 max-w-48" title={item.workspace_is_default ? t('defaultWorkspace') : (item.workspace_name || t('defaultWorkspace'))}><FolderOpen className="w-3 h-3 shrink-0" /><span className="truncate">{item.workspace_is_default ? t('defaultWorkspace') : (item.workspace_name || t('defaultWorkspace'))}</span></span>
+            <span>{t('trashDays', { count: Math.max(0, Math.ceil((item.expires_at * 1000 - Date.now()) / 86400000)) })}</span>
+          </div>
+        </div>
+        {!grouped && <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+          <button disabled={busy} onClick={event => { event.stopPropagation(); perform('restore', [item.id]) }} title={t('restoreRecord')} aria-label={`${t('restoreRecord')}: ${item.title || t('untitled')}`} className="p-1.5 rounded-lg text-gray-400 hover:text-violet-400 hover:bg-violet-500/10 transition-colors disabled:opacity-40"><RotateCcw className="w-3.5 h-3.5" /></button>
+          <button disabled={busy} onClick={event => { event.stopPropagation(); setConfirmation({ kind: 'selected', ids: [item.id] }) }} title={t('delete')} aria-label={`${t('delete')}: ${item.title || t('untitled')}`} className="p-1.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-40"><Trash2 className="w-3.5 h-3.5" /></button>
+        </div>}
+      </div>
+    </div>
   }
   return (
     <main className="relative flex-1 flex flex-col min-w-0 h-full" style={{ background: 'var(--app-bg)' }}>
@@ -95,32 +125,33 @@ export default function Trash() {
             {allChecked ? t('clearSelection') : t('selectAll')}
           </button>
           <div className="space-y-2">
-            {visibleItems.map(item => {
-              const cfg = TYPE_CONFIG[item.log_type] ?? TYPE_CONFIG.note
-              const Icon = item.log_type === 'note' ? (NOTE_ICONS[item.content_format ?? 'text'] ?? TextIcon) : cfg.icon
-              const checked = selected.includes(item.id)
-              return <div key={item.id} className={`log-card group card relative overflow-hidden p-4 hover:border-gray-700 hover:bg-gray-800/50 transition-all duration-300 cursor-pointer ${checked ? 'border-violet-500/50 bg-violet-500/5' : ''} ${busy ? 'opacity-50' : ''}`}
-                onClick={() => toggleItem(item.id)}>
-                <div className="flex items-start gap-3">
-                  <button type="button" role="checkbox" aria-checked={checked} aria-label={item.title || t('untitled')} disabled={busy} onClick={event => { event.stopPropagation(); toggleItem(item.id) }} className={`shrink-0 w-4 h-4 mt-2 rounded border-2 flex items-center justify-center transition-colors ${checked ? 'bg-violet-600 border-violet-600' : 'border-gray-600 hover:border-violet-500'}`}>{checked && <Check className="w-2.5 h-2.5 text-white" />}</button>
-                  <div className={`relative shrink-0 w-8 h-8 rounded-lg border flex items-center justify-center ${cfg.bg}`}>
-                    <Icon className={`w-4 h-4 ${cfg.color}`} />
-                    {!!item.is_secret && <SecretIconBadge />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-medium text-gray-100 truncate">{item.title || t('untitled')}</h3>
-                    <div className="flex flex-wrap items-center gap-2 mt-2 text-xs text-gray-400">
-                      <span className="flex items-center gap-1" title={t('deletedOn')}><Clock className="w-3 h-3" />{new Date(item.deleted_at * 1000).toLocaleString(language, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-                      <span className="tag border bg-indigo-500/10 border-indigo-500/20 text-indigo-400 inline-flex items-center gap-1 max-w-48" title={item.workspace_is_default ? t('defaultWorkspace') : (item.workspace_name || t('defaultWorkspace'))}><FolderOpen className="w-3 h-3 shrink-0" /><span className="truncate">{item.workspace_is_default ? t('defaultWorkspace') : (item.workspace_name || t('defaultWorkspace'))}</span></span>
-                      <span>{t('trashDays', { count: Math.max(0, Math.ceil((item.expires_at * 1000 - Date.now()) / 86400000)) })}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-                    <button disabled={busy} onClick={event => { event.stopPropagation(); perform('restore', [item.id]) }} title={t('restoreRecord')} aria-label={`${t('restoreRecord')}: ${item.title || t('untitled')}`} className="p-1.5 rounded-lg text-gray-400 hover:text-violet-400 hover:bg-violet-500/10 transition-colors disabled:opacity-40"><RotateCcw className="w-3.5 h-3.5" /></button>
-                    <button disabled={busy} onClick={event => { event.stopPropagation(); setConfirmation({ kind: 'selected', ids: [item.id] }) }} title={t('delete')} aria-label={`${t('delete')}: ${item.title || t('untitled')}`} className="p-1.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-40"><Trash2 className="w-3.5 h-3.5" /></button>
+            {entries.map(entry => {
+              if (!entry.groupId) return renderItem(entry.items[0])
+              const ids = entry.items.map(item => item.id)
+              const checked = ids.every(id => selected.includes(id))
+              const partial = !checked && ids.some(id => selected.includes(id))
+              const expanded = !collapsedGroups[entry.groupId]
+              const toggleGroup = () => {
+                if (!busy) setSelected(prev => checked ? prev.filter(id => !ids.includes(id)) : [...new Set([...prev, ...ids])])
+              }
+              return <section key={entry.key} aria-label={entry.name} className="rounded-xl border border-violet-500/30 bg-violet-500/5 overflow-hidden">
+                <div className="flex items-center gap-3 px-4 py-[0.425rem] bg-violet-500/10 text-violet-400">
+                  <button type="button" role="checkbox" aria-checked={partial ? 'mixed' : checked} aria-label={entry.name} disabled={busy} onClick={toggleGroup} className={`shrink-0 w-4 h-4 rounded border-2 flex items-center justify-center ${checked || partial ? 'bg-violet-600 border-violet-600' : 'border-gray-500'}`}>
+                    {(checked || partial) && <Check className="w-2.5 h-2.5 text-white" />}
+                  </button>
+                  <Layers className="w-4 h-4 shrink-0" />
+                  <span className="text-sm font-medium truncate flex-1 min-w-0">{entry.name}</span>
+                  <span className="text-xs shrink-0">{entry.items.length} {t('records')}</span>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button type="button" disabled={busy} onClick={() => perform('restore', [ids[0]])} title={t('restoreRecord')} aria-label={`${t('restoreRecord')}: ${entry.name}`} className="p-1.5 rounded-lg hover:bg-violet-500/10 disabled:opacity-40"><RotateCcw className="w-3.5 h-3.5" /></button>
+                    <button type="button" disabled={busy} onClick={() => setConfirmation({ kind: 'selected', ids: [ids[0]] })} title={t('delete')} aria-label={`${t('delete')}: ${entry.name}`} className="p-1.5 rounded-lg hover:text-red-400 hover:bg-red-500/10 disabled:opacity-40"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <button type="button" onClick={() => setCollapsedGroups(prev => ({ ...prev, [entry.groupId!]: expanded }))} aria-expanded={expanded} aria-controls={`trash-group-${entry.groupId}`} title={t(expanded ? 'collapseContent' : 'expandContent')} aria-label={t(expanded ? 'collapseContent' : 'expandContent')} className="p-1.5 rounded-lg hover:bg-violet-500/10">
+                      {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    </button>
                   </div>
                 </div>
-              </div>
+                {expanded && <div id={`trash-group-${entry.groupId}`} className="p-2 space-y-2">{entry.items.map(item => renderItem(item, true))}</div>}
+              </section>
             })}
           </div>
         </div>}

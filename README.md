@@ -58,7 +58,7 @@ The package and Linux executable are named `peep-note`. The app keeps its existi
 - Capture a selected screen region and record a selected screen region
 - Select and remember a preferred monitor for capture and recording
 - Organize records with workspaces, tags, date ranges, search, and groups
-- Restore deleted records from Trash during a configurable retention period (7, 10, 30, or 90 days; default 10), or permanently delete them. AI summaries are deleted immediately.
+- Restore deleted records from Trash during a configurable retention period (7, 10, 30, or 90 days; default 10), or permanently delete them. Individually deleted AI summaries are removed immediately; deleting a whole group keeps its summary in Trash with the group.
 - Search Korean and English text in screenshots and attached images using local OCR
 - Generate AI summaries with OpenAI, Claude, Gemini, or Qwen
 - Use global shortcuts and a recent-record Quick List
@@ -163,7 +163,7 @@ In **Settings → General**, **Automatically advance dates** updates the main li
 
 ### Trash
 
-**Trash** is in the left navigation, below **Favorites**. Deleting a record, selected records, or a group moves its records to Trash and removes them from normal lists, search, Quick List, and calendar counts. Select records to restore them or permanently delete them. **Empty** permanently deletes all of the current user's trashed records after confirmation.
+**Trash** is in the left navigation, below **Favorites**. Deleting a record, selected records, or a group moves its records to Trash and removes them from normal lists, search, Quick List, and calendar counts. Deleted groups appear as a single group, including their AI summary, and can be restored or permanently deleted together. Select records to restore them or permanently delete them. **Empty** permanently deletes all of the current user's trashed records after confirmation.
 
 Records, comments, and managed media files are retained for the period selected in Settings → General → Trash retention: 7, 10, 30, or 90 days (default 10). This applies from the original deletion date, including records already in Trash. Expired records are removed at startup and periodically while the app runs. Restoring preserves group membership where the group still exists; records whose workspace was removed return to General. Media still referenced by another record is preserved when purging. Records deleted before this feature was installed cannot be recovered.
 

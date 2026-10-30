@@ -17,6 +17,7 @@ import FavoriteButton from '../components/FavoriteButton'
 import WorkspaceMoveButton from '../components/WorkspaceMoveButton'
 import MarkdownCodeBlock from '../components/MarkdownCodeBlock'
 import TagInput from '../components/TagInput'
+import AutoGrowTextarea from '../components/AutoGrowTextarea'
 import TagBadge from '../components/TagBadge'
 import AttachmentFileRow from '../components/AttachmentFileRow'
 import FileDropZone from '../components/FileDropZone'
@@ -837,8 +838,9 @@ export default function LogDetail() {
             </div>
 
             {editing ? (
-              <textarea
-                className={`input resize-none h-96 ${form.content_format === 'code' || form.content_format === 'html' ? 'code-input' : ''} ${
+              <AutoGrowTextarea
+                aria-label={t('content')}
+                className={`input detail-content-editor ${form.content_format === 'code' || form.content_format === 'html' ? 'code-input' : ''} ${
                   form.content_format === 'code' ? 'font-mono text-emerald-400 bg-gray-950' :
                   form.content_format === 'html' ? 'font-mono text-sky-300 bg-gray-950' : ''
                 }`}

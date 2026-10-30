@@ -121,6 +121,7 @@ export const api = {
 
   // Groups
   groups: {
+    get: (id: string) => request<LogGroup>(`/api/groups/${encodeURIComponent(id)}`),
     list: (params?: { date?: string; date_from?: string; date_to?: string; workspace_id?: string; type?: string; search?: string }) => {
       const q = new URLSearchParams()
       if (params?.date) q.set('date', params.date)

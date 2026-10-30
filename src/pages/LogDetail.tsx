@@ -112,7 +112,8 @@ export default function LogDetail() {
   const [loading, setLoading] = useState(true)
   const [showConfirm, setShowConfirm] = useState(false)
   const [previewFailed, setPreviewFailed] = useState(false)
-  const [groupLogs, setGroupLogs] = useState<Log[]>([])
+  const [relatedGroup, setRelatedGroup] = useState<{ id: string; currentId: string; logs: Log[] } | null>(null)
+  const groupLogs = relatedGroup && relatedGroup.id === log?.group_id && relatedGroup.currentId === id ? relatedGroup.logs : []
   const [copied, setCopied] = useState(false)
   const [showScrollTop, setShowScrollTop] = useState(false)
   const [secretGate, setSecretGate] = useState<'loading' | 'unlock' | 'missing' | 'open'>('loading')
@@ -164,7 +165,7 @@ export default function LogDetail() {
     setPreviewFailed(false)
     setNewCommentFiles([])
     setCommentFileToDelete(null)
-    setGroupLogs([])
+    setRelatedGroup(null)
     setComments([])
     setCommentDraft('')
     setCommentEditor(null)
@@ -246,17 +247,21 @@ export default function LogDetail() {
         if (!cancelled) setAttachmentUrls(urls)
       }).catch(() => {})
     } else setAttachmentUrls([])
-    if (log.group_id) {
-      void api.groups.list({}).then(groups => {
-        if (cancelled) return
-        const group = groups.find(group => group.id === log.group_id)
-        setGroupLogs(group?.logs.filter(item =>
-          item.log_type !== 'summary' && (log.log_type === 'summary' || item.id !== log.id)
-        ) ?? [])
-      }).catch(() => {})
-    }
     return () => { cancelled = true }
-  }, [id, log?.id, log?.file_path, log?.attachments, log?.group_id, log?.log_type, secretGate, loading, addedNoteFiles])
+  }, [id, log?.id, log?.file_path, log?.attachments, secretGate, loading, addedNoteFiles])
+
+  useEffect(() => {
+    setRelatedGroup(null)
+    if (loading || !log || log.id !== id || secretGate !== 'open' || !log.group_id) return
+    let cancelled = false
+    const groupId = log.group_id
+    const currentId = log.id
+    void api.groups.get(groupId).then(group => {
+      if (cancelled || group.id !== groupId) return
+      setRelatedGroup({ id: groupId, currentId, logs: group.logs.filter(item => item.group_id === groupId && item.id !== currentId) })
+    }).catch(() => {})
+    return () => { cancelled = true }
+  }, [id, log?.id, log?.group_id, secretGate, loading])
 
   const resetNoteEditor = () => {
     discardDraftFiles(noteFilesRef.current, pendingNoteSave.current)
@@ -926,7 +931,7 @@ export default function LogDetail() {
 
           {/* 같은 그룹의 다른 기록 */}
           {groupLogs.length > 0 && (
-            <div>
+            <section aria-label={t('includedRecords', { count: groupLogs.length })}>
               <div className="flex items-center gap-1.5 mb-2">
                 <Layers className="w-3.5 h-3.5 text-violet-400" />
                 <label className="text-xs font-medium text-gray-400">{t('includedRecords', { count: groupLogs.length })}</label>
@@ -944,11 +949,12 @@ export default function LogDetail() {
                       <div className={`shrink-0 w-6 h-6 rounded-md border flex items-center justify-center ${
                         l.log_type === 'screenshot' ? 'bg-blue-500/10 border-blue-500/20' :
                         l.log_type === 'video'      ? 'bg-orange-500/10 border-orange-500/20' :
+                        l.log_type === 'summary'    ? 'bg-amber-500/10 border-amber-500/20' :
                                                       'bg-violet-500/10 border-violet-500/20'
                       }`}>
                         <TypeIcon className={`w-3 h-3 ${typeCfg.color}`} />
                       </div>
-                      <span className="flex-1 text-sm text-gray-300 truncate">{l.title || t('untitled')}</span>
+                      <span className="flex-1 text-sm text-gray-300 truncate">{(l.log_type === 'summary' ? getAiSummaryTitle(l.content, l.title) : l.title) || t('untitled')}</span>
                       <span className="text-xs text-gray-500 shrink-0">
                         {format(new Date(l.created_at * 1000), 'HH:mm', { locale: ko })}
                       </span>
@@ -956,7 +962,7 @@ export default function LogDetail() {
                   )
                 })}
               </div>
-            </div>
+            </section>
           )}
 
           {/* 태그 */}

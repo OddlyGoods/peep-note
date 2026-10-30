@@ -85,6 +85,19 @@ groups.get('/', async (c) => {
   return c.json(result)
 })
 
+// Group detail is independent of Explore's current filters and other groups.
+groups.get('/:id', c => {
+  const userId = LOCAL_PROFILE_ID
+  const group = queryOne<any>('SELECT * FROM log_groups WHERE id = ? AND user_id = ?', [c.req.param('id'), userId])
+  if (!group) return c.json({ error: '그룹을 찾을 수 없습니다' }, 404)
+  const logs = queryAll<any>(
+    `SELECT logs.*, (SELECT COUNT(*) FROM comments WHERE comments.log_id = logs.id AND comments.user_id = logs.user_id) AS comment_count
+     FROM logs WHERE group_id = ? AND user_id = ? AND deleted_at IS NULL
+     ORDER BY pinned DESC, created_at DESC, id DESC`, [group.id, userId]
+  ).map(parseLog)
+  return c.json({ ...group, logs })
+})
+
 // POST /api/groups — { name, log_ids, workspace_id }
 groups.post('/', async (c) => {
   const userId = LOCAL_PROFILE_ID

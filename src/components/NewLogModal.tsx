@@ -204,7 +204,7 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
           <button onClick={handleClose} aria-label={t('cancel')} className="new-log-close-button btn-ghost p-1.5"><X className="w-4 h-4" /></button>
         </div>
 
-        <div className="p-5 space-y-4 overflow-y-auto flex-1">
+        <div className="p-5 flex flex-col gap-4 overflow-y-auto flex-1 [&>*]:shrink-0">
           {/* 타입 선택 */}
           <div className="grid grid-cols-3 gap-2">
             {TYPES.map(({ value, label, icon: Icon, color }) => (

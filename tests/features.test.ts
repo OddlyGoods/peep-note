@@ -581,6 +581,28 @@ test('deleting a group during AI processing does not recreate active records', a
   } finally { globalThis.fetch = originalFetch }
 })
 
+test('group detail includes its AI summary and only active records owned by the same group and profile', async () => {
+  for (const id of ['related-a-one', 'related-a-two', 'related-b-one', 'related-b-two']) insert(id)
+  const first = await json('/api/groups', 'POST', { name: 'Related group A', log_ids: ['related-a-one', 'related-a-two'] })
+  const second = await json('/api/groups', 'POST', { name: 'Related group B', log_ids: ['related-b-one', 'related-b-two'] })
+  insert('related-summary-a', { log_type: 'summary', group_id: first.id, summary_provider: 'qwen', summary_model: 'custom-model', summary_duration_ms: 1200 })
+  insert('related-summary-b', { log_type: 'summary', group_id: second.id })
+  insert('related-trashed', { group_id: first.id, deleted_at: now })
+  insert('related-foreign-record', { group_id: first.id, user_id: 'bob' })
+  run("INSERT INTO log_groups (id, user_id, name) VALUES ('related-foreign-group', 'bob', 'Legacy group')")
+  await json('/api/logs/related-a-one/comments', 'POST', { content: 'Test comment' })
+  const result = await json(`/api/groups/${first.id}?search=unmatched&type=video&workspace_id=another-workspace`)
+  assert.equal(result.id, first.id)
+  assert.deepEqual(result.logs.map((log: any) => log.id).sort(), ['related-a-one', 'related-a-two', 'related-summary-a'])
+  assert.ok(result.logs.every((log: any) => log.group_id === first.id && log.user_id === 'local'))
+  assert.equal(result.logs.find((log: any) => log.id === 'related-a-one').comment_count, 1)
+  assert.deepEqual(result.logs[0].attachments, [])
+  assert.deepEqual(result.logs[0].tags, [])
+  assert.equal(result.logs.find((log: any) => log.id === 'related-summary-a').summary_model, 'custom-model')
+  assert.equal((await request('/api/groups/related-foreign-group')).status, 404)
+  assert.equal((await request('/api/groups/missing-group')).status, 404)
+})
+
 test('AI summaries stay in their group workspace', async () => {
   run("INSERT INTO workspaces (id, user_id, name, is_default) VALUES ('ai-workspace', 'local', 'AI Workspace', 0)")
   insert('ai-workspace-one', { workspace_id: 'ai-workspace' })

@@ -141,7 +141,7 @@ export default function GroupCard({ group, onRefresh, startEditing = false, onSt
       {/* 그룹 헤더 */}
       <div
         onClick={showCheckbox && !editing ? () => onCheck?.(!checked) : undefined}
-        className={`flex items-center gap-2 px-4 py-2.5 bg-violet-500/10 border-b border-violet-500/20 ${showCheckbox && !editing ? 'cursor-pointer' : ''}`}
+        className={`flex items-center gap-2 px-4 py-[0.425rem] bg-violet-500/10 border-b border-violet-500/20 ${showCheckbox && !editing ? 'cursor-pointer' : ''}`}
       >
         {showCheckbox && !editing && (
           <button

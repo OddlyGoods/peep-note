@@ -268,16 +268,15 @@ export default function LogCard({ log, basePath = '/log', showCheckbox = false, 
                 <Pin className="w-3.5 h-3.5" />
               </button>
           )}
-          {!inGroup && (
-            <>
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            </>
+          {!showCheckbox && !onCardClick && (
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              title={t('delete')} aria-label={t('delete')}
+              className="p-1.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
           )}
           <button type="button"
             onClick={event => { event.stopPropagation(); setRecordExpanded(log.id, !expanded) }}

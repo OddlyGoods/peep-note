@@ -380,6 +380,16 @@ html[data-theme='light'] body {
   color: #1e293b;
 }
 
+/* Transparent quick-entry windows must not inherit the app canvas background. */
+html:has(#overlay-root) {
+  background: transparent !important;
+  color-scheme: normal !important;
+}
+html[data-theme] body:has(> #overlay-root),
+#overlay-root {
+  background: transparent !important;
+}
+
 html[data-theme='light'] .card,
 html[data-theme='light'] .input {
   background: rgba(255,255,255,.9);

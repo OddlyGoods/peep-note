@@ -400,7 +400,7 @@ export default function Overlay() {
       onDrop={handleDrop}
     >
       <div
-        className="flex-1 flex flex-col overflow-hidden"
+        className={`flex-1 flex flex-col overflow-hidden ${maximized ? 'rounded-none' : 'rounded-xl'}`}
         style={{ background: 'var(--overlay-bg)', border: '1px solid var(--medium-border)' }}
       >
         {/* 드래그 타이틀바 */}
@@ -547,7 +547,7 @@ export default function Overlay() {
               <TagInput key={tagInputKey} value={tags} onChange={setTags} disabled={saving || saved} />
             </div>
 
-            <div className="space-y-1.5 shrink-0">
+            <div className="flex flex-col gap-1.5 shrink-0">
               {attachmentPicker.input}
               {attachmentPicker.dialog}
               {attachments.length > 0 && <div className="flex max-h-40 flex-col gap-1.5 overflow-y-auto">

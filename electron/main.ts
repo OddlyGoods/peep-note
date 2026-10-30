@@ -221,7 +221,7 @@ function createOverlayWindow() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize
   const margin = 20
   const winW = 480
-  const winH = 420
+  const winH = 540
 
   overlayWindow = new BrowserWindow({
     width: winW,

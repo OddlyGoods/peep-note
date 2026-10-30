@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { useOpenLog } from './LogNavigationProvider'
 import { format, isToday } from 'date-fns'
 import { ko, ja, zhCN } from 'date-fns/locale'
 import {
   Camera, Video, Text as TextIcon, Code2, Globe, Hash,
-  Pin, Trash2, ChevronRight, Clock, Check, Sparkles, Loader2, MessageCircle, LocateFixed, File as FileIcon
+  Pin, Trash2, ChevronDown, ChevronUp, Clock, Check, Sparkles, Loader2, MessageCircle, LocateFixed, File as FileIcon
 } from 'lucide-react'
 import { Log } from '../lib/api'
 import { useLogStore } from '../stores/logStore'
@@ -15,6 +15,7 @@ import { useI18n } from '../i18n'
 import { getAiSummaryContent, getAiSummaryTitle } from '../lib/aiSummary'
 import NoteExcerpt from './NoteExcerpt'
 import SecretIconBadge from './SecretIconBadge'
+import { useCardViewStore } from '../stores/cardViewStore'
 
 const TYPE_CONFIG = {
   note:       { icon: TextIcon, label: 'note',     color: 'text-violet-400', bg: 'bg-violet-500/10 border-violet-500/20' },
@@ -97,6 +98,9 @@ function MediaThumbnail({ log }: { log: Log }) {
 
 export default function LogCard({ log, basePath = '/log', showCheckbox = false, checked = false, onCheck, onCardClick, inGroup = false, summaryAccent = false, isDeleting = false, isCollapsing = false, onMoved, onReveal }: LogCardProps) {
   const { language, t } = useI18n()
+  const expanded = useCardViewStore(state => state.collapsedRecords[log.id] !== true)
+  const setRecordExpanded = useCardViewStore(state => state.setRecordExpanded)
+  const contentId = useId()
   const openLog = useOpenLog()
   const deleteLog = useLogStore(state => state.deleteLog)
   const updateLog = useLogStore(state => state.updateLog)
@@ -187,26 +191,30 @@ export default function LogCard({ log, basePath = '/log', showCheckbox = false, 
           <div className="flex min-w-0 items-center gap-1.5">
             <h3 className="min-w-0 flex-1 text-sm font-medium text-gray-100 truncate">{displayTitle || t('untitled')}</h3>
           </div>
-          {(log.log_type === 'screenshot' || log.log_type === 'video') && log.file_path && (
-            <div className="mt-2">
-              <MediaThumbnail log={log} />
-            </div>
-          )}
-          {log.is_secret ? (
-            <div className="mt-1 text-xs text-gray-500">••••••••••••</div>
-          ) : displayContent && (log.log_type === 'note' ? (
-            <NoteExcerpt content={displayContent} code={log.content_format === 'code' || log.content_format === 'html'} markdown={log.content_format === 'markdown'} />
-          ) : (
-            <NoteExcerpt content={displayContent} code={log.content_format === 'code' || log.content_format === 'html'} markdown={isAiSummary || log.content_format === 'markdown'} maxLines={2} />
-          ))}
-          {/* 태그 */}
-          {log.tags?.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-2">
-              {log.tags.map(tag => (
-                <span key={tag} className="tag bg-gray-800 text-gray-400 border border-gray-700">#{tag}</span>
+          <div id={contentId} hidden={!expanded}>
+            {expanded && <>
+              {(log.log_type === 'screenshot' || log.log_type === 'video') && log.file_path && (
+                <div className="mt-2">
+                  <MediaThumbnail log={log} />
+                </div>
+              )}
+              {log.is_secret ? (
+                <div className="mt-1 text-xs text-gray-500">••••••••••••</div>
+              ) : displayContent && (log.log_type === 'note' ? (
+                <NoteExcerpt content={displayContent} code={log.content_format === 'code' || log.content_format === 'html'} markdown={log.content_format === 'markdown'} />
+              ) : (
+                <NoteExcerpt content={displayContent} code={log.content_format === 'code' || log.content_format === 'html'} markdown={isAiSummary || log.content_format === 'markdown'} maxLines={2} />
               ))}
-            </div>
-          )}
+              {/* 태그 */}
+              {log.tags?.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {log.tags.map(tag => (
+                    <span key={tag} className="tag bg-gray-800 text-gray-400 border border-gray-700">#{tag}</span>
+                  ))}
+                </div>
+              )}
+            </>}
+          </div>
           <div className="flex items-center gap-2 mt-2 text-xs text-gray-400">
             <span className="flex items-center gap-1">
               <Clock className="w-3 h-3" />
@@ -271,7 +279,14 @@ export default function LogCard({ log, basePath = '/log', showCheckbox = false, 
               </button>
             </>
           )}
-          <ChevronRight className="w-4 h-4 text-gray-400" />
+          <button type="button"
+            onClick={event => { event.stopPropagation(); setRecordExpanded(log.id, !expanded) }}
+            className="p-1.5 rounded-lg text-gray-400 hover:text-violet-400 hover:bg-violet-500/10 transition-colors"
+            title={t(expanded ? 'collapseContent' : 'expandContent')}
+            aria-label={t(expanded ? 'collapseContent' : 'expandContent')}
+            aria-expanded={expanded} aria-controls={contentId}>
+            {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </button>
         </div>
       </div>
 

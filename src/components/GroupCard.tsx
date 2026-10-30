@@ -4,17 +4,7 @@ import { LogGroup, api } from '../lib/api'
 import LogCard from './LogCard'
 import ConfirmModal from './ConfirmModal'
 import { useI18n } from '../i18n'
-
-type GroupViewState = { expanded: boolean; logsExpanded: boolean }
-const groupViewStates = new Map<string, GroupViewState>()
-
-function savedGroupViewState(groupId: string): GroupViewState {
-  return groupViewStates.get(groupId) ?? { expanded: true, logsExpanded: false }
-}
-
-function rememberGroupViewState(groupId: string, patch: Partial<GroupViewState>) {
-  groupViewStates.set(groupId, { ...savedGroupViewState(groupId), ...patch })
-}
+import { useCardViewStore } from '../stores/cardViewStore'
 
 interface Props {
   group: LogGroup
@@ -31,7 +21,10 @@ interface Props {
 
 export default function GroupCard({ group, onRefresh, startEditing = false, onStartEditingHandled, showCheckbox = false, checked = false, onCheck, isDeleting = false, isCollapsing = false, revealLogId }: Props) {
   const { t, language } = useI18n()
-  const [expanded, setExpanded] = useState(() => savedGroupViewState(group.id).expanded)
+  const expanded = useCardViewStore(state => state.collapsedGroups[group.id] !== true)
+  const logsExpanded = useCardViewStore(state => state.expandedGroupRecords[group.id] === true)
+  const setGroupExpanded = useCardViewStore(state => state.setGroupExpanded)
+  const setGroupRecordsExpanded = useCardViewStore(state => state.setGroupRecordsExpanded)
   const [editing, setEditing] = useState(false)
   const [editName, setEditName] = useState(group.name)
   const [confirmAction, setConfirmAction] = useState<'ungroup' | 'delete' | null>(null)
@@ -132,19 +125,17 @@ export default function GroupCard({ group, onRefresh, startEditing = false, onSt
   const nonSummaryLogs = group.logs.filter(l => l.log_type !== 'summary')
   const summaryLog = group.logs.find(l => l.log_type === 'summary')
   const recordCount = (count: number) => language === 'en' ? `${count} ${t('records')}` : language === 'ko' ? `${count}개` : `${count}${t('records')}`
-  const [logsExpanded, setLogsExpanded] = useState(() => savedGroupViewState(group.id).logsExpanded)
   const [revealedInGroup, setRevealedInGroup] = useState(false)
 
   useEffect(() => {
     if (!revealLogId || !group.logs.some(log => log.id === revealLogId)) return
-    setExpanded(true)
-    setLogsExpanded(true)
+    setGroupExpanded(group.id, true)
+    setGroupRecordsExpanded(group.id, true)
     setRevealedInGroup(true)
-    rememberGroupViewState(group.id, { expanded: true, logsExpanded: true })
   }, [revealLogId, group.logs, group.id])
 
   return (
-    <div className={`group relative overflow-hidden rounded-xl border-2 bg-violet-500/5 transition-all duration-300 ease-in-out ${
+    <div data-group-id={group.id} className={`group relative overflow-hidden rounded-xl border-2 bg-violet-500/5 transition-all duration-300 ease-in-out ${
       collapsingVisual ? 'max-h-0 opacity-0 scale-[0.98] border-transparent' : revealedInGroup ? 'max-h-none' : 'max-h-[5000px]'
     } ${deletingVisual ? 'pointer-events-none opacity-45' : ''} ${checked ? 'border-violet-400/70 ring-1 ring-violet-400/25' : 'border-violet-500/30'}`}>
       {/* 그룹 헤더 */}
@@ -247,11 +238,10 @@ export default function GroupCard({ group, onRefresh, startEditing = false, onSt
                 <Trash2 className="w-3 h-3" />
               </button>
               <button
-                onClick={() => setExpanded(value => {
-                  const next = !value
-                  rememberGroupViewState(group.id, { expanded: next })
-                  return next
-                })}
+                onClick={() => setGroupExpanded(group.id, !expanded)}
+                title={t(expanded ? 'collapseContent' : 'expandContent')}
+                aria-label={t(expanded ? 'collapseContent' : 'expandContent')}
+                aria-expanded={expanded}
                 className="p-1 rounded text-violet-400/60 hover:text-violet-300 hover:bg-violet-500/20 transition-colors"
               >
                 {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
@@ -297,11 +287,8 @@ export default function GroupCard({ group, onRefresh, startEditing = false, onSt
 
               {/* 일반 기록 토글 */}
               <button
-                onClick={() => setLogsExpanded(value => {
-                  const next = !value
-                  rememberGroupViewState(group.id, { logsExpanded: next })
-                  return next
-                })}
+                onClick={() => setGroupRecordsExpanded(group.id, !logsExpanded)}
+                aria-expanded={logsExpanded}
                 className="flex items-center justify-center gap-1.5 w-full px-3 py-1.5 rounded-lg text-xs text-violet-500 hover:text-violet-600 hover:bg-violet-500/10 transition-colors"
               >
                 {logsExpanded

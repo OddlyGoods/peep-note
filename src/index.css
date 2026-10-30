@@ -1131,11 +1131,22 @@ html[data-theme='light'] .markdown-code-copy[data-state='error'] {
   border-color: var(--medium-border);
   background: var(--side-panel-bg);
 }
+html[data-theme='light'] .comment-composer {
+  background: #fff;
+}
 .comment-composer textarea.comment-composer-input {
   display: block;
   border: 0;
   box-shadow: none;
   background: transparent;
+}
+.comment-composer-input,
+.comment-edit-input {
+  scrollbar-width: none;
+}
+.comment-composer-input::-webkit-scrollbar,
+.comment-edit-input::-webkit-scrollbar {
+  display: none;
 }
 .comment-composer:focus-within {
   box-shadow: 0 0 0 1px rgb(139 92 246 / .25);

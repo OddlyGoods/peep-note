@@ -1,10 +1,11 @@
-import { useLayoutEffect, useRef, type TextareaHTMLAttributes } from 'react'
+import { useLayoutEffect, useRef, type RefObject, type TextareaHTMLAttributes } from 'react'
 import { useScreenActive } from '../lib/screenActivity'
 
-type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & { maxHeight?: number }
+type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & { maxHeight?: number; extraLine?: boolean; inputRef?: RefObject<HTMLTextAreaElement> }
 
-export default function AutoGrowTextarea({ value, className, style, maxHeight = 700, ...props }: Props) {
-  const input = useRef<HTMLTextAreaElement>(null)
+export default function AutoGrowTextarea({ value, className, style, maxHeight = 700, extraLine = true, inputRef, ...props }: Props) {
+  const ownInput = useRef<HTMLTextAreaElement>(null)
+  const input = inputRef ?? ownInput
   const active = useScreenActive()
 
   useLayoutEffect(() => {
@@ -15,12 +16,19 @@ export default function AutoGrowTextarea({ value, className, style, maxHeight = 
       if (!element.isConnected || !element.getClientRects().length) return
       const scrollTop = element.scrollTop
       element.style.overflowY = 'hidden'
-      element.style.height = '0px'
+      // Restore the CSS padding before measuring, so the spare line does not accumulate.
+      element.style.paddingBottom = typeof style?.paddingBottom === 'number' ? `${style.paddingBottom}px` : style?.paddingBottom ?? ''
       const computed = getComputedStyle(element)
+      if (extraLine) {
+        const lineHeight = parseFloat(computed.lineHeight) || parseFloat(computed.fontSize) * 1.5
+        element.style.paddingBottom = `${parseFloat(computed.paddingBottom) + lineHeight}px`
+      }
+      element.style.height = '0px'
       const height = element.scrollHeight + parseFloat(computed.borderTopWidth) + parseFloat(computed.borderBottomWidth)
       element.style.height = `${Math.min(maxHeight, Math.ceil(height))}px`
       element.style.overflowY = height > maxHeight ? 'auto' : 'hidden'
-      element.scrollTop = height > maxHeight ? scrollTop : 0
+      const caretAtEnd = document.activeElement === element && element.selectionEnd === element.value.length
+      element.scrollTop = height > maxHeight ? (caretAtEnd ? element.scrollHeight : scrollTop) : 0
     }
     resize()
     const observer = new ResizeObserver(() => {
@@ -33,8 +41,8 @@ export default function AutoGrowTextarea({ value, className, style, maxHeight = 
     let cancelled = false
     void document.fonts.ready.then(() => { if (!cancelled) resize() })
     return () => { cancelled = true; observer.disconnect() }
-  }, [value, className, maxHeight, active])
+  }, [value, className, maxHeight, extraLine, active, input, style?.paddingBottom])
 
   return <textarea {...props} ref={input} value={value} rows={1} className={className}
-    style={{ ...style, maxHeight, paddingBottom: 'calc(1lh + 0.5rem)', resize: 'none' }} />
+    style={{ ...style, maxHeight, resize: 'none' }} />
 }

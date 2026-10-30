@@ -28,8 +28,10 @@ export default function AttachmentFileRow({ reference, url, name, size, compact 
     {!allowOpen ? thumbnail : <button type="button" onClick={() => void window.electronAPI?.openAttachment(reference)}
       title={t('openFile')} aria-label={t('openFile')} className="shrink-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400">{thumbnail}</button>}
     <div className="min-w-0 flex-1 space-y-1">
-      <div className="flex"><AttachmentModeBadge reference={reference} /></div>
-      <p className={`truncate ${compact ? 'text-xs' : 'text-sm'}`} style={{ color: 'var(--title-text)' }} title={filename}>{filename}</p>
+      <div className="flex min-w-0 items-center gap-2">
+        <AttachmentModeBadge reference={reference} />
+        <p className={`min-w-0 truncate ${compact ? 'text-xs' : 'text-sm'}`} style={{ color: 'var(--title-text)' }} title={filename}>{filename}</p>
+      </div>
       {!!size && <p className="text-[10px] text-gray-400">{formatBytes(size)}</p>}
     </div>
     <div className={`attachment-actions flex shrink-0 items-center gap-1.5 ${actionsOnHover ? 'opacity-0 pointer-events-none transition-opacity group-hover/file:opacity-100 group-hover/file:pointer-events-auto group-focus-within/file:opacity-100 group-focus-within/file:pointer-events-auto' : ''}`}>

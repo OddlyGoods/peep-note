@@ -7,6 +7,7 @@ import { useAttachmentPicker } from '../lib/useAttachmentPicker'
 import { useFileDrop } from '../lib/useFileDrop'
 import type { AttachmentMode } from '../../shared/attachments'
 import CommentFiles from './CommentFiles'
+import AutoGrowTextarea from './AutoGrowTextarea'
 
 export default function CommentCard({ comment, date, draft, files, busy, error, onEdit, onChange, onSave, onCancel, onDelete, onFiles, onRemoveFile }: {
   comment: LogComment
@@ -33,11 +34,11 @@ export default function CommentCard({ comment, date, draft, files, busy, error, 
     if (editing && active) input.current?.focus({ preventScroll: true })
   }, [editing, active])
 
-  return <article className="comment-card group/comment relative rounded-lg border border-gray-700 bg-gray-800/40 px-3 py-2.5" aria-busy={busy}
+  return <article className="comment-card group/comment relative rounded-lg border border-gray-700 bg-gray-800/40 p-4" aria-busy={busy}
     data-comment-drop data-dragging={drop.dragging} {...drop.handlers}>
     {picker.input}{picker.dialog}
     {editing ? <>
-      <textarea ref={input} className="input min-h-20 w-full resize-y text-sm" aria-label={t('editComment')}
+      <AutoGrowTextarea inputRef={input} maxHeight={240} className="input comment-edit-input w-full p-4 text-sm" aria-label={t('editComment')}
         value={draft} maxLength={2000} disabled={busy} onChange={event => onChange(event.target.value)}
         onKeyDown={event => {
           if (event.nativeEvent.isComposing) return
@@ -52,7 +53,7 @@ export default function CommentCard({ comment, date, draft, files, busy, error, 
       {comment.content || !files.length
         ? <p className="whitespace-pre-wrap break-words pr-16 text-sm text-gray-200">{comment.content || t('noContent')}</p>
         : <div className="flex min-h-7 items-center pr-16 text-xs text-gray-400">{t('attachmentFiles')}</div>}
-      <div className="comment-actions absolute right-2 top-2 flex items-center gap-1 opacity-0 pointer-events-none transition-opacity group-hover/comment:opacity-100 group-hover/comment:pointer-events-auto group-focus-within/comment:opacity-100 group-focus-within/comment:pointer-events-auto">
+      <div className="comment-actions absolute right-3 top-3 flex items-center gap-1 opacity-0 pointer-events-none transition-opacity group-hover/comment:opacity-100 group-hover/comment:pointer-events-auto group-focus-within/comment:opacity-100 group-focus-within/comment:pointer-events-auto">
         <button type="button" onClick={onEdit} disabled={busy} title={t('editComment')} aria-label={t('editComment')}
           className="btn-ghost flex h-7 w-7 items-center justify-center p-0 disabled:opacity-40"><Pencil className="h-3.5 w-3.5" /></button>
         <button type="button" onClick={onDelete} disabled={busy} title={t('deleteComment')} aria-label={t('deleteComment')}

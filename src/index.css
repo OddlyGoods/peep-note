@@ -847,6 +847,11 @@ html[data-theme='light'] .markdown-content h1,
 html[data-theme='light'] .markdown-content h2,
 html[data-theme='light'] .markdown-content h3,
 html[data-theme='light'] .markdown-content strong { color: #172033 !important; }
+.markdown-content > :is(ul, ol) + p,
+.ai-summary-content > :is(ul, ol) + p {
+  margin-top: 0.75rem;
+}
+
 .markdown-table-wrap {
   margin: 1rem 0;
   overflow-x: auto;

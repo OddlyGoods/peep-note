@@ -6,7 +6,7 @@ export type Language = 'en' | 'ko' | 'ja' | 'zh'
 
 const messages = {
   en: {
-    quitApp: 'Quit PeepNote', quitAppConfirm: 'Quit PeepNote? Unsaved changes will be lost.', quitAppFailed: 'Could not quit PeepNote. Please try again.',
+    quitApp: 'Quit', quitAppConfirm: 'Quit PeepNote? Unsaved changes will be lost.', quitAppFailed: 'Could not quit PeepNote. Please try again.',
     openLinkFailed: 'Could not open this link.',
     showInDashboard: 'Show in Explore',
     customAiModel: 'Enter manually', customAiModelId: 'Model ID', customAiModelHint: 'Enter the exact model ID provided by your AI provider.', customAiModelRequired: 'Enter a model ID before saving.',

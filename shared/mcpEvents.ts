@@ -7,6 +7,7 @@ export interface McpSavedNote {
 
 export interface McpChange {
   noteSaved?: McpSavedNote
+  notificationsEnabled?: boolean
 }
 
 export type McpChangeListener = (change?: McpChange) => void

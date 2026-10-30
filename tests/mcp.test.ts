@@ -19,6 +19,7 @@ const access = createMcpAccess(root)
 let endpoint: string, client: Client, app: ReturnType<typeof createApiApp>, server: ReturnType<typeof serve>
 let changes = 0
 const savedNotes: McpSavedNote[] = []
+const notificationPreferences: boolean[] = []
 function seed(id: string, extra: Record<string, unknown> = {}) {
   const row = { id, user_id: 'local', title: id, content: 'reference content', ...extra }
   const keys = Object.keys(row)
@@ -35,7 +36,11 @@ before(async () => {
   await once(server, 'listening')
   const port = (server.address() as { port: number }).port
   endpoint = `http://127.0.0.1:${port}/mcp`
-  app = createApiApp(port, access, change => { changes++; if (change?.noteSaved) savedNotes.push(change.noteSaved) })
+  app = createApiApp(port, access, change => {
+    changes++
+    if (change?.noteSaved) savedNotes.push(change.noteSaved)
+    if (change?.notificationsEnabled !== undefined) notificationPreferences.push(change.notificationsEnabled)
+  })
   run("INSERT INTO workspaces (id,user_id,name,is_default) VALUES ('general','local','General',1), ('other','local','Research',0), ('foreign-ws','legacy','Foreign',1)")
   run("INSERT INTO settings (user_id,openai_api_key,qwen_api_key,secret_password_hash) VALUES ('local','provider-fixture-only','another-provider-fixture','password-fixture-only')")
   seed('visible', { tags: '["rag"]', attachments: '["/private/path.txt"]', ocr_text: 'searchable OCR' })
@@ -54,7 +59,7 @@ after(async () => {
 
 test('MCP is opt-in, requires a private token and refuses browser origins and spoofed hosts', async () => {
   assert.equal((await fetch(endpoint, { method: 'POST' })).status, 404)
-  assert.deepEqual(await (await fetch(endpoint.replace('/mcp', '/api/mcp'))).json(), { enabled: false, endpoint })
+  assert.deepEqual(await (await fetch(endpoint.replace('/mcp', '/api/mcp'))).json(), { enabled: false, endpoint, notificationsEnabled: true })
   assert.equal((await fetch(endpoint.replace('/mcp', '/api/mcp/config'))).status, 409)
   for (const { id } of MCP_CLIENTS) {
     assert.equal((await fetch(endpoint.replace('/mcp', `/api/mcp/config?client=${id}`))).status, 409)
@@ -175,6 +180,54 @@ test('only successful MCP note saves publish a bounded public-note notification'
   output(await call('trash_notes', { note_ids: [note.id] }))
   assert.equal(savedNotes.length, before + 2)
   assert.deepEqual(Object.keys(savedNotes.at(-1)!).sort(), ['id', 'preview', 'savedAt', 'title'])
+})
+
+test('notification preference saves immediately, survives reload and does not rotate MCP credentials', async () => {
+  const control = endpoint.replace('/mcp', '/api/mcp/notifications')
+  const authorization = tokenHeader()
+  const before = savedNotes.length
+  const toggle = (enabled: unknown) => fetch(control, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled }) })
+  assert.equal((await toggle('false')).status, 400)
+  assert.equal(access.notificationsEnabled, true)
+  const disabled = await toggle(false)
+  assert.equal(disabled.status, 200)
+  assert.deepEqual(await disabled.json(), { enabled: true, endpoint, notificationsEnabled: false })
+  assert.equal(notificationPreferences.at(-1), false)
+  assert.equal(access.notificationsEnabled, false)
+  const restored = createMcpAccess(root)
+  assert.equal(restored.notificationsEnabled, false)
+  assert.equal(restored.accepts(authorization), true)
+  assert.equal(tokenHeader(), authorization)
+  const refreshes = changes
+  const note = output(await call('create_note', { title: 'Silent save', content: 'Saved without a notification' }))
+  output(await call('update_note', { id: note.id, content: 'Still silent' }))
+  assert.equal(row(note.id).content, 'Still silent')
+  assert.equal(savedNotes.length, before)
+  assert.equal(changes, refreshes + 2)
+  assert.equal((await toggle(true)).status, 200)
+  assert.equal(notificationPreferences.at(-1), true)
+  output(await call('update_note', { id: note.id, content: 'Notifications restored' }))
+  assert.equal(savedNotes.length, before + 1)
+  assert.equal(savedNotes.at(-1)!.id, note.id)
+  assert.equal(tokenHeader(), authorization)
+})
+
+test('notification preference survives disabling MCP and older configuration files default to notifications on', () => {
+  const directory = path.join(root, 'notification-preference')
+  fs.mkdirSync(directory)
+  const file = path.join(directory, 'mcp-access.json')
+  fs.writeFileSync(file, JSON.stringify({ enabled: true, token: '1'.repeat(64) }))
+  const legacy = createMcpAccess(directory)
+  assert.equal(legacy.notificationsEnabled, true)
+  legacy.setNotificationsEnabled(false)
+  legacy.setEnabled(false)
+  const restored = createMcpAccess(directory)
+  assert.equal(restored.enabled, false)
+  assert.equal(restored.notificationsEnabled, false)
+  restored.setEnabled(true)
+  assert.equal(createMcpAccess(directory).notificationsEnabled, false)
+  restored.setNotificationsEnabled(true)
+  assert.equal(createMcpAccess(directory).notificationsEnabled, true)
 })
 
 test('group tools omit secret members and reject mixed groups or secret IDs without partial mutation', async () => {

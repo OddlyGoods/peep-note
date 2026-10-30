@@ -6,6 +6,7 @@ interface McpStatusStore {
   status: McpStatus | null
   refresh: () => Promise<void>
   setEnabled: (enabled: boolean) => Promise<void>
+  setNotificationsEnabled: (enabled: boolean) => Promise<void>
 }
 
 let revision = 0
@@ -27,6 +28,12 @@ export const useMcpStatusStore = create<McpStatusStore>(set => ({
   setEnabled: async enabled => {
     revision++
     const status = await api.mcp.setEnabled(enabled)
+    revision++
+    set({ status })
+  },
+  setNotificationsEnabled: async enabled => {
+    revision++
+    const status = await api.mcp.setNotificationsEnabled(enabled)
     revision++
     set({ status })
   }

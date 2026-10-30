@@ -5,6 +5,8 @@ import type { Hotkeys } from '../../shared/hotkeys'
 import type { AiConnectionInput, AiConnectionResult } from '../../shared/aiConnection'
 import type { AiModelMap, AiProvider } from '../../shared/aiModels'
 
+type McpStatus = { enabled: boolean; endpoint: string; notificationsEnabled: boolean }
+
 const configuredPort = Number(import.meta.env.VITE_LOCAL_SERVER_PORT)
 const LOCAL_SERVER_PORT = Number.isInteger(configuredPort) && configuredPort >= 1024 && configuredPort <= 65535 ? configuredPort : 3848
 const BASE = `http://127.0.0.1:${LOCAL_SERVER_PORT}`
@@ -24,8 +26,9 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
 export const api = {
   mcp: {
-    status: () => request<{ enabled: boolean; endpoint: string }>('/api/mcp'),
-    setEnabled: (enabled: boolean) => request<{ enabled: boolean; endpoint: string }>('/api/mcp', { method: 'PUT', body: JSON.stringify({ enabled }) }),
+    status: () => request<McpStatus>('/api/mcp'),
+    setEnabled: (enabled: boolean) => request<McpStatus>('/api/mcp', { method: 'PUT', body: JSON.stringify({ enabled }) }),
+    setNotificationsEnabled: (enabled: boolean) => request<McpStatus>('/api/mcp/notifications', { method: 'PUT', body: JSON.stringify({ enabled }) }),
     config: (client: McpClient = 'codex') => request<{ config: string }>(`/api/mcp/config?client=${encodeURIComponent(client)}`)
   },
   // Logs

@@ -12,6 +12,7 @@ const copy = {
     description: 'Control PeepNote from Codex or another MCP client.',
     limits: 'Secret notes and provider API keys are excluded.',
     endpoint: 'Server URL', client: 'Connect with', configButton: 'Copy configuration', commandButton: 'Copy command',
+    notifications: 'Saved note notifications', notificationHint: 'Show a desktop notification when an MCP client saves or updates a note.',
     setup: {
       codex: 'Add the copied block to ~/.codex/config.toml and fully restart Codex. Ask it to find your PeepNote notes to check the connection.',
       'claude-code': 'Run the copied command in your terminal, then restart Claude Code. Use /mcp to check the peepnote connection.',
@@ -25,6 +26,7 @@ const copy = {
     description: '코덱스 등 MCP 클라이언트에서 피프노트를 제어할 수 있습니다.',
     limits: '시크릿 메모와 AI 공급처 API 키는 제외됩니다.',
     endpoint: '서버 주소', client: '연결할 도구', configButton: '연결 설정 복사', commandButton: '명령어 복사',
+    notifications: '메모 저장 알림', notificationHint: 'MCP로 메모를 작성하거나 수정하면 알림을 표시합니다.',
     setup: {
       codex: '복사한 설정을 ~/.codex/config.toml에 추가하고 Codex를 완전히 재시작하세요. 피프노트 메모 검색을 요청해 연결을 확인할 수 있습니다.',
       'claude-code': '복사한 명령어를 터미널에서 실행한 뒤 Claude Code를 재시작하세요. /mcp에서 peepnote 연결을 확인할 수 있습니다.',
@@ -38,6 +40,7 @@ const copy = {
     description: 'Codex などの MCP クライアントから PeepNote を操作できます。',
     limits: 'シークレットメモと AI プロバイダーの API キーは対象外です。',
     endpoint: 'サーバー URL', client: '接続するツール', configButton: '接続設定をコピー', commandButton: 'コマンドをコピー',
+    notifications: 'メモ保存の通知', notificationHint: 'MCP でメモを作成・更新したときに通知を表示します。',
     setup: {
       codex: 'コピーした設定を ~/.codex/config.toml に追加し、Codex を完全に再起動してください。PeepNote のメモを検索して接続を確認できます。',
       'claude-code': 'コピーしたコマンドをターミナルで実行し、Claude Code を再起動してください。/mcp で peepnote の接続を確認できます。',
@@ -51,6 +54,7 @@ const copy = {
     description: '通过 Codex 等 MCP 客户端控制 PeepNote。',
     limits: '私密笔记和 AI 服务商 API 密钥不对 MCP 开放。',
     endpoint: '服务器地址', client: '选择工具', configButton: '复制连接配置', commandButton: '复制命令',
+    notifications: '笔记保存通知', notificationHint: '通过 MCP 创建或更新笔记时显示桌面通知。',
     setup: {
       codex: '将复制的配置添加到 ~/.codex/config.toml，然后完全重启 Codex。让它搜索 PeepNote 笔记以确认连接。',
       'claude-code': '在终端中运行复制的命令，然后重启 Claude Code。使用 /mcp 检查 peepnote 连接。',
@@ -68,6 +72,7 @@ export default function McpPanel() {
   const status = useMcpStatusStore(state => state.status)
   const refreshStatus = useMcpStatusStore(state => state.refresh)
   const setEnabled = useMcpStatusStore(state => state.setEnabled)
+  const setNotificationsEnabled = useMcpStatusStore(state => state.setNotificationsEnabled)
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -103,6 +108,13 @@ export default function McpPanel() {
     } catch { setFailed(true) }
     finally { setBusy(false) }
   }
+  async function toggleNotifications() {
+    if (!status || busy) return
+    setBusy(true); setFailed(false)
+    try { await setNotificationsEnabled(!(status.notificationsEnabled ?? true)) }
+    catch { setFailed(true) }
+    finally { setBusy(false) }
+  }
   return <section className="card p-5" aria-labelledby="mcp-panel-title" aria-busy={busy}>
     <h2 id="mcp-panel-title" className="flex items-center gap-2 text-sm font-semibold text-gray-200 mb-4"><Plug className="w-4 h-4 text-violet-400" />{text.title}</h2>
     <div className="flex items-start justify-between gap-4">
@@ -133,6 +145,13 @@ export default function McpPanel() {
         {copied ? t('copied') : client === 'codex' ? text.configButton : text.commandButton}
       </button>
     </div>}
+    <div className="mt-4 border-t pt-4 flex items-start justify-between gap-4" style={{ borderColor: 'var(--soft-border)' }}>
+      <div><p className="text-sm text-gray-300">{text.notifications}</p><p className="text-xs text-gray-400 mt-1 leading-relaxed">{text.notificationHint}</p></div>
+      <button type="button" role="switch" aria-label={text.notifications} aria-checked={status?.notificationsEnabled ?? true} disabled={!status || busy} onClick={toggleNotifications}
+        className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-40 ${(status?.notificationsEnabled ?? true) ? 'bg-violet-500' : 'bg-gray-700'}`}>
+        <span className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition-transform ${(status?.notificationsEnabled ?? true) ? 'translate-x-5' : ''}`} />
+      </button>
+    </div>
     {failed && <p role="alert" className="text-xs text-red-400 mt-3">{text.failed}</p>}
   </section>
 }

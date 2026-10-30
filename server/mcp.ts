@@ -5,16 +5,26 @@ import { createPeepNoteMcp } from './mcpTools'
 import type { McpAccess } from './mcpAccess'
 import { isMcpClient } from '../shared/mcpClients'
 
-export function mcpControl(access: McpAccess, port: number) {
+export function mcpControl(access: McpAccess, port: number, onChanged: McpChangeListener = () => {}) {
   const app = new Hono()
   const endpoint = `http://127.0.0.1:${port}/mcp`
-  app.get('/', c => c.json({ enabled: access.enabled, endpoint }))
+  const status = () => ({ enabled: access.enabled, endpoint, notificationsEnabled: access.notificationsEnabled })
+  app.get('/', c => c.json(status()))
   app.put('/', async c => {
     const body = await c.req.json().catch(() => null)
     if (typeof body?.enabled !== 'boolean') return c.json({ error: 'INVALID_MCP_SETTING' }, 400)
     try {
       access.setEnabled(body.enabled)
-      return c.json({ enabled: access.enabled, endpoint })
+      return c.json(status())
+    } catch { return c.json({ error: 'MCP_SETTING_FAILED' }, 500) }
+  })
+  app.put('/notifications', async c => {
+    const body = await c.req.json().catch(() => null)
+    if (typeof body?.enabled !== 'boolean') return c.json({ error: 'INVALID_MCP_SETTING' }, 400)
+    try {
+      access.setNotificationsEnabled(body.enabled)
+      try { onChanged({ notificationsEnabled: access.notificationsEnabled }) } catch { /* The preference is already saved. */ }
+      return c.json(status())
     } catch { return c.json({ error: 'MCP_SETTING_FAILED' }, 500) }
   })
   app.get('/config', c => {
@@ -40,7 +50,9 @@ export function mcpEndpoint(access: McpAccess, onChanged: McpChangeListener) {
       c.header('Allow', 'POST')
       return c.json({ error: 'METHOD_NOT_ALLOWED' }, 405)
     }
-    const server = createPeepNoteMcp(onChanged, () => access.accepts(authorization))
+    const server = createPeepNoteMcp(change => {
+      onChanged(change?.noteSaved && !access.notificationsEnabled ? undefined : change)
+    }, () => access.accepts(authorization))
     const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true, maxRequestBodySize: 1_048_576 })
     try {
       await server.connect(transport)

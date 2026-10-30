@@ -44,7 +44,7 @@ export function createApiApp(port: number, access = createMcpAccess(), onMcpChan
   app.route('/api/groups', groups)
   app.route('/api/ai', ai)
   app.route('/api/trash', trash)
-  app.route('/api/mcp', mcpControl(access, port))
+  app.route('/api/mcp', mcpControl(access, port, onMcpChanged))
 
   app.get('/health', (c) => c.json({ status: 'ok', port }))
   return app

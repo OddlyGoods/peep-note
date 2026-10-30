@@ -75,7 +75,7 @@ export default function McpPanel() {
   return <section className="card p-5" aria-labelledby="mcp-panel-title" aria-busy={busy}>
     <h2 id="mcp-panel-title" className="flex items-center gap-2 text-sm font-semibold text-gray-200 mb-4"><Plug className="w-4 h-4 text-violet-400" />{text.title}</h2>
     <div className="flex items-start justify-between gap-4">
-      <div><p className="text-sm text-gray-300">{text.enable}</p><p className="text-xs text-gray-400 mt-1 leading-relaxed">{text.description}<br />{text.limits}</p></div>
+      <div><p className="text-sm text-gray-300">{text.enable}</p><p className="text-xs text-gray-400 mt-1 leading-relaxed">{text.description} {text.limits}</p></div>
       <button type="button" role="switch" aria-label={text.enable} aria-checked={status?.enabled ?? false} disabled={!status || busy} onClick={toggle}
         className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-40 ${status?.enabled ? 'bg-violet-500' : 'bg-gray-700'}`}>
         <span className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition-transform ${status?.enabled ? 'translate-x-5' : ''}`} />

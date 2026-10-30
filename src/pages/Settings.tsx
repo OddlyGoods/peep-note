@@ -1,6 +1,6 @@
 import { useScreenActive } from '../lib/screenActivity'
 import { useEffect, useRef, useState } from 'react'
-import { Save, Keyboard, Cloud, User, RotateCcw, Sparkles, Eye, EyeOff, Check, ChevronDown, Lock, Loader2, MoreHorizontal, Settings2 } from 'lucide-react'
+import { Save, Keyboard, Cloud, User, RotateCcw, Sparkles, Eye, EyeOff, Check, ChevronDown, Lock, KeyRound, Loader2, MoreHorizontal, Settings2 } from 'lucide-react'
 import { api, Settings as SettingsType } from '../lib/api'
 import { Language, useI18n } from '../i18n'
 import { useLogStore } from '../stores/logStore'
@@ -444,7 +444,10 @@ export default function Settings() {
             </div>
             <div className="flex items-center justify-between gap-4">
               <p className="text-xs text-gray-400">{secretPasswordSet ? secretSettingsCopy.active : secretSettingsCopy.set}</p>
-              <button type="button" onClick={() => setShowSecretPasswordModal(true)} className="btn-secondary shrink-0 text-xs">{secretPasswordSet ? secretSettingsCopy.actionChange : secretSettingsCopy.actionSet}</button>
+              <button type="button" onClick={() => setShowSecretPasswordModal(true)} className="btn-secondary flex shrink-0 items-center gap-1.5 text-xs">
+                <KeyRound className="h-3.5 w-3.5" aria-hidden="true" />
+                {secretPasswordSet ? secretSettingsCopy.actionChange : secretSettingsCopy.actionSet}
+              </button>
             </div>
           </section>
 

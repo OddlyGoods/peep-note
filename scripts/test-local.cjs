@@ -33,3 +33,4 @@ require('../tests/html-preview.test.ts')
 require('../tests/ai-connection.test.ts')
 
 require('../tests/note-notification.test.ts')
+require('../tests/source-audit.test.ts')

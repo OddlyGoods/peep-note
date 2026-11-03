@@ -26,7 +26,7 @@ function scan(buffer, location) {
   for (const [label, pattern] of rules) {
     pattern.lastIndex = 0
     for (const match of source.matchAll(pattern)) {
-      if (label === 'Email address' && (match[0] === 'noreply@github.com' || /@(?:users\.noreply\.github\.com|example\.(?:com|org|net|invalid)|test\.invalid)$/i.test(match[0]))) continue
+      if (label === 'Email address' && (match[0] === 'noreply@github.com' || /@(?:users\.noreply\.github\.com|example\.(?:com|org|net|invalid|test)|test\.invalid)$/i.test(match[0]))) continue
       const line = source.slice(0, match.index).split('\n').length
       findings.push({ label, location, line })
     }

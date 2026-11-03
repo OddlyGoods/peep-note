@@ -13,3 +13,4 @@ export interface UpdateState {
 }
 
 export const UPDATE_STATE_CHANNEL = 'update-state-changed'
+export const LINUX_UPDATE_RESTART_REQUIRED = 'LINUX_UPDATE_RESTART_REQUIRED'

@@ -2,6 +2,7 @@ import { AlertCircle, CheckCircle2, Download, Loader2, RefreshCw, RotateCw, X } 
 import { useI18n } from '../i18n'
 import { checkForUpdates, downloadUpdate, installUpdate, useUpdateStore } from '../stores/updateStore'
 import type { UpdateState } from '../../shared/updates'
+import { LINUX_UPDATE_RESTART_REQUIRED } from '../../shared/updates'
 
 export default function UpdatePanel({ banner = false }: { banner?: boolean }) {
   const { state, dismissedVersion, dismiss } = useUpdateStore()
@@ -36,7 +37,7 @@ export function UpdatePanelView({ state, banner = false, dismissedVersion = null
           <div className="min-w-0 flex-1 text-xs">
             {!banner && <h3 className="mb-1.5 text-sm font-semibold">{t('updates')}</h3>}
             <p role={status === 'error' ? 'alert' : 'status'}>
-              {t(statusKey[status], { version: version ?? '', percent: Math.floor(percent) })}
+              {t(status === 'error' && state.error === LINUX_UPDATE_RESTART_REQUIRED ? 'updateRestartRequired' : statusKey[status], { version: version ?? '', percent: Math.floor(percent) })}
             </p>
             {state.platform === 'linux' && status !== 'unsupported' && (downloaded || canDownload) && <p className="mt-1 opacity-75">{t('updateAdmin')}</p>}
           </div>

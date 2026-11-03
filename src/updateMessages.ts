@@ -1,5 +1,6 @@
 export const updateMessages = {
   en: {
+    updateRestartRequired: 'Quit PeepNote completely, including the tray, then reopen it from the application menu and try installing again.',
     updates: 'App updates', checkUpdates: 'Check for updates', updateChecking: 'Checking for updates…',
     updateCurrent: 'PeepNote is up to date.', updateAvailable: 'PeepNote {version} is available.',
     updateDownloading: 'Downloading… {percent}%', updateReady: 'The update is ready to install.',
@@ -10,6 +11,7 @@ export const updateMessages = {
     updateLastChecked: 'Last checked', updateDetails: 'Error details'
   },
   ko: {
+    updateRestartRequired: '피프노트를 트레이에서도 완전히 종료한 뒤 앱 메뉴에서 다시 실행하고 설치를 다시 시도해 주세요.',
     updates: '앱 업데이트', checkUpdates: '업데이트 확인', updateChecking: '업데이트 확인 중…',
     updateCurrent: '최신 버전입니다.', updateAvailable: 'PeepNote {version} 업데이트가 있습니다.',
     updateDownloading: '다운로드 중… {percent}%', updateReady: '업데이트 설치 준비가 완료되었습니다.',
@@ -20,6 +22,7 @@ export const updateMessages = {
     updateLastChecked: '마지막 확인', updateDetails: '오류 상세'
   },
   ja: {
+    updateRestartRequired: 'トレイも含めて PeepNote を完全に終了し、アプリメニューから起動し直してインストールを再試行してください。',
     updates: 'アプリの更新', checkUpdates: '更新を確認', updateChecking: '更新を確認中…',
     updateCurrent: '最新バージョンです。', updateAvailable: 'PeepNote {version} を利用できます。',
     updateDownloading: 'ダウンロード中… {percent}%', updateReady: '更新のインストール準備ができました。',
@@ -30,6 +33,7 @@ export const updateMessages = {
     updateLastChecked: '最終確認', updateDetails: 'エラーの詳細'
   },
   zh: {
+    updateRestartRequired: '请从托盘完全退出 PeepNote，然后从应用菜单重新打开并重试安装。',
     updates: '应用更新', checkUpdates: '检查更新', updateChecking: '正在检查更新…',
     updateCurrent: '已是最新版本。', updateAvailable: 'PeepNote {version} 可供更新。',
     updateDownloading: '正在下载… {percent}%', updateReady: '更新已准备就绪。',

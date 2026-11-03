@@ -7,9 +7,9 @@ import path from 'node:path'
 import crypto from 'node:crypto'
 import { execFileSync } from 'node:child_process'
 import { UpdateController } from '../electron/updateController'
-import { installDeb, installDebAndRestart, updatedDebExecutable } from '../electron/installDeb'
+import { installDeb, installDebAndRestart, updatedDebExecutable, linuxPrivilegeRestricted } from '../electron/installDeb'
 import type { UpdateState } from '../shared/updates'
-import { UPDATE_STATE_CHANNEL } from '../shared/updates'
+import { UPDATE_STATE_CHANNEL, LINUX_UPDATE_RESTART_REQUIRED } from '../shared/updates'
 import { useUpdateStore, subscribeToUpdates, checkForUpdates as rendererCheck } from '../src/stores/updateStore'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -109,11 +109,26 @@ test('Debian installer passes file paths as one argument and reports cancellatio
       assert.deepEqual(args, ['/usr/bin/dpkg', '--install', file])
       callback(calls === 1 ? new Error('Cancelled') : null)
     }
-    await assert.rejects(installDeb(file, runner), /Cancelled/)
-    await installDeb(file, runner)
+    await assert.rejects(installDeb(file, runner, () => false), /Cancelled/)
+    await installDeb(file, runner, () => false)
     await assert.rejects(installDeb(null, runner), /unavailable/)
     await assert.rejects(installDeb(`${file}.missing`, runner), /unavailable/)
     assert.equal(calls, 2)
+  } finally { fs.rmSync(root, { recursive: true, force: true }) }
+})
+
+test('a privilege-restricted app reports a restart requirement before attempting administrator authentication', async () => {
+  assert.equal(linuxPrivilegeRestricted(() => 'Name:\tpeep-note\nNoNewPrivs:\t1\n'), true)
+  assert.equal(linuxPrivilegeRestricted(() => 'NoNewPrivs:\t0\n'), false)
+  assert.equal(linuxPrivilegeRestricted(() => { throw new Error('Unavailable') }), false)
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'peepnote-restricted-install-'))
+  const file = path.join(root, 'update.deb')
+  fs.writeFileSync(file, 'fixture')
+  let commands = 0
+  try {
+    await assert.rejects(installDeb(file, () => { commands++ }, () => true), { message: LINUX_UPDATE_RESTART_REQUIRED })
+    assert.equal(commands, 0)
+    assert.ok(fs.existsSync(file))
   } finally { fs.rmSync(root, { recursive: true, force: true }) }
 })
 
@@ -142,6 +157,8 @@ test('Linux update relaunch resolves the renamed executable only after installat
       fs.writeFileSync(current, 'new executable')
       fs.chmodSync(current, 0o755)
       done(null)
+    }, async (target, executable, forwarded) => {
+      target.relaunch({ execPath: executable, args: forwarded }); target.quit()
     })
     assert.deepEqual(events, ['install', 'relaunch', 'quit'])
     assert.equal(updatedDebExecutable(previous), current)
@@ -158,6 +175,9 @@ test('failed installation or a missing replacement executable keeps the app open
   try {
     await assert.rejects(installDebAndRestart(installer, app, path.join(root, 'missing'), [], (_command, _args, done) => done(new Error('Cancelled'))), /Cancelled/)
     await assert.rejects(installDebAndRestart(installer, app, path.join(root, 'missing'), [], (_command, _args, done) => done(null)), /executable is unavailable/)
+    const executable = path.join(root, 'peep-note')
+    fs.writeFileSync(executable, 'fixture'); fs.chmodSync(executable, 0o755)
+    await assert.rejects(installDebAndRestart(installer, app, executable, [], (_command, _args, done) => done(null), async () => { throw new Error('Restart helper unavailable') }), /Restart helper unavailable/)
     assert.equal(relaunched, 0)
     assert.equal(quit, 0)
   } finally { fs.rmSync(root, { recursive: true, force: true }) }
@@ -241,6 +261,18 @@ test('update UI renders progress, localized install actions and escaped errors',
   html = renderToStaticMarkup(createElement(I18nProvider, null, createElement(UpdatePanelView, { state: useUpdateStore.getState().state })))
   assert.ok(html.includes('&lt;script&gt;'))
   assert.ok(!html.includes('<script>'))
+})
+
+test('privilege restriction instructions are localized and do not blame the connection or password', () => {
+  const initial = fixture(true, 'linux').controller.snapshot()
+  for (const [language, expected] of [['ko', '트레이에서도 완전히 종료'], ['en', 'including the tray'], ['ja', '完全に終了'], ['zh', '从托盘完全退出']]) {
+    ;(globalThis as any).localStorage = { getItem: () => language }
+    const state = { ...initial, status: 'error' as const, downloaded: true, error: LINUX_UPDATE_RESTART_REQUIRED }
+    const html = renderToStaticMarkup(createElement(I18nProvider, null, createElement(UpdatePanelView, { state })))
+    assert.ok(html.includes(expected))
+    assert.equal(html.includes('Check your connection'), false)
+    assert.equal(html.includes('연결을 확인'), false)
+  }
 })
 
 test('release validation rejects mismatched versions, missing assets and incorrect checksums', () => {

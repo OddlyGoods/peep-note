@@ -10,13 +10,17 @@ import { restartAfterDataLocationChange } from '../electron/restart'
 import { DEVELOPMENT_RESTART_EXIT_CODE } from '../shared/developmentRestart'
 const { buildSync } = require('esbuild')
 
-test('managed development restarts hand off to Vite; installed apps still relaunch normally', () => {
+test('managed development restarts hand off to Vite; installed apps use the shared restart path', async () => {
   const calls: string[] = []
   const app = { exit: (code: number) => calls.push(`exit:${code}`), relaunch: () => calls.push('relaunch'), quit: () => calls.push('quit') }
-  restartAfterDataLocationChange(app, true)
+  await restartAfterDataLocationChange(app, true)
   assert.deepEqual(calls, [`exit:${DEVELOPMENT_RESTART_EXIT_CODE}`])
   calls.length = 0
-  restartAfterDataLocationChange(app, false)
+  await restartAfterDataLocationChange(app, false, async (target, executable, args) => {
+    assert.equal(executable, process.execPath)
+    assert.deepEqual(args, process.argv.slice(1))
+    target.relaunch({ execPath: executable, args }); target.quit()
+  })
   assert.deepEqual(calls, ['relaunch', 'quit'])
 })
 

@@ -1158,7 +1158,7 @@ function setupIPC() {
     return result.canceled ? null : result.filePaths[0] ?? null
   })
 
-  ipcMain.handle('change-data-location', (event, target: unknown): DataLocationResult => {
+  ipcMain.handle('change-data-location', async (event, target: unknown): Promise<DataLocationResult> => {
     if (event.sender !== mainWindow?.webContents || typeof target !== 'string') return { status: 'error', error: 'unavailable' }
     if (changingDataLocation || recordingWindows.size || snippingPreparing || snippingWindow || capturePickerWindow
       || updateController.snapshot().status === 'installing') return { status: 'error', error: 'busy' }
@@ -1167,12 +1167,17 @@ function setupIPC() {
       changingDataLocation = true
       // Normal window close handlers hide to tray. A storage change must exit
       // the process so the next launch can copy data before opening the DB.
-      setImmediate(() => {
-        for (const win of BrowserWindow.getAllWindows()) win.removeAllListeners('close')
-        restartAfterDataLocationChange(app, isDev && process.env.PEEPNOTE_MANAGED_DEV_RESTART === '1')
-      })
+      await restartAfterDataLocationChange({
+        relaunch: options => app.relaunch(options),
+        exit: code => { setImmediate(() => app.exit(code)) },
+        quit: () => { setImmediate(() => {
+          for (const win of BrowserWindow.getAllWindows()) win.removeAllListeners('close')
+          app.quit()
+        }) }
+      }, isDev && process.env.PEEPNOTE_MANAGED_DEV_RESTART === '1')
       return { status: 'restarting' }
     } catch (error) {
+      changingDataLocation = false
       return { status: 'error', error: error instanceof DataStorageError ? error.code : 'failed' }
     }
   })

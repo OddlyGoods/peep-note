@@ -1,6 +1,6 @@
 import { ScreenActivity, useScreenActive } from '../lib/screenActivity'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { Keyboard, Cloud, User, RotateCcw, Sparkles, Eye, EyeOff, Check, ChevronDown, Lock, KeyRound, Loader2, MoreHorizontal, Settings2, Code2, ExternalLink } from 'lucide-react'
+import { Keyboard, Monitor, User, RotateCcw, Sparkles, Eye, EyeOff, Check, ChevronDown, Lock, KeyRound, Loader2, MoreHorizontal, Settings2, Code2, ExternalLink } from 'lucide-react'
 import { api, Settings as SettingsType } from '../lib/api'
 import { Language, useI18n } from '../i18n'
 import { useLogStore } from '../stores/logStore'
@@ -11,6 +11,7 @@ import { dataStorageErrorKey } from '../../shared/dataStorage'
 import DataLocationField from '../components/DataLocationField'
 import AiConnectionTest from '../components/AiConnectionTest'
 import McpPanel from '../components/McpPanel'
+import RemotePanel from '../components/RemotePanel'
 import { APP_DEVELOPER, APP_GITHUB_URL, APP_WEBSITE_URL } from '../../shared/appInfo'
 import { DEFAULT_TRASH_RETENTION_DAYS, TRASH_RETENTION_OPTIONS, normalizeTrashRetentionDays } from '../../shared/trashRetention'
 import { AI_MODELS, DEFAULT_AI_MODELS, getAiModels, getAiModelSelection, type AiProvider } from '../../shared/aiModels'
@@ -134,7 +135,7 @@ function HotkeyInput({ value, label, disabled, onChange, onDisabledChange }: {
   )
 }
 
-const SETTINGS_SECTIONS = ['general', 'security', 'shortcuts', 'ai', 'app'] as const
+const SETTINGS_SECTIONS = ['general', 'security', 'shortcuts', 'ai', 'remote', 'app'] as const
 type SettingsSection = typeof SETTINGS_SECTIONS[number]
 const sectionStorageKey = 'openpeepnote_settings_section'
 function initialSection(): SettingsSection {
@@ -176,11 +177,19 @@ export default function Settings() {
   }[language]
   const [section, setSection] = useState<SettingsSection>(initialSection)
   const categoryTabs = useRef<Partial<Record<SettingsSection, HTMLButtonElement>>>({})
+  const openMcpRequested = useRef(false)
+  useLayoutEffect(() => {
+    if (section === 'ai' && openMcpRequested.current) {
+      openMcpRequested.current = false
+      document.getElementById('mcp-panel-title')?.scrollIntoView({ block: 'start' })
+    }
+  }, [section])
   const categories = [
     { id: 'general' as const, label: t('general'), icon: Settings2 },
     { id: 'security' as const, label: { en: 'Security', ko: '보안', ja: 'セキュリティ', zh: '安全' }[language], icon: Lock },
     { id: 'shortcuts' as const, label: t('globalShortcuts'), icon: Keyboard },
     { id: 'ai' as const, label: t('aiSettings'), icon: Sparkles },
+    { id: 'remote' as const, label: t('remote'), icon: Monitor },
     { id: 'app' as const, label: t('appInfo'), icon: User }
   ]
   const selectSection = (next: SettingsSection) => {
@@ -798,6 +807,13 @@ export default function Settings() {
           </section>
           <McpPanel />
         </SettingsPane>
+        <SettingsPane section="remote" selected={section === 'remote'}>
+          <RemotePanel onOpenMcp={() => {
+            openMcpRequested.current = true
+            selectSection('ai')
+            categoryTabs.current.ai?.focus()
+          }} />
+        </SettingsPane>
         <SettingsPane section="app" selected={section === 'app'}>
           <section className="card p-5">
             <div className="flex items-center gap-2 mb-4">
@@ -817,14 +833,6 @@ export default function Settings() {
               </div>
             </div>
             <UpdatePanel />
-          </section>
-          <section className="card p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <Cloud className="w-4 h-4 text-blue-400" />
-              <h2 className="text-sm font-semibold text-white">{t('cloudBackup')}</h2>
-              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium text-blue-300 border border-blue-400/20 bg-blue-400/10">{t('comingSoon')}</span>
-            </div>
-            <p className="text-sm text-gray-400">{t('backupComingSoonDescription')}</p>
           </section>
           <section className="card p-5">
             <div className="mb-4 flex items-center gap-2">

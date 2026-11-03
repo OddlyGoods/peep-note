@@ -6,6 +6,7 @@ export type Language = 'en' | 'ko' | 'ja' | 'zh'
 
 const messages = {
   en: {
+    remote: 'Remote',
     mcpSidebarEnabled: 'MCP enabled', mcpSidebarDisabled: 'MCP disabled',
     mcpSidebarActiveHint: 'Search, save and edit notes', mcpSidebarInactiveHint: 'Enable MCP in settings.',
     close: 'Close',
@@ -70,7 +71,7 @@ const messages = {
     dateNavigation: 'Date navigation', autoAdvanceDateRange: 'Automatically advance dates', autoAdvanceDateRangeDescription: 'Update the main list’s end date to today. The start date moves too unless “Fix start date” is on.',
     fixedStartDate: 'Fix start date', fixedStartDateDescription: 'Keep the selected start date when dates advance automatically. Only the end date follows today. You can still select a different start date manually.',
     globalShortcuts: 'Global shortcuts', resetDefaults: 'Reset to defaults', shortcutDescription: 'They work globally even when the app is in the background. Click a shortcut, then press a key combination.', pressKey: 'Press keys...', shortcutOpenMain: 'Open main window', shortcutOpenOverlay: 'Open overlay', shortcutCaptureScreenshot: 'Capture screen', shortcutStartRecording: 'Start screen recording', shortcutStopRecording: 'Stop screen recording', shortcutOpenOverlayDescription: 'Open the overlay to create a record quickly', shortcutCaptureScreenshotDescription: 'Capture and save the current screen', shortcutStartRecordingDescription: 'Start recording the screen', shortcutStopRecordingDescription: 'Stop the current screen recording',
-    quickSwitch: 'Open Quick List', quickSwitchPrevious: 'Previous Quick List Item', recentRecords: 'Browse recent records quickly', recentRecordsPrevious: 'Move to the previous recent record', cloudBackup: 'Cloud backup', comingSoon: 'Coming soon', backupComingSoonDescription: 'Cloud backup and restore are not available yet.',
+    quickSwitch: 'Open Quick List', quickSwitchPrevious: 'Previous Quick List Item', recentRecords: 'Browse recent records quickly', recentRecordsPrevious: 'Move to the previous recent record',
     aiSettings: 'AI settings', aiProvider: 'AI provider', aiModel: 'Model', appInfo: 'App information', developerInfo: 'Developer information', developer: 'Developer', website: 'Website', version: 'Version', dataLocation: 'Data location',
     confirm: 'Confirm', select: 'Select', enterConfirm: 'Enter to confirm · Esc to cancel', deleteLog: 'Delete log', deleteLogMessage: 'Delete "{title}"? You can restore records from Trash during its retention period.', deleteSelectedLogsMessage: 'Delete {count} selected records? You can restore records from Trash during its retention period.',
     closeToTray: 'Close (keep in tray)', minimize: 'Minimize', maximize: 'Maximize', restore: 'Restore',
@@ -80,6 +81,7 @@ const messages = {
     keyStorage: 'Used for AI group summaries. Keys are saved in the local database.', content: 'Content', title: 'Title', attachments: 'Attachments', includedRecords: 'Grouped records ({count})', noTags: 'No tags', noTagsInRange: 'No tags in this date range', preview: 'Preview', viewSource: 'View source', enlarge: 'Enlarge', copy: 'Copy', copied: 'Copied', collapseContent: 'Collapse content', expandContent: 'Expand content', deleteSummaryMessage: 'Delete this AI summary? It will be permanently deleted and cannot be restored.', deleteRecordMessage: 'Delete this log? It will be moved to Trash.', dateRange: 'Date range', reset: 'Reset', startDate: 'Start', endDate: 'End', days3: '3 days', week1: '1 week', month1: '1 month', searchPlaceholder: 'Search title, content, or filename...', enterSearch: 'Enter a search term', noSearchResults: 'No search results', results: '{count} results', apiKey: '{provider} API Key', qwenEndpoint: 'Qwen API endpoint', qwenEndpointHint: 'Use your Alibaba Model Studio region or workspace endpoint.', backToTop: 'Back to top', comments: 'Comments', editComment: 'Edit comment', unsavedChanges: 'Unsaved changes', discardChangesMessage: 'You have unsaved changes. Discard them?', discardChanges: 'Discard changes', keepEditing: 'Keep editing', deleteCommentFileMessage: 'Remove this file from the comment?', deleteNoteFileMessage: 'Remove this file from the note?', deleteComment: 'Delete comment', deleteCommentMessage: 'Delete this comment? Deleted comments cannot be restored.', commentPlaceholder: 'Add a comment...', addComment: 'Add comment',
   },
   ko: {
+    remote: '원격',
     mcpSidebarEnabled: 'MCP 사용 중', mcpSidebarDisabled: 'MCP 사용 안함',
     mcpSidebarActiveHint: '메모 검색·저장·수정', mcpSidebarInactiveHint: '설정에서 MCP 연결을 허용하세요.',
     close: '닫기',
@@ -144,7 +146,7 @@ const messages = {
     dateNavigation: '날짜 탐색', autoAdvanceDateRange: '자동으로 날짜 넘기기', autoAdvanceDateRangeDescription: '메인 목록의 종료일을 오늘로 갱신합니다. 시작일 고정이 꺼져 있으면 시작일도 함께 이동합니다.',
     fixedStartDate: '시작일 고정', fixedStartDateDescription: '날짜 자동 넘김 시 선택한 시작일은 유지하고 종료일만 오늘로 갱신합니다. 시작일은 직접 다시 선택할 수 있습니다.',
     globalShortcuts: '전역 단축키', resetDefaults: '기본값으로', shortcutDescription: '앱이 백그라운드에 있어도 전역으로 동작합니다. 클릭 후 키를 누르면 등록됩니다.', pressKey: '키를 누르세요...', shortcutOpenMain: '메인 창 열기', shortcutOpenOverlay: '빠른 작성 창 열기', shortcutCaptureScreenshot: '화면 캡쳐', shortcutStartRecording: '화면 녹화 시작', shortcutStopRecording: '화면 녹화 중지', shortcutOpenOverlayDescription: '빠른 작성 창을 열어 기록을 생성합니다.', shortcutCaptureScreenshotDescription: '현재 화면을 캡쳐하여 저장합니다.', shortcutStartRecordingDescription: '화면 녹화를 시작합니다.', shortcutStopRecordingDescription: '진행 중인 화면 녹화를 중지합니다.',
-    quickSwitch: '퀵 리스트 열기', quickSwitchPrevious: '퀵 리스트 이전 기록', recentRecords: '최근 기록을 빠르게 탐색합니다', recentRecordsPrevious: '최근 기록에서 이전 항목으로 이동합니다', cloudBackup: '클라우드 백업', comingSoon: '준비 중', backupComingSoonDescription: '클라우드 백업과 복원 기능은 아직 사용할 수 없습니다.',
+    quickSwitch: '퀵 리스트 열기', quickSwitchPrevious: '퀵 리스트 이전 기록', recentRecords: '최근 기록을 빠르게 탐색합니다', recentRecordsPrevious: '최근 기록에서 이전 항목으로 이동합니다',
     aiSettings: 'AI 설정', aiProvider: 'AI 제공자', aiModel: '모델', appInfo: '앱 정보', developerInfo: '개발자 정보', developer: '개발자', website: '웹사이트', version: '버전', dataLocation: '데이터 저장 위치',
     confirm: '확인', select: '선택', enterConfirm: 'Enter 확인 · Esc 취소', deleteLog: '로그 삭제', deleteLogMessage: '"{title}" 로그를 삭제할까요? 보관기간 안에 휴지통에서 복원할 수 있습니다.', deleteSelectedLogsMessage: '선택한 {count}개의 기록을 삭제할까요? 보관기간 안에 휴지통에서 복원할 수 있습니다.',
     closeToTray: '닫기 (트레이로)', minimize: '최소화', maximize: '최대화', restore: '이전 크기로',
@@ -154,6 +156,7 @@ const messages = {
     keyStorage: '그룹 AI 정리 기능에 사용됩니다. 키는 로컬 DB에 저장됩니다.', content: '내용', title: '제목', attachments: '첨부 이미지', includedRecords: '함께 그룹된 목록 ({count})', noTags: '태그 없음', noTagsInRange: '현재 조회 기간에 태그가 없습니다', preview: '미리보기', viewSource: '소스 보기', enlarge: '크게 보기', copy: '복사', copied: '복사됨', collapseContent: '내용 접기', expandContent: '내용 펼치기', deleteSummaryMessage: '이 AI 요약을 삭제할까요? 바로 삭제되며 복원할 수 없습니다.', deleteRecordMessage: '이 로그를 삭제하시겠습니까? 삭제한 항목은 휴지통으로 이동합니다.', dateRange: '날짜 범위', reset: '초기화', startDate: '시작', endDate: '종료', days3: '3일', week1: '1주일', month1: '1개월', searchPlaceholder: '제목, 내용 또는 파일명으로 검색...', enterSearch: '검색어를 입력하세요', noSearchResults: '검색 결과가 없습니다', results: '{count}개의 결과', apiKey: '{provider} API 키', qwenEndpoint: 'Qwen API 엔드포인트', qwenEndpointHint: 'Alibaba Model Studio의 지역 또는 워크스페이스 엔드포인트를 입력하세요.', backToTop: '맨 위로', comments: '댓글', editComment: '댓글 수정', unsavedChanges: '저장하지 않은 변경 사항', discardChangesMessage: '수정 중인 내용이 있습니다. 변경 사항을 취소할까요?', discardChanges: '수정 취소', keepEditing: '계속 수정', deleteCommentFileMessage: '댓글에서 이 파일을 삭제할까요?', deleteNoteFileMessage: '메모에서 이 파일을 삭제할까요?', deleteComment: '댓글 삭제', deleteCommentMessage: '이 댓글을 삭제할까요? 삭제한 댓글은 복원할 수 없습니다.', commentPlaceholder: '댓글을 입력하세요...', addComment: '댓글 추가',
   },
   ja: {
+    remote: 'リモート',
     mcpSidebarEnabled: 'MCP 有効', mcpSidebarDisabled: 'MCP 無効',
     mcpSidebarActiveHint: 'メモの検索・保存・編集', mcpSidebarInactiveHint: '設定で MCP を有効にできます。',
     close: '閉じる',
@@ -218,7 +221,7 @@ const messages = {
     dateNavigation: '日付ナビゲーション', autoAdvanceDateRange: '日付を自動で進める', autoAdvanceDateRangeDescription: 'メインリストの終了日を今日に更新します。「開始日を固定」がオフの場合は開始日も移動します。',
     fixedStartDate: '開始日を固定', fixedStartDateDescription: '日付を自動で進める際、選択した開始日を維持し、終了日だけを今日に更新します。開始日は手動で変更できます。',
     globalShortcuts: 'グローバルショートカット', resetDefaults: 'デフォルトに戻す', shortcutDescription: 'アプリがバックグラウンドにあってもグローバルに動作します。クリックしてからキー操作を入力してください。', pressKey: 'キーを押してください...', shortcutOpenMain: 'メインウィンドウを開く', shortcutOpenOverlay: 'クイック作成を開く', shortcutCaptureScreenshot: '画面をキャプチャ', shortcutStartRecording: '画面録画を開始', shortcutStopRecording: '画面録画を停止', shortcutOpenOverlayDescription: 'クイック作成ウィンドウを開いて記録を作成します。', shortcutCaptureScreenshotDescription: '現在の画面をキャプチャして保存します。', shortcutStartRecordingDescription: '画面録画を開始します。', shortcutStopRecordingDescription: '実行中の画面録画を停止します。',
-    quickSwitch: 'クイックリストを開く', quickSwitchPrevious: 'クイックリストの前の記録', recentRecords: '最近の記録をすばやく確認します', recentRecordsPrevious: '最近の記録の前の項目へ移動します', cloudBackup: 'クラウドバックアップ', comingSoon: '準備中', backupComingSoonDescription: 'クラウドバックアップと復元はまだ利用できません。',
+    quickSwitch: 'クイックリストを開く', quickSwitchPrevious: 'クイックリストの前の記録', recentRecords: '最近の記録をすばやく確認します', recentRecordsPrevious: '最近の記録の前の項目へ移動します',
     aiSettings: 'AI設定', aiProvider: 'AIプロバイダー', aiModel: 'モデル', appInfo: 'アプリ情報', developerInfo: '開発者情報', developer: '開発者', website: 'ウェブサイト', version: 'バージョン', dataLocation: 'データ保存場所',
     confirm: '確認', select: '選択', enterConfirm: 'Enterで確認 · Escでキャンセル', deleteLog: '記録を削除', deleteLogMessage: '「{title}」を削除しますか？保存期間内はゴミ箱から復元できます。', deleteSelectedLogsMessage: '選択した{count}件の記録を削除しますか？保存期間内はゴミ箱から復元できます。',
     closeToTray: '閉じる（トレイに残す）', minimize: '最小化', maximize: '最大化', restore: '元に戻す',
@@ -228,6 +231,7 @@ const messages = {
     keyStorage: 'グループAI要約に使用します。キーはローカルデータベースに保存されます。', content: '内容', title: 'タイトル', attachments: '添付画像', includedRecords: '同じグループの記録（{count}）', noTags: 'タグなし', noTagsInRange: '現在の期間にタグはありません', preview: 'プレビュー', viewSource: 'ソースを表示', enlarge: '拡大', copy: 'コピー', copied: 'コピーしました', collapseContent: '内容を折りたたむ', expandContent: '内容を展開', deleteSummaryMessage: 'このAI要約を削除しますか？完全に削除され、復元できません。', deleteRecordMessage: 'この記録を削除しますか？削除した項目はゴミ箱に移動します。', dateRange: '日付範囲', reset: 'リセット', startDate: '開始', endDate: '終了', days3: '3日', week1: '1週間', month1: '1か月', searchPlaceholder: 'タイトル、内容、ファイル名を検索...', enterSearch: '検索語を入力してください', noSearchResults: '検索結果がありません', results: '{count}件の結果', apiKey: '{provider} APIキー', qwenEndpoint: 'Qwen APIエンドポイント', qwenEndpointHint: 'Alibaba Model Studioのリージョンまたはワークスペースのエンドポイントを入力してください。', backToTop: '一番上へ', comments: 'コメント', editComment: 'コメントを編集', unsavedChanges: '未保存の変更', discardChangesMessage: '保存していない変更があります。破棄しますか？', discardChanges: '変更を破棄', keepEditing: '編集を続ける', deleteCommentFileMessage: 'コメントからこのファイルを削除しますか？', deleteNoteFileMessage: 'このファイルをメモから削除しますか？', deleteComment: 'コメントを削除', deleteCommentMessage: 'このコメントを削除しますか？削除したコメントは復元できません。', commentPlaceholder: 'コメントを入力...', addComment: 'コメントを追加',
   },
   zh: {
+    remote: '远程',
     mcpSidebarEnabled: 'MCP 已启用', mcpSidebarDisabled: 'MCP 未启用',
     mcpSidebarActiveHint: '搜索、保存和编辑笔记', mcpSidebarInactiveHint: '可在设置中启用 MCP。',
     close: '关闭',
@@ -292,7 +296,7 @@ const messages = {
     dateNavigation: '日期导航', autoAdvanceDateRange: '自动推进日期', autoAdvanceDateRangeDescription: '将主列表的结束日期更新为今天。若未开启“固定开始日期”，开始日期也会随之移动。',
     fixedStartDate: '固定开始日期', fixedStartDateDescription: '自动推进日期时保留所选开始日期，仅将结束日期更新为今天。您仍可手动选择其他开始日期。',
     globalShortcuts: '全局快捷键', resetDefaults: '恢复默认', shortcutDescription: '即使应用在后台也可全局使用。点击快捷键后按下按键组合即可注册。', pressKey: '请按下按键...', shortcutOpenMain: '打开主窗口', shortcutOpenOverlay: '打开快速记录窗口', shortcutCaptureScreenshot: '截取屏幕', shortcutStartRecording: '开始屏幕录制', shortcutStopRecording: '停止屏幕录制', shortcutOpenOverlayDescription: '打开快速记录窗口以创建记录。', shortcutCaptureScreenshotDescription: '截取并保存当前屏幕。', shortcutStartRecordingDescription: '开始录制屏幕。', shortcutStopRecordingDescription: '停止当前屏幕录制。',
-    quickSwitch: '打开快速列表', quickSwitchPrevious: '快速列表上一条记录', recentRecords: '快速浏览最近记录', recentRecordsPrevious: '移至上一条最近记录', cloudBackup: '云端备份', comingSoon: '即将推出', backupComingSoonDescription: '云端备份和恢复功能暂不可用。',
+    quickSwitch: '打开快速列表', quickSwitchPrevious: '快速列表上一条记录', recentRecords: '快速浏览最近记录', recentRecordsPrevious: '移至上一条最近记录',
     aiSettings: 'AI 设置', aiProvider: 'AI 提供商', aiModel: '模型', appInfo: '应用信息', developerInfo: '开发者信息', developer: '开发者', website: '网站', version: '版本', dataLocation: '数据存储位置',
     confirm: '确认', select: '选择', enterConfirm: 'Enter 确认 · Esc 取消', deleteLog: '删除记录', deleteLogMessage: '要删除“{title}”吗？保留时间内可从回收站恢复。', deleteSelectedLogsMessage: '要删除选中的 {count} 条记录吗？保留时间内可从回收站恢复。',
     closeToTray: '关闭（保留在托盘）', minimize: '最小化', maximize: '最大化', restore: '还原',

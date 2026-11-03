@@ -15,6 +15,7 @@ import RemotePanel from '../components/RemotePanel'
 import { APP_DEVELOPER, APP_GITHUB_URL, APP_WEBSITE_URL } from '../../shared/appInfo'
 import { DEFAULT_TRASH_RETENTION_DAYS, TRASH_RETENTION_OPTIONS, normalizeTrashRetentionDays } from '../../shared/trashRetention'
 import { AI_MODELS, DEFAULT_AI_MODELS, getAiModels, getAiModelSelection, type AiProvider } from '../../shared/aiModels'
+import { DEFAULT_AI_CONTEXT_LENGTH, MIN_AI_CONTEXT_LENGTH, MAX_AI_CONTEXT_LENGTH, isAiContextLength, normalizeAiContextLength } from '../../shared/aiContext'
 import { resolveHotkeys, type HotkeyAction, type Hotkeys } from '../../shared/hotkeys'
 import { createSettingsAutosave, type AutosaveStatus } from '../lib/settingsAutosave'
 
@@ -202,6 +203,8 @@ export default function Settings() {
   const [saveStatus, setSaveStatus] = useState<AutosaveStatus>('idle')
   const [loadFailed, setLoadFailed] = useState(false)
   const [aiProvider, setAiProvider] = useState<AiProvider>('openai')
+  const [aiContextLength, setAiContextLength] = useState(String(DEFAULT_AI_CONTEXT_LENGTH))
+  const validAiContextLength = isAiContextLength(Number(aiContextLength))
   const [aiModelChoices, setAiModelChoices] = useState(() => Object.fromEntries(
     (Object.keys(DEFAULT_AI_MODELS) as AiProvider[]).map(provider => [provider, getAiModelSelection(provider)])
   ) as Record<AiProvider, { model: string; custom: boolean }>)
@@ -256,8 +259,9 @@ export default function Settings() {
     openai_api_key: openaiKey || null, anthropic_api_key: anthropicKey || null,
     gemini_api_key: geminiKey || null, qwen_api_key: qwenKey || null,
     qwen_base_url: qwenBaseUrl.trim() || 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
+    ai_context_length: validAiContextLength ? Number(aiContextLength) : undefined,
   }), [hotkeys, selectedLanguage, autoAdvanceDateRange, fixedStartDate, trashRetentionDays,
-    openaiKey, anthropicKey, geminiKey, qwenKey, qwenBaseUrl])
+    openaiKey, anthropicKey, geminiKey, qwenKey, qwenBaseUrl, aiContextLength, validAiContextLength])
   const aiSelection = useMemo<Partial<SettingsType> | null>(() => aiModel.trim() ? ({
     ai_provider: aiProvider, ai_model: aiModel.trim(),
     ai_models: Object.fromEntries(Object.entries(aiModelChoices).filter(([, choice]) => choice.model.trim()).map(([provider, choice]) => [provider, choice.model.trim()])),
@@ -277,6 +281,7 @@ export default function Settings() {
     }
     for (const key of Object.keys(draft) as (keyof SettingsType)[]) {
       if (JSON.stringify(draft[key]) === JSON.stringify(previousDraft.current[key])) continue
+      if (key === 'ai_context_length' && draft[key] === undefined) { autosave.cancel([key]); continue }
       const immediate = ['hotkeys', 'language', 'auto_advance_date_range', 'fixed_start_date', 'trash_retention_days'].includes(key)
       autosave.schedule({ [key]: draft[key] }, immediate ? 0 : 500)
     }
@@ -306,6 +311,7 @@ export default function Settings() {
       setHotkeys(resolveHotkeys(s.hotkeys))
       const provider = s.ai_provider ?? 'openai'
       setAiProvider(provider)
+      setAiContextLength(String(normalizeAiContextLength(s.ai_context_length)))
       const models = getAiModels(s.ai_models, provider, s.ai_model)
       setAiModelChoices(Object.fromEntries((Object.keys(models) as AiProvider[]).map(value => [value, getAiModelSelection(value, models[value])])) as Record<AiProvider, { model: string; custom: boolean }>)
       if (s.openai_api_key) setOpenaiKey(s.openai_api_key)
@@ -745,6 +751,18 @@ export default function Settings() {
                     </p>
                   </div>
                 )}
+              </div>
+
+              <div>
+                <label htmlFor="ai-context-length" className="block text-xs font-medium text-gray-400 mb-1.5">{t('aiContextLength')}</label>
+                <input id="ai-context-length" type="number" inputMode="numeric"
+                  min={MIN_AI_CONTEXT_LENGTH} max={MAX_AI_CONTEXT_LENGTH} step={1}
+                  value={aiContextLength} onChange={event => setAiContextLength(event.target.value)}
+                  className="input w-full text-xs" aria-invalid={!validAiContextLength}
+                  aria-describedby="ai-context-length-hint" />
+                <p id="ai-context-length-hint" className={`text-xs mt-1.5 leading-relaxed ${validAiContextLength ? 'text-gray-400' : 'text-red-400'}`}>
+                  {t(validAiContextLength ? 'aiContextLengthHint' : 'aiContextLengthInvalid')}
+                </p>
               </div>
 
               {/* API 키 입력 */}

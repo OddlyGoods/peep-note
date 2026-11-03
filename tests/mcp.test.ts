@@ -98,7 +98,8 @@ test('each client receives its matching configuration with the current token and
     assert.equal(config.includes('password-fixture-only'), false)
     if (id === 'codex') assert.equal(config, access.codexConfig(endpoint))
     else {
-      assert.ok(config.startsWith(id === 'claude-code' ? 'claude mcp add --transport http' : 'gemini mcp add --transport http'))
+      const program = { 'claude-code': 'claude', 'gemini-cli': 'gemini', 'qwen-code': 'qwen' }[id]
+      assert.ok(config.startsWith(`${program} mcp add --transport http`))
       assert.ok(config.includes('--scope user'))
       assert.equal(config.includes('--trust'), false)
       assert.equal(config.includes('[mcp_servers.'), false)

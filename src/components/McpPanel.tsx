@@ -17,6 +17,7 @@ const copy = {
       codex: 'Add the copied block to ~/.codex/config.toml and fully restart Codex. Ask it to find your PeepNote notes to check the connection.',
       'claude-code': 'Run the copied command in your terminal, then restart Claude Code. Use /mcp to check the peepnote connection.',
       'gemini-cli': 'Run the copied command in your terminal, then restart Gemini CLI. Use /mcp list to check the peepnote connection.',
+      'qwen-code': 'Run the copied command in your terminal, then restart Qwen Code. Use /mcp to check the peepnote connection.',
     },
     tokenHint: 'The copied content includes a private connection token; do not share it.',
     failed: 'Could not update MCP settings or copy the configuration. Please try again.'
@@ -31,6 +32,7 @@ const copy = {
       codex: '복사한 설정을 ~/.codex/config.toml에 추가하고 Codex를 완전히 재시작하세요. 피프노트 메모 검색을 요청해 연결을 확인할 수 있습니다.',
       'claude-code': '복사한 명령어를 터미널에서 실행한 뒤 Claude Code를 재시작하세요. /mcp에서 peepnote 연결을 확인할 수 있습니다.',
       'gemini-cli': '복사한 명령어를 터미널에서 실행한 뒤 Gemini CLI를 재시작하세요. /mcp list에서 peepnote 연결을 확인할 수 있습니다.',
+      'qwen-code': '복사한 명령어를 터미널에서 실행한 뒤 Qwen Code를 재시작하세요. /mcp에서 peepnote 연결을 확인할 수 있습니다.',
     },
     tokenHint: '복사한 내용에 연결 전용 토큰이 포함되어 있으니 공유하지 마세요.',
     failed: 'MCP 설정을 변경하거나 복사하지 못했습니다. 다시 시도해 주세요.'
@@ -45,6 +47,7 @@ const copy = {
       codex: 'コピーした設定を ~/.codex/config.toml に追加し、Codex を完全に再起動してください。PeepNote のメモを検索して接続を確認できます。',
       'claude-code': 'コピーしたコマンドをターミナルで実行し、Claude Code を再起動してください。/mcp で peepnote の接続を確認できます。',
       'gemini-cli': 'コピーしたコマンドをターミナルで実行し、Gemini CLI を再起動してください。/mcp list で peepnote の接続を確認できます。',
+      'qwen-code': 'コピーしたコマンドをターミナルで実行し、Qwen Code を再起動してください。/mcp で peepnote の接続を確認できます。',
     },
     tokenHint: 'コピーした内容には専用の接続トークンが含まれるため、共有しないでください。',
     failed: 'MCP 設定の変更またはコピーに失敗しました。もう一度お試しください。'
@@ -59,6 +62,7 @@ const copy = {
       codex: '将复制的配置添加到 ~/.codex/config.toml，然后完全重启 Codex。让它搜索 PeepNote 笔记以确认连接。',
       'claude-code': '在终端中运行复制的命令，然后重启 Claude Code。使用 /mcp 检查 peepnote 连接。',
       'gemini-cli': '在终端中运行复制的命令，然后重启 Gemini CLI。使用 /mcp list 检查 peepnote 连接。',
+      'qwen-code': '在终端中运行复制的命令，然后重启 Qwen Code。使用 /mcp 检查 peepnote 连接。',
     },
     tokenHint: '复制的内容含有专用连接令牌，请勿分享。',
     failed: '无法更改 MCP 设置或复制配置，请重试。'
@@ -128,7 +132,7 @@ export default function McpPanel() {
       <label htmlFor="mcp-endpoint" className="block text-xs text-gray-400 mb-1.5">{text.endpoint}</label>
       <input id="mcp-endpoint" readOnly value={status.endpoint} className="input w-full font-mono text-xs" />
       <p id="mcp-client-label" className="text-xs text-gray-400 mt-4 mb-2">{text.client}</p>
-      <div role="group" aria-labelledby="mcp-client-label" className="grid grid-cols-3 gap-2">
+      <div role="group" aria-labelledby="mcp-client-label" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {MCP_CLIENTS.map(option => <button key={option.id} type="button" disabled={busy} aria-pressed={client === option.id}
           data-active={client === option.id}
           onClick={() => {

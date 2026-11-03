@@ -35,6 +35,9 @@ export function createMcpAccess(directory?: string) {
     if (client === 'gemini-cli') {
       return `gemini mcp add --transport http --scope user --header ${JSON.stringify(`Authorization: ${authorization}`)} peepnote ${JSON.stringify(endpoint)}`
     }
+    if (client === 'qwen-code') {
+      return `qwen mcp add --transport http --scope user peepnote ${JSON.stringify(endpoint)} --header ${JSON.stringify(`Authorization: ${authorization}`)}`
+    }
     return `[mcp_servers.peepnote]\nurl = ${JSON.stringify(endpoint)}\nhttp_headers = { Authorization = ${JSON.stringify(authorization)} }\n`
   }
   return {

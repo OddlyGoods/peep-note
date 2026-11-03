@@ -56,20 +56,19 @@ export default function TitleBar() {
             draggable={false}
           />
         </div>
-        <span
-          className="text-[11px] font-semibold tracking-widest translate-y-px"
-          style={{ color: 'var(--title-text)' }}
-        >
-          PeepNote
-        </span>
-        {version && (
+        <div className="flex items-baseline gap-2 translate-y-px">
           <span
-            className="px-1.5 py-0.5 rounded-full text-[10px] font-medium leading-none"
-            style={{ color: 'var(--version-badge-text)', background: 'var(--version-badge-bg)', border: '1px solid var(--version-badge-border)' }}
+            className="text-[11px] font-semibold leading-none tracking-widest"
+            style={{ color: 'var(--title-text)' }}
           >
-            v{version}
+            PeepNote
           </span>
-        )}
+          {version && (
+            <span className="text-[10px] font-medium leading-none text-gray-400">
+              v{version}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* 오른쪽: 테마 및 윈도우 컨트롤 */}

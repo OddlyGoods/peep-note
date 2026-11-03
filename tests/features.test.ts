@@ -1132,3 +1132,92 @@ test('invalid comment attachments cannot overwrite saved data', async () => {
   assert.equal(saved.content, 'Keep this')
   assert.deepEqual(saved.attachments, [])
 })
+
+test('context length is validated, persisted and retained across unrelated preference changes', async () => {
+  const previous = queryOne<any>("SELECT * FROM settings WHERE user_id = 'local'")
+  const saved = await json('/api/settings')
+  try {
+    for (const value of [2048, 8192, 131072]) {
+      await json('/api/settings', 'PUT', { ai_context_length: value })
+      await json('/api/settings', 'PUT', { language: 'en' })
+      assert.equal((await json('/api/settings')).ai_context_length, value)
+      assert.equal(queryOne<any>("SELECT ai_context_length FROM settings WHERE user_id = 'local'")!.ai_context_length, value)
+    }
+    for (const invalid of [null, '8192', 2047, 2097153, 4096.5, true]) {
+      assert.equal((await request('/api/settings', 'PUT', { ai_context_length: invalid })).status, 400)
+      assert.equal((await json('/api/settings')).ai_context_length, 131072)
+    }
+    run("UPDATE settings SET ai_context_length = 0 WHERE user_id = 'local'")
+    assert.equal((await json('/api/settings')).ai_context_length, 32768)
+  } finally {
+    if (previous) await json('/api/settings', 'PUT', saved)
+    else run("DELETE FROM settings WHERE user_id = 'local'")
+  }
+})
+
+test('all providers batch long groups within the configured context and preserve saved summaries after a later failure or membership change', async () => {
+  const previous = queryOne<any>("SELECT * FROM settings WHERE user_id = 'local'")
+  const saved = await json('/api/settings')
+  run("INSERT INTO workspaces (id,user_id,name) VALUES ('batch-workspace','local','Batch workspace')")
+  insert('batch-first', { content: 'FIRST_SOURCE ' + 'detail '.repeat(2300), workspace_id: 'batch-workspace' })
+  insert('batch-last', { content: 'LAST_SOURCE', workspace_id: 'batch-workspace' })
+  insert('batch-secret', { content: 'SECRET_BATCH_MARKER', is_secret: 1, workspace_id: 'batch-workspace' })
+  const group = await json('/api/groups', 'POST', { name: 'Batch group', workspace_id: 'batch-workspace', log_ids: ['batch-first', 'batch-last', 'batch-secret'] })
+  const original = globalThis.fetch
+  try {
+    for (const provider of ['openai', 'anthropic', 'gemini', 'qwen'] as const) {
+      await json('/api/settings', 'PUT', { ai_provider: provider, ai_model: 'batch-model', ai_context_length: 4096,
+        [`${provider}_api_key`]: 'test-only-placeholder', qwen_base_url: 'http://summary.example.test/v1' })
+      const inputs: string[] = []
+      globalThis.fetch = async (_url, init) => {
+        const body = JSON.parse(String(init?.body))
+        const system = provider === 'anthropic' ? body.system : provider === 'gemini' ? body.system_instruction.parts[0].text : body.messages[0].content
+        const text = provider === 'gemini' ? body.contents[0].parts[0].text : body.messages[provider === 'anthropic' ? 0 : 1].content[0].text
+        const outputLimit = provider === 'gemini' ? body.generationConfig.maxOutputTokens : body.max_tokens
+        assert.ok(Buffer.byteLength(system) + Buffer.byteLength(text) + outputLimit + 256 <= 4096)
+        assert.ok(outputLimit > 0 && outputLimit <= 512)
+        assert.ok(system.includes('Korean (ko)'))
+        assert.equal(text.includes('SECRET_BATCH_MARKER'), false)
+        inputs.push(text)
+        const content = JSON.stringify({ title: 'Batch summary', summary: 'Combined findings' })
+        return Response.json(provider === 'anthropic' ? { content: [{ type: 'text', text: content }] }
+          : provider === 'gemini' ? { candidates: [{ content: { parts: [{ text: content }] } }] }
+            : { choices: [{ message: { content } }] })
+      }
+      await json('/api/ai/summarize', 'POST', { group_id: group.id, language: 'ko' })
+      assert.ok(inputs.length > 2 && inputs.length < 30)
+      assert.ok(inputs.some(text => text.includes('FIRST_SOURCE')))
+      assert.ok(inputs.some(text => text.includes('LAST_SOURCE')))
+      const summary = queryOne<any>("SELECT * FROM logs WHERE group_id = ? AND log_type = 'summary'", [group.id])
+      assert.equal(summary.summary_provider, provider)
+      assert.equal(summary.workspace_id, 'batch-workspace')
+      assert.equal(summary.content, 'Combined findings')
+      assert.equal(queryAll("SELECT id FROM logs WHERE group_id = ? AND log_type = 'summary'", [group.id]).length, 1)
+    }
+    const priorSummary = queryOne<any>("SELECT * FROM logs WHERE group_id = ? AND log_type = 'summary'", [group.id])
+    let calls = 0
+    globalThis.fetch = async () => {
+      if (++calls === 2) return Response.json({ error: { message: 'second batch failed' } }, { status: 500 })
+      return Response.json({ choices: [{ message: { content: '{"title":"Partial","summary":"Not saved"}' } }] })
+    }
+    assert.equal((await request('/api/ai/summarize', 'POST', { group_id: group.id })).status, 502)
+    assert.equal(calls, 2)
+    assert.deepEqual(row(priorSummary.id), priorSummary)
+    calls = 0
+    globalThis.fetch = async () => {
+      calls++
+      run("UPDATE logs SET is_secret = 1 WHERE id = 'batch-last'")
+      return Response.json({ choices: [{ message: { content: '{"title":"Partial","summary":"Not saved"}' } }] })
+    }
+    assert.equal((await request('/api/ai/summarize', 'POST', { group_id: group.id })).status, 409)
+    assert.equal(calls, 1)
+    assert.deepEqual(row(priorSummary.id), priorSummary)
+  } finally {
+    globalThis.fetch = original
+    run('DELETE FROM logs WHERE group_id = ?', [group.id])
+    run('DELETE FROM log_groups WHERE id = ?', [group.id])
+    run("DELETE FROM workspaces WHERE id = 'batch-workspace'")
+    if (previous) await json('/api/settings', 'PUT', saved)
+    else run("DELETE FROM settings WHERE user_id = 'local'")
+  }
+})

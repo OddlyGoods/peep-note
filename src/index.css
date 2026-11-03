@@ -316,9 +316,6 @@ html[data-theme='dark'] .settings-scroll-area::-webkit-scrollbar-thumb:hover {
   --login-card-shadow: 0 0 40px rgba(79,70,229,.1), inset 0 1px 0 rgba(255,255,255,.05);
   --modal-bg: rgba(15,18,45,.97);
   --modal-shadow: 0 18px 42px rgba(0,0,0,.52);
-  --version-badge-text: #a5b4fc;
-  --version-badge-bg: rgba(99,102,241,.13);
-  --version-badge-border: rgba(129,140,248,.26);
   --workspace-badge-text: #818cf8;
   --workspace-badge-bg: rgba(99,102,241,.15);
   --workspace-badge-border: rgba(99,102,241,.25);
@@ -362,9 +359,6 @@ html[data-theme='light'] {
   --login-card-shadow: 0 12px 36px rgba(79,70,229,.1), inset 0 1px 0 rgba(255,255,255,.95);
   --modal-bg: #ffffff;
   --modal-shadow: 0 18px 42px rgba(30,41,59,.18);
-  --version-badge-text: #4338ca;
-  --version-badge-bg: #e0e7ff;
-  --version-badge-border: #a5b4fc;
   --workspace-badge-text: #4338ca;
   --workspace-badge-bg: #e0e7ff;
   --workspace-badge-border: #a5b4fc;

@@ -35,9 +35,9 @@ export default function RemotePanel({ onOpenMcp }: { onOpenMcp: () => void }) {
       <Monitor className="h-4 w-4 text-violet-400" aria-hidden="true" />{t('remote')}
     </h2>
     <p className="text-xs leading-relaxed text-gray-400">{text.description}</p>
-    <div className="mt-4 rounded-lg border p-3" style={{ background: 'var(--side-panel-bg)', borderColor: 'var(--soft-border)' }}>
-      <p className="text-xs leading-relaxed text-gray-400">{text.prerequisite}</p>
-      <button type="button" onClick={onOpenMcp} className="btn-secondary mt-3 flex items-center gap-1.5 text-xs">
+    <div className="mt-4 flex items-center justify-between gap-4 rounded-lg border p-3" style={{ background: 'var(--side-panel-bg)', borderColor: 'var(--soft-border)' }}>
+      <p className="min-w-0 text-xs leading-relaxed text-gray-400">{text.prerequisite}</p>
+      <button type="button" onClick={onOpenMcp} className="btn-secondary flex shrink-0 items-center gap-1.5 text-xs">
         <Plug className="h-3.5 w-3.5" aria-hidden="true" />{text.mcpSettings}
       </button>
     </div>
@@ -67,16 +67,13 @@ export default function RemotePanel({ onOpenMcp }: { onOpenMcp: () => void }) {
       </div>}
       {copyStatus === 'error' && <p role="alert" className="mt-2 text-xs text-red-400">{t('copyFailed')}</p>}
       <p className="mt-4 text-xs leading-relaxed text-gray-400">{guide.note}</p>
-      <div className="mt-4 flex flex-wrap items-center gap-4">
-        {[{ url: connection.docs, label: text.documentation }, ...(connection.mcpDocs ? [{ url: connection.mcpDocs, label: text.mcpDocumentation }] : [])].map(({ url, label }) =>
-          <a key={url} href={url} target="_blank" rel="noopener noreferrer"
-            onClick={event => {
-              if (window.electronAPI?.openExternal) { event.preventDefault(); void window.electronAPI.openExternal(url) }
-            }}
-            className="flex items-center gap-1.5 text-xs text-violet-400 transition-colors hover:text-violet-300 hover:underline">
-            {label}<ExternalLink className="h-3 w-3" aria-hidden="true" />
-          </a>)}
-      </div>
+      <a href={connection.docs} target="_blank" rel="noopener noreferrer"
+        onClick={event => {
+          if (window.electronAPI?.openExternal) { event.preventDefault(); void window.electronAPI.openExternal(connection.docs) }
+        }}
+        className="mt-4 inline-flex items-center gap-1.5 text-xs text-violet-400 transition-colors hover:text-violet-300 hover:underline">
+        {text.documentation}<ExternalLink className="h-3 w-3" aria-hidden="true" />
+      </a>
     </div>
   </section>
 }

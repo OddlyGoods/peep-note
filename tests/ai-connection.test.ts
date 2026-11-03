@@ -12,7 +12,7 @@ test('AI connection validates missing settings and invalid endpoints without mak
   context.after(() => { globalThis.fetch = original })
   for (const [patch, error] of [[null, 'invalidSettings'], [{ ...input, provider: 'unsupported' }, 'invalidSettings'],
     [{ ...input, apiKey: ' ' }, 'missingKey'], [{ ...input, model: '' }, 'missingModel'],
-    [{ ...input, baseUrl: 'http://remote.example/v1' }, 'invalidEndpoint'],
+    [{ ...input, baseUrl: 'ftp://remote.example/v1' }, 'invalidEndpoint'],
     [{ ...input, baseUrl: 'https://user:password@example.com/v1' }, 'invalidEndpoint']] as const) {
     assert.deepEqual(await testAiConnection(patch), { ok: false, error })
   }
@@ -91,4 +91,30 @@ test('Qwen uses the same normalized endpoint for connection tests and summaries'
   assert.match(qwenChatEndpoint(), /^https:\/\/dashscope-intl\.aliyuncs\.com\//)
   assert.equal(qwenChatEndpoint('http://127.0.0.1:11434/v1'), 'http://127.0.0.1:11434/v1/chat/completions')
   assert.throws(() => qwenChatEndpoint('https://example.com/v1?key=private'))
+})
+
+test('HTTP endpoints support domains, LAN addresses, ports and IPv6 without changing the selected protocol', async context => {
+  const original = globalThis.fetch
+  context.after(() => { globalThis.fetch = original })
+  for (const base of ['http://remote.example:8080/proxy/v1', 'http://192.168.1.10:8000/v1', 'http://[fd00::1]:11434/v1', 'https://example.test/v1']) {
+    const expected = `${base}/chat/completions`
+    assert.equal(qwenChatEndpoint(` ${base}/ `), expected)
+    assert.equal(qwenChatEndpoint(`${expected}/`), expected)
+    let requests = 0
+    globalThis.fetch = async (url, options) => {
+      requests++
+      assert.equal(String(url), expected)
+      assert.equal((options?.headers as Record<string, string>).Authorization, 'Bearer test-key')
+      return Response.json({ choices: [{ message: { content: 'OK' } }] })
+    }
+    assert.equal((await testAiConnection({ ...input, baseUrl: base })).ok, true)
+    assert.equal(requests, 1)
+  }
+})
+
+test('endpoint validation still rejects non-web schemes and embedded credentials, query strings and fragments', () => {
+  for (const base of ['ftp://example.test/v1', 'file:///tmp/model', 'javascript:alert(1)', 'data:text/plain,hello',
+    'http://user:password@example.test/v1', 'http://example.test/v1?key=private', 'http://example.test/v1#fragment']) {
+    assert.throws(() => qwenChatEndpoint(base))
+  }
 })

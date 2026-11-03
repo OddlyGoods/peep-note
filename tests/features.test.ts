@@ -123,6 +123,40 @@ test('AI connection tests use unsaved input without changing saved settings or c
   } finally { globalThis.fetch = original }
 })
 
+test('a saved HTTP endpoint is used by both connection tests and group summaries', async () => {
+  const saved = await json('/api/settings')
+  const hadSettings = !!queryOne("SELECT user_id FROM settings WHERE user_id = 'local'")
+  insert('http-summary-one', { content: 'First HTTP test note' })
+  insert('http-summary-two', { content: 'Second HTTP test note' })
+  const group = await json('/api/groups', 'POST', { name: 'HTTP endpoint test', log_ids: ['http-summary-one', 'http-summary-two'] })
+  const baseUrl = 'http://ai.internal.example:8080/compatible-mode/v1'
+  await json('/api/settings', 'PUT', { ai_provider: 'qwen', ai_model: 'http-model', qwen_api_key: 'http-test-key', qwen_base_url: baseUrl })
+  const settings = await json('/api/settings')
+  assert.equal(settings.qwen_base_url, baseUrl)
+  const original = globalThis.fetch
+  let calls = 0
+  globalThis.fetch = async (url, options) => {
+    calls++
+    assert.equal(String(url), baseUrl + '/chat/completions')
+    assert.equal((options?.headers as Record<string, string>).Authorization, 'Bearer http-test-key')
+    assert.equal(JSON.parse(String(options?.body)).model, 'http-model')
+    return Response.json({ choices: [{ message: { content: calls === 1 ? 'OK' : JSON.stringify({ title: 'HTTP summary', summary: 'Summarized through HTTP.' }) } }] })
+  }
+  try {
+    const result = await json('/api/ai/test-connection', 'POST', { provider: 'qwen', model: settings.ai_model, apiKey: settings.qwen_api_key, baseUrl: settings.qwen_base_url })
+    assert.equal(result.ok, true)
+    assert.equal((await request('/api/ai/summarize', 'POST', { group_id: group.id })).status, 200)
+    assert.equal(calls, 2)
+    assert.equal(queryOne<any>("SELECT content FROM logs WHERE group_id = ? AND log_type = 'summary'", [group.id]).content, 'Summarized through HTTP.')
+  } finally {
+    globalThis.fetch = original
+    run('DELETE FROM logs WHERE group_id = ?', [group.id])
+    run('DELETE FROM log_groups WHERE id = ?', [group.id])
+    if (hadSettings) await json('/api/settings', 'PUT', saved)
+    else run("DELETE FROM settings WHERE user_id = 'local'")
+  }
+})
+
 test('AI requests forward preset and custom model IDs, using modern OpenAI parameters and visible response text', async () => {
   insert('model-request-one'); insert('model-request-two')
   const group = await json('/api/groups', 'POST', { name: 'Model requests', log_ids: ['model-request-one', 'model-request-two'] })

@@ -592,7 +592,7 @@ export default function Settings() {
               {t('shortcutDescription')}
             </p>
             <div className="space-y-3">
-              {Object.entries({ openMain: t('shortcutOpenMain'), openFavorites: t('shortcutOpenFavorites'), openOverlay: t('shortcutOpenOverlay'), takeScreenshot: t('shortcutCaptureScreenshot'), startRecording: t('shortcutStartRecording'), stopRecording: t('shortcutStopRecording'), quickSwitch: t('quickSwitch'), quickSwitchPrevious: t('quickSwitchPrevious') }).map(([key, label]) => (
+              {Object.entries({ openMain: t('shortcutOpenMain'), openFavorites: t('shortcutOpenFavorites'), openOverlay: t('shortcutOpenOverlay'), takeScreenshot: t('shortcutCaptureScreenshot'), captureFreeform: t('shortcutCaptureFreeform'), startRecording: t('shortcutStartRecording'), stopRecording: t('shortcutStopRecording'), quickSwitch: t('quickSwitch'), quickSwitchPrevious: t('quickSwitchPrevious') }).map(([key, label]) => (
                 <div key={key} className="flex items-center justify-between py-2 border-b border-gray-800 last:border-0">
                   <div>
                     <p className="text-sm text-gray-200">{label}</p>
@@ -601,6 +601,7 @@ export default function Settings() {
                       {key === 'openFavorites' && t('shortcutOpenFavoritesDescription')}
                       {key === 'openOverlay' && t('shortcutOpenOverlayDescription')}
                       {key === 'takeScreenshot' && t('shortcutCaptureScreenshotDescription')}
+                      {key === 'captureFreeform' && t('shortcutCaptureFreeformDescription')}
                       {key === 'startRecording' && t('shortcutStartRecordingDescription')}
                       {key === 'stopRecording' && t('shortcutStopRecordingDescription')}
                       {key === 'quickSwitch' && t('recentRecords')}

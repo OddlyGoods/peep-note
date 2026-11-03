@@ -97,6 +97,8 @@ let quickSwitchPreviousAccelerator = 'Alt+E'
 let globalHotkeysEnabled = true
 const captureToOverlay = createCaptureAction(() => startSnipping(), () => overlayWindow,
   error => console.error('Capture action failed:', error))
+const freeformCaptureToOverlay = createCaptureAction(() => startSnipping(false, 'lasso'), () => overlayWindow,
+  error => console.error('Freeform capture action failed:', error))
 
 // A restored Linux compositor can accept show/focus before Chromium's surface
 // is ready. Request a few frames so the window does not remain transparent.
@@ -492,17 +494,18 @@ function createTray() {
 
   const language = loadSettings().language
   const text = language === 'ko'
-    ? { open: 'PeepNote 열기', quick: '빠른 기록', screenshot: '캡쳐', video: '동영상 녹화', about: '앱 정보', quit: '종료' }
+    ? { open: 'PeepNote 열기', quick: '빠른 기록', screenshot: '캡쳐', freeform: '자유 영역 캡처', video: '동영상 녹화', about: '앱 정보', quit: '종료' }
     : language === 'ja'
-      ? { open: 'PeepNoteを開く', quick: 'クイック記録', screenshot: 'キャプチャ', video: '画面録画を開始', about: 'アプリ情報', quit: '終了' }
+      ? { open: 'PeepNoteを開く', quick: 'クイック記録', screenshot: 'キャプチャ', freeform: 'フリーハンドキャプチャ', video: '画面録画を開始', about: 'アプリ情報', quit: '終了' }
       : language === 'zh'
-        ? { open: '打开 PeepNote', quick: '快速记录', screenshot: '截图', video: '开始屏幕录制', about: '应用信息', quit: '退出' }
-        : { open: 'Show PeepNote', quick: 'Quick note', screenshot: 'Capture', video: 'Recording', about: 'About', quit: 'Quit' }
+        ? { open: '打开 PeepNote', quick: '快速记录', screenshot: '截图', freeform: '自由区域截图', video: '开始屏幕录制', about: '应用信息', quit: '退出' }
+        : { open: 'Show PeepNote', quick: 'Quick note', screenshot: 'Capture', freeform: 'Freeform capture', video: 'Recording', about: 'About', quit: 'Quit' }
   const menu = Menu.buildFromTemplate([
     { label: text.open, click: () => showMainWindow() },
     { type: 'separator' },
     { label: text.quick, click: () => toggleOverlay() },
     { label: text.screenshot, click: () => { void captureToOverlay() } },
+    { label: text.freeform, click: () => { void freeformCaptureToOverlay() } },
     { label: text.video, click: () => startRecordingFromTray() },
     { type: 'separator' },
     { label: text.about, click: () => showAboutWindow() },
@@ -650,7 +653,7 @@ async function captureScreenshot(forceChoose = false): Promise<string | null> {
 // ── 스니핑 도구 ────────────────────────────────────────────────────
 function attachSnippingMonitorSwitch(
   regionWindow: BrowserWindow,
-  mode: 'screenshot' | 'recording-region',
+  mode: 'screenshot' | 'recording-region' | 'lasso',
   onSourceChanged: (sourceId: string) => void = () => {}
 ) {
   let active = true
@@ -694,7 +697,7 @@ function attachSnippingMonitorSwitch(
   }
 }
 
-async function startSnipping(forceChoose = false): Promise<string | null> {
+async function startSnipping(forceChoose = false, shape: 'rectangle' | 'lasso' = 'rectangle'): Promise<string | null> {
   if (snippingWindow || snippingPreparing) return null
   snippingPreparing = true
 
@@ -760,12 +763,12 @@ async function startSnipping(forceChoose = false): Promise<string | null> {
   }
 
   snippingWindow.webContents.once('did-finish-load', () => {
-    snippingWindow?.webContents.send('snipping-init', { dataUrl, width, height, language: loadSettings().language })
+    snippingWindow?.webContents.send('snipping-init', { dataUrl, width, height, mode: shape === 'lasso' ? 'lasso' : 'screenshot', language: loadSettings().language })
   })
 
   return new Promise((resolve) => {
     const regionWindow = snippingWindow!
-    const removeMonitorSwitch = attachSnippingMonitorSwitch(regionWindow, 'screenshot')
+    const removeMonitorSwitch = attachSnippingMonitorSwitch(regionWindow, shape === 'lasso' ? 'lasso' : 'screenshot')
     let settled = false
     const finish = (filepath: string | null) => {
       if (settled) return
@@ -940,6 +943,9 @@ function registerHotkeys() {
     }
     if (hk.takeScreenshot) {
       globalShortcut.register(hk.takeScreenshot, () => { void captureToOverlay() })
+    }
+    if (hk.captureFreeform) {
+      globalShortcut.register(hk.captureFreeform, () => { void freeformCaptureToOverlay() })
     }
     if (hk.startRecording) {
       globalShortcut.register(hk.startRecording, async () => {

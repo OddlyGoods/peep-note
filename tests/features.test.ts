@@ -1305,3 +1305,28 @@ test('Magic Pen remembers the selected tool and each tool model across settings 
     assert.deepEqual((await json('/api/settings')).magic_pen, config)
   } finally { run("DELETE FROM settings WHERE user_id = 'local'") }
 })
+
+test('AI response language persists independently of UI language and controls summaries', async () => {
+  run("DELETE FROM settings WHERE user_id = 'local'")
+  const originalFetch = globalThis.fetch
+  try {
+    assert.equal((await json('/api/settings')).ai_response_language, 'auto')
+    await json('/api/settings', 'PUT', { ai_response_language: 'fr', language: 'ko', ai_provider: 'qwen', qwen_api_key: 'fixture-key' })
+    getDb().close(); await initDb(root)
+    assert.equal((await json('/api/settings')).ai_response_language, 'fr')
+    for (const invalid of ['xx', '', null, 3]) assert.equal((await request('/api/settings', 'PUT', { ai_response_language: invalid })).status, 400)
+    assert.equal((await json('/api/settings')).ai_response_language, 'fr')
+    insert('reply-language-a', { content: 'Source notes' }); insert('reply-language-b', { content: 'More notes' })
+    const group = await json('/api/groups', 'POST', { name: 'Reply language', log_ids: ['reply-language-a', 'reply-language-b'] })
+    let expected = 'French (fr)'
+    globalThis.fetch = async (_url, init) => {
+      const body = JSON.parse(String(init?.body))
+      assert.match(body.messages[0].content, new RegExp(expected.replace(/[()]/g, '\\$&')))
+      return Response.json({ choices: [{ message: { content: JSON.stringify({ title: '요약', summary: 'Test summary' }) } }] })
+    }
+    assert.equal((await json('/api/ai/summarize', 'POST', { group_id: group.id, language: 'en' })).title, 'Résumé')
+    await json('/api/settings', 'PUT', { ai_response_language: 'auto' })
+    expected = 'Japanese (ja)'
+    await json('/api/ai/summarize', 'POST', { group_id: group.id, language: 'ja' })
+  } finally { globalThis.fetch = originalFetch; run("DELETE FROM settings WHERE user_id = 'local'") }
+})

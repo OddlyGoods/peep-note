@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { MAGIC_PEN_TOOLS, MAGIC_PEN_TOOL_LABELS, MAGIC_PEN_TOOL_MODELS } from '../../shared/magicPenTools'
 import { AI_MODELS, type AiProvider } from '../../shared/aiModels'
 import { type MagicPenSettings as Config } from '../../shared/magicPen'
@@ -12,11 +13,12 @@ const messages = {
   zh: { mode: '使用方式', tool: 'AI 工具', toolLabel: '工具', setup: '请先在此电脑上安装{tool}，并在终端登录。', requirement: '请选择支持图像输入的模型。', api: '使用AI设置中的供应商和API密钥。请选择支持图像输入的模型。' },
 }
 
-export default function MagicPenSettings({ value, provider, onChange }: { value: Config; provider: AiProvider; onChange: (config: Config, typing: boolean) => void }) {
+export default function MagicPenSettings({ value, provider, onChange, footer }: { value: Config; provider: AiProvider; onChange: (config: Config, typing: boolean) => void; footer?: ReactNode }) {
   const { language } = useI18n(), copy = messages[language]
   const key = value.mode === 'api' ? provider : value.tool
   return <CaptureCodexSettings key={key} value={value.models[key]} customValue={value.customModels[key]}
     modelOptions={value.mode === 'api' ? AI_MODELS[provider] : value.tool === 'codex' ? undefined : MAGIC_PEN_TOOL_MODELS[value.tool]}
+    footer={footer}
     requirement={value.mode === 'api' ? copy.api : copy.requirement}
     onChange={(model, typing) => onChange({ ...value, models: { ...value.models, [key]: model },
       customModels: typing && isCaptureCodexModel(model) ? { ...value.customModels, [key]: model.trim() } : value.customModels }, typing)}

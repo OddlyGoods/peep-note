@@ -27,6 +27,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 export const api = {
   mcp: {
     status: () => request<McpStatus>('/api/mcp'),
+    savePreferences: (preferences: { enabled: boolean; notificationsEnabled: boolean }) => request<McpStatus>('/api/mcp', { method: 'PUT', body: JSON.stringify(preferences) }),
     setEnabled: (enabled: boolean) => request<McpStatus>('/api/mcp', { method: 'PUT', body: JSON.stringify({ enabled }) }),
     setNotificationsEnabled: (enabled: boolean) => request<McpStatus>('/api/mcp/notifications', { method: 'PUT', body: JSON.stringify({ enabled }) }),
     config: (client: McpClient = 'codex') => request<{ config: string }>(`/api/mcp/config?client=${encodeURIComponent(client)}`)
@@ -241,6 +242,7 @@ export interface Settings {
   ai_model: string
   magic_pen?: import('../../shared/magicPen').MagicPenSettings
   capture_codex_model?: string
+  ai_response_language?: import('../../shared/aiResponseLanguage').AiResponseLanguagePreference
   ai_context_length?: number
   ai_custom_models?: import('../../shared/customModelMemory').CustomModelMemory
   ai_models?: Partial<AiModelMap>

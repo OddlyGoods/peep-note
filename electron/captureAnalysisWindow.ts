@@ -1,3 +1,4 @@
+import type { AiResponseLanguage } from '../shared/aiResponseLanguage'
 import { ApiVisionError } from './apiVision'
 import { BrowserWindow, screen, shell } from 'electron'
 import path from 'path'
@@ -11,6 +12,7 @@ export interface AnalysisWindowOptions {
   firstCapture: AnalysisCapture
   directory: string
   language: CaptureLanguage
+  responseLanguage?: AiResponseLanguage
   model: string
   provider?: string
   theme: 'dark' | 'light'
@@ -71,7 +73,7 @@ export class CaptureAnalysisWindow {
     const controller = this.controller = new AbortController(), startedAt = Date.now()
     this.publish({ status: 'running', question, startedAt, error: null, draft: '' })
     try {
-      const answer = await (this.options.analyze ?? runCodexVision)({ model: this.value.model, language: this.value.language, turns: this.value.turns,
+      const answer = await (this.options.analyze ?? runCodexVision)({ responseLanguage: this.options.responseLanguage, model: this.value.model, language: this.value.language, turns: this.value.turns,
         question, images: [...this.images], directory: this.options.directory, signal: controller.signal,
         onText: draft => { if (!controller.signal.aborted) this.publish({ draft }) } })
       if (controller.signal.aborted || this.disposed) return

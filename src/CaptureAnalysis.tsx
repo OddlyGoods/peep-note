@@ -1,3 +1,4 @@
+import { ThinkingOrb } from 'thinking-orbs'
 import { useEffect, useRef, useState } from 'react'
 import { Camera, Check, Clock3, Loader2, Maximize2, Minimize2, RefreshCw, Save, Send, X } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
@@ -58,7 +59,7 @@ export default function CaptureAnalysis() {
         <button className="capture-titlebar-button capture-titlebar-close" aria-label={copy.close} title={copy.close} onClick={() => void window.captureAnalysis?.close()}><X size={12} /></button>
       </div>
     </header>
-    <main ref={scroll} className="capture-analysis-body" aria-busy={busy} onScroll={() => {
+    <main ref={scroll} className="capture-analysis-body" data-waiting={busy && !state?.turns.length && !state?.draft} aria-busy={busy} onScroll={() => {
       const el = scroll.current!
       followScroll.current = el.scrollHeight - el.scrollTop - el.clientHeight < 60
     }}>
@@ -68,7 +69,10 @@ export default function CaptureAnalysis() {
         <div className="capture-analysis-time"><Clock3 size={12} />{turn.provider ?? state.provider ?? 'Codex'} · {turn.model ?? state.model} · {(turn.elapsedMs / 1000).toFixed(1)}{copy.seconds}</div>
       </section>)}
       {state?.draft && <div className="markdown-content capture-analysis-markdown">{markdown(state.draft)}</div>}
-      {busy && <div className="capture-analysis-waiting" role="status"><Loader2 size={19} className="animate-spin text-violet-500" /><span>{copy.waiting}</span><span className="capture-analysis-elapsed">{elapsed}{copy.seconds}</span></div>}
+      {busy && <div className="capture-analysis-waiting" role="status" aria-label={copy.waiting}>
+        <ThinkingOrb className="capture-analysis-orb" state={state?.draft ? 'composing' : 'solving'} size={64} theme="auto" color="#7c3aed" dotSize={1.2} dots={1.2} aria-hidden="true" />
+        <div className="capture-analysis-waiting-caption" aria-hidden="true"><span>{copy.waiting}</span><span className="capture-analysis-elapsed">{elapsed}{copy.seconds}</span></div>
+      </div>}
       {state?.error && <div role="alert" className="capture-analysis-error">
         <p>{copy[state.error]}</p>
         {state.error !== 'context_limit' && <button className="capture-secondary overlay-close btn-secondary" onClick={() => void window.captureAnalysis?.retry()}><RefreshCw size={13} />{copy.retry}</button>}

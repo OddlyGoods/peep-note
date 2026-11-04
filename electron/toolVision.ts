@@ -15,7 +15,7 @@ async function toolRequest(tool: Exclude<MagicPenTool, 'codex'>, input: CodexVis
     bytes += (await fs.stat(file)).size
     if (bytes > 12 * 1024 * 1024) throw new CodexVisionError('image_limit')
   }
-  const prompt = capturePrompt(input.language, input.turns, input.question)
+  const prompt = capturePrompt(input.language, input.turns, input.question, input.responseLanguage)
   if (tool === 'claude-code') {
     const content = []
     for (const file of input.images) content.push({ type: 'image', source: { type: 'base64', media_type: 'image/png', data: (await fs.readFile(file)).toString('base64') } })

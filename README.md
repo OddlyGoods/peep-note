@@ -35,7 +35,7 @@ Bring saved answers back into your workflow without searching through the main w
 
 ### 4. Turn related notes into an AI summary
 
-Bring answers from multiple LLM conversations together. Use **Manage** to select related records, create a group, and click **AI Summary** to organize the material into one structured note. Summaries follow your selected app language and use the provider and API key configured in **Settings → AI settings**.
+Bring answers from multiple LLM conversations together. Use **Manage** to select related records, create a group, and click **AI Summary** to organize the material into one structured note. Summaries use the provider and API key configured in **Settings → AI settings**. Response language defaults to your PeepNote language; choose a specific language to use it for both summaries and Magic Pen replies. AI settings, Magic Pen and MCP each have their own **Save** button.
 
 ![Group related RAG notes and generate a structured AI summary](docs/images/ai-summary.gif)
 
@@ -217,14 +217,14 @@ The PIN is stored as a hash, not plain text. A four-digit PIN is a convenience l
 
 PeepNote provides a local **Streamable HTTP** MCP server. No separate Node.js installation or cloud backend is needed for an installed app. Keep PeepNote running; it can remain in the tray.
 
-1. Open **Settings → AI settings → MCP** and turn on **Allow MCP connections**. It is off by default, and changes apply immediately.
+1. Open **Settings → AI settings → MCP** and turn on **Allow MCP connections**. It is off by default. Click **Save** at the bottom of the MCP card to apply your changes.
 2. Select **Codex**, **Claude Code**, or **Gemini CLI** to see its connection instructions.
 3. For Codex, click **Copy configuration**, add the block to `~/.codex/config.toml`, and fully restart Codex. For Claude Code or Gemini CLI, click **Copy command**, run it in your terminal, and restart that client. The command registers PeepNote for your user account. Check the connection with `/mcp` in Claude Code or `/mcp list` in Gemini CLI.
 4. Ask your client to “Find my RAG notes” or “Save this answer in PeepNote as Markdown.”
 
 The copied content includes the local server URL (normally `http://127.0.0.1:3848/mcp`) and its authorization header. The Claude and Gemini options are for **Claude Code** and **Gemini CLI**, rather than their web chat apps. For other clients, use **Streamable HTTP** with the displayed URL and private header.
 
-The connection configuration contains a dedicated MCP token, separate from AI provider API keys. Do not publish or share it. Turning MCP off blocks access immediately; turning it back on generates a new token, so copy the configuration again. A custom local API port is reflected in the copied URL. Remote computers and cloud sessions cannot reach this loopback-only endpoint without a separate connection setup.
+The connection configuration contains a dedicated MCP token, separate from AI provider API keys. Do not publish or share it. Saving MCP as disabled blocks access; enabling it again and saving generates a new token, so copy the configuration again. A custom local API port is reflected in the copied URL. Remote computers and cloud sessions cannot reach this loopback-only endpoint without a separate connection setup.
 
 Available tools: `search_notes`, `get_note`, `create_note`, `update_note` (replace or append), `set_favorite`, `list_workspaces`, `create_workspace`, `list_groups`, `create_group`, `trash_notes`, and `trash_group`.
 

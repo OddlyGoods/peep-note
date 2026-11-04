@@ -12,9 +12,11 @@ export function mcpControl(access: McpAccess, port: number, onChanged: McpChange
   app.get('/', c => c.json(status()))
   app.put('/', async c => {
     const body = await c.req.json().catch(() => null)
-    if (typeof body?.enabled !== 'boolean') return c.json({ error: 'INVALID_MCP_SETTING' }, 400)
+    if (typeof body?.enabled !== 'boolean' || (body.notificationsEnabled !== undefined && typeof body.notificationsEnabled !== 'boolean')) return c.json({ error: 'INVALID_MCP_SETTING' }, 400)
     try {
-      access.setEnabled(body.enabled)
+      const notificationsChanged = body.notificationsEnabled !== undefined && body.notificationsEnabled !== access.notificationsEnabled
+      access.setPreferences({ enabled: body.enabled, notificationsEnabled: body.notificationsEnabled ?? access.notificationsEnabled })
+      if (notificationsChanged) { try { onChanged({ notificationsEnabled: access.notificationsEnabled }) } catch {} }
       return c.json(status())
     } catch { return c.json({ error: 'MCP_SETTING_FAILED' }, 500) }
   })

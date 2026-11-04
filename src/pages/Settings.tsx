@@ -1,3 +1,6 @@
+import AiResponseLanguageSelect from '../components/AiResponseLanguageSelect'
+import { normalizeAiResponseLanguage, type AiResponseLanguagePreference } from '../../shared/aiResponseLanguage'
+import SettingsSaveFooter from '../components/SettingsSaveFooter'
 import { ScreenActivity, useScreenActive } from '../lib/screenActivity'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Keyboard, Monitor, User, RotateCcw, Sparkles, Eye, EyeOff, Check, ChevronDown, Lock, KeyRound, Loader2, MoreHorizontal, Settings2, Code2, ExternalLink } from 'lucide-react'
@@ -209,7 +212,7 @@ export default function Settings() {
   const [aiProvider, setAiProvider] = useState<AiProvider>('openai')
   const [customModelMemory, setCustomModelMemory] = useState<CustomModelMemory>({})
   const [magicPen, setMagicPen] = useState(() => getMagicPenSettings())
-  const [captureModelTyping, setCaptureModelTyping] = useState(false)
+  const [aiResponseLanguage, setAiResponseLanguage] = useState<AiResponseLanguagePreference>('auto')
   const [aiContextLength, setAiContextLength] = useState(String(DEFAULT_AI_CONTEXT_LENGTH))
   const validAiContextLength = isAiContextLength(Number(aiContextLength))
   const [aiModelChoices, setAiModelChoices] = useState(() => Object.fromEntries(
@@ -265,47 +268,58 @@ export default function Settings() {
       })
     }
   }, setSaveStatus))
+  // Only these general preferences participate in autosave. AI and Magic Pen
+  // remain drafts until their own Save buttons are pressed.
   const draft = useMemo<Partial<SettingsType>>(() => ({
-    ai_custom_models: customModelMemory, hotkeys, language: selectedLanguage, auto_advance_date_range: autoAdvanceDateRange,
+    hotkeys, language: selectedLanguage, auto_advance_date_range: autoAdvanceDateRange,
     fixed_start_date: fixedStartDate, trash_retention_days: trashRetentionDays,
-    openai_api_key: openaiKey || null, anthropic_api_key: anthropicKey || null,
-    gemini_api_key: geminiKey || null, qwen_api_key: qwenKey || null,
-    qwen_base_url: qwenBaseUrl.trim() || 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
-    magic_pen: magicPenDraft(magicPen, aiProvider),
-    ai_context_length: validAiContextLength ? Number(aiContextLength) : undefined,
-  }), [hotkeys, selectedLanguage, autoAdvanceDateRange, fixedStartDate, trashRetentionDays,
-    openaiKey, anthropicKey, geminiKey, qwenKey, qwenBaseUrl, aiContextLength, validAiContextLength, magicPen, aiProvider, customModelMemory])
-  const aiSelection = useMemo<Partial<SettingsType> | null>(() => aiModel.trim() ? ({
+  }), [hotkeys, selectedLanguage, autoAdvanceDateRange, fixedStartDate, trashRetentionDays])
+  const aiDraft = useMemo<Partial<SettingsType> | null>(() => aiModel.trim() && validAiContextLength ? ({
     ai_provider: aiProvider, ai_model: aiModel.trim(), ai_custom_models: customModelMemory,
     ai_models: Object.fromEntries(Object.entries(aiModelChoices).filter(([, choice]) => choice.model.trim()).map(([provider, choice]) => [provider, choice.model.trim()])),
-  }) : null, [aiProvider, aiModel, aiModelChoices, customModelMemory])
+    ai_context_length: Number(aiContextLength), ai_response_language: aiResponseLanguage,
+    openai_api_key: openaiKey.trim() || null, anthropic_api_key: anthropicKey.trim() || null,
+    gemini_api_key: geminiKey.trim() || null, qwen_api_key: qwenKey.trim() || null,
+    qwen_base_url: qwenBaseUrl.trim() || 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
+  }) : null, [aiProvider, aiModel, aiModelChoices, customModelMemory, aiContextLength, validAiContextLength, aiResponseLanguage,
+    openaiKey, anthropicKey, geminiKey, qwenKey, qwenBaseUrl])
+  const savedAiProvider = settings?.ai_provider ?? 'openai'
+  const magicDraft = useMemo(() => magicPenDraft(magicPen, savedAiProvider), [magicPen, savedAiProvider])
+  const [savedAiDraft, setSavedAiDraft] = useState<string | null>(null)
+  const [savedMagicDraft, setSavedMagicDraft] = useState<string | null>(null)
+  useEffect(() => {
+    if (loading || !settings) return
+    if (savedAiDraft === null) setSavedAiDraft(JSON.stringify(aiDraft))
+    if (savedMagicDraft === null) setSavedMagicDraft(JSON.stringify(magicDraft))
+  }, [loading, settings, aiDraft, magicDraft, savedAiDraft, savedMagicDraft])
+  async function saveAi() {
+    if (!aiDraft) return
+    const patch = aiDraft, snapshot = JSON.stringify(patch)
+    await api.settings.update(patch)
+    setSavedAiDraft(snapshot)
+    setSettings(previous => previous ? { ...previous, ...patch } : previous)
+  }
+  async function saveMagicPen() {
+    if (!magicDraft) return
+    const value = magicDraft, snapshot = JSON.stringify(value)
+    await api.settings.update({ magic_pen: value })
+    setSavedMagicDraft(snapshot)
+  }
   const previousDraft = useRef<Partial<SettingsType> | null>(null)
-  const previousAi = useRef<Partial<SettingsType> | null>(null)
-  const previousProvider = useRef(aiProvider)
   const loadRequest = useRef(0)
 
   useEffect(() => {
     if (loading || !settings) return
     if (!previousDraft.current) {
       previousDraft.current = draft
-      previousAi.current = aiSelection
-      previousProvider.current = aiProvider
       return
     }
     for (const key of Object.keys(draft) as (keyof SettingsType)[]) {
       if (JSON.stringify(draft[key]) === JSON.stringify(previousDraft.current[key])) continue
-      if (['ai_context_length', 'magic_pen'].includes(key) && draft[key] === undefined) { autosave.cancel([key]); continue }
-      const immediate = ['hotkeys', 'language', 'auto_advance_date_range', 'fixed_start_date', 'trash_retention_days'].includes(key) || (key === 'magic_pen' && !captureModelTyping)
-      autosave.schedule({ [key]: draft[key] }, immediate ? 0 : 500)
+      autosave.schedule({ [key]: draft[key] }, 0)
     }
     previousDraft.current = draft
-    if (JSON.stringify(aiSelection) !== JSON.stringify(previousAi.current)) {
-      if (aiSelection) autosave.schedule(aiSelection, !customAiModel || previousProvider.current !== aiProvider ? 0 : 500)
-      else autosave.cancel(['ai_provider', 'ai_model', 'ai_models'])
-      previousAi.current = aiSelection
-    }
-    previousProvider.current = aiProvider
-  }, [loading, settings, draft, aiSelection, customAiModel, aiProvider, autosave, captureModelTyping])
+  }, [loading, settings, draft, autosave])
 
   useEffect(() => { if (!active) void autosave.flush() }, [active, autosave])
   useEffect(() => {
@@ -321,18 +335,20 @@ export default function Settings() {
     void api.settings.get().then(s => {
       if (request !== loadRequest.current) return
       setSettings(s)
+      setSavedAiDraft(null); setSavedMagicDraft(null)
       setHotkeys(resolveHotkeys(s.hotkeys))
       const provider = s.ai_provider ?? 'openai'
       setAiProvider(provider)
+      setAiResponseLanguage(normalizeAiResponseLanguage(s.ai_response_language))
       setMagicPen(getMagicPenSettings(s.magic_pen, s.capture_codex_model, getCustomModelMemory(s.ai_custom_models).codex))
       setAiContextLength(String(normalizeAiContextLength(s.ai_context_length)))
       const models = getAiModels(s.ai_models, provider, s.ai_model)
       setCustomModelMemory(getCustomModelMemory(s.ai_custom_models, models, s.capture_codex_model))
       setAiModelChoices(Object.fromEntries((Object.keys(models) as AiProvider[]).map(value => [value, getAiModelSelection(value, models[value])])) as Record<AiProvider, { model: string; custom: boolean }>)
-      if (s.openai_api_key) setOpenaiKey(s.openai_api_key)
-      if (s.anthropic_api_key) setAnthropicKey(s.anthropic_api_key)
-      if (s.gemini_api_key) setGeminiKey(s.gemini_api_key)
-      if (s.qwen_api_key) setQwenKey(s.qwen_api_key)
+      setOpenaiKey(s.openai_api_key ?? '')
+      setAnthropicKey(s.anthropic_api_key ?? '')
+      setGeminiKey(s.gemini_api_key ?? '')
+      setQwenKey(s.qwen_api_key ?? '')
       if (s.qwen_base_url) setQwenBaseUrl(s.qwen_base_url)
       setSelectedLanguage(s.language ?? 'en')
       setLanguage(s.language ?? 'en')
@@ -440,11 +456,11 @@ export default function Settings() {
             zh: '管理 PeepNote 的使用偏好和连接设置。'
           }[language]}</p>
         </div>
-        <div className="ml-4 flex shrink-0 items-center gap-2 text-xs" role="status" aria-live="polite">
+        {section !== 'ai' && <div className="ml-4 flex shrink-0 items-center gap-2 text-xs" role="status" aria-live="polite">
           {saveStatus === 'saving' && <><Loader2 className="h-3.5 w-3.5 animate-spin text-violet-400" />{t('settingsSaving')}</>}
           {saveStatus === 'saved' && <><Check className="h-3.5 w-3.5 text-violet-400" />{t('settingsSaved')}</>}
           {saveStatus === 'error' && <><span className="text-red-400">{t('settingsSaveFailed')}</span><button type="button" className="btn-secondary flex items-center gap-1.5 text-xs" onClick={() => { void autosave.flush() }}><RotateCcw className="h-3.5 w-3.5" />{t('settingsRetry')}</button></>}
-        </div>
+        </div>}
       </div>
 
       <div className="flex min-h-0 flex-1">
@@ -634,10 +650,10 @@ export default function Settings() {
           </section>
         </SettingsPane>
         <SettingsPane section="ai" selected={section === 'ai'}>
-          <section className="card p-5">
+          <section className="card p-5" aria-labelledby="ai-panel-title">
             <div className="flex items-center gap-2 mb-4">
               <Sparkles className="w-4 h-4 text-violet-400" />
-              <h2 className="text-sm font-semibold text-white">{t('aiSettings')}</h2>
+              <h2 id="ai-panel-title" className="text-sm font-semibold text-white">{t('aiSettings')}</h2>
             </div>
             <div className="space-y-4">
               {/* 프로바이더 선택 */}
@@ -758,6 +774,8 @@ export default function Settings() {
                 )}
               </div>
 
+              <AiResponseLanguageSelect value={aiResponseLanguage} onChange={setAiResponseLanguage} />
+
               <div>
                 <label htmlFor="ai-context-length" className="block text-xs font-medium text-gray-400 mb-1.5">{t('aiContextLength')}</label>
                 <input id="ai-context-length" type="number" inputMode="numeric"
@@ -827,10 +845,12 @@ export default function Settings() {
                 apiKey={aiProvider === 'openai' ? openaiKey : aiProvider === 'anthropic' ? anthropicKey : aiProvider === 'gemini' ? geminiKey : qwenKey}
                 baseUrl={aiProvider === 'qwen' ? qwenBaseUrl : undefined} />
             </div>
+            <SettingsSaveFooter dirty={savedAiDraft !== null && JSON.stringify(aiDraft) !== savedAiDraft}
+              disabled={!aiDraft} onSave={saveAi} />
           </section>
-          <MagicPenSettings value={magicPen} provider={aiProvider} onChange={(value, typing) => {
-            setMagicPen(value); setCaptureModelTyping(typing)
-          }} />
+          <MagicPenSettings value={magicPen} provider={savedAiProvider} onChange={value => setMagicPen(value)}
+            footer={<SettingsSaveFooter dirty={savedMagicDraft !== null && JSON.stringify(magicDraft) !== savedMagicDraft}
+              disabled={!magicDraft} onSave={saveMagicPen} />} />
           <McpPanel />
         </SettingsPane>
         <SettingsPane section="remote" selected={section === 'remote'}>

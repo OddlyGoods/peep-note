@@ -309,3 +309,33 @@ test('turning MCP off also stops a previously authorized request whose body is s
   assert.equal(response.result.content[0].text, 'MCP_UNAUTHORIZED')
   assert.equal(row('visible').content, 'reference content')
 })
+
+test('MCP Save applies connection and notification preferences together without rotating an active token', async () => {
+  access.setEnabled(true)
+  const url = endpoint.replace('/mcp', '/api/mcp'), authorization = tokenHeader()
+  const put = (body: object) => fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+  const before = { enabled: access.enabled, notificationsEnabled: access.notificationsEnabled }
+  assert.equal((await put({ enabled: false, notificationsEnabled: 'invalid' })).status, 400)
+  assert.equal(access.enabled, before.enabled)
+  assert.equal(access.notificationsEnabled, before.notificationsEnabled)
+  const saved = await put({ enabled: true, notificationsEnabled: false })
+  assert.equal(saved.status, 200)
+  assert.equal((await saved.json()).notificationsEnabled, false)
+  assert.equal(notificationPreferences.at(-1), false)
+  assert.equal(access.accepts(authorization), true)
+  assert.equal(createMcpAccess(root).notificationsEnabled, false)
+  assert.equal((await put({ enabled: true, notificationsEnabled: true })).status, 200)
+})
+
+test('failed MCP preference persistence leaves both runtime settings and the connection token unchanged', () => {
+  const directory = path.join(root, 'atomic-preferences'); fs.mkdirSync(directory)
+  const fixture = createMcpAccess(directory)
+  fixture.setPreferences({ enabled: true, notificationsEnabled: true })
+  const config = fixture.clientConfig('http://127.0.0.1:9999/mcp')
+  const file = path.join(directory, 'mcp-access.json')
+  fs.renameSync(file, file + '.backup'); fs.mkdirSync(file)
+  assert.throws(() => fixture.setPreferences({ enabled: false, notificationsEnabled: false }))
+  assert.equal(fixture.enabled, true)
+  assert.equal(fixture.notificationsEnabled, true)
+  assert.equal(fixture.clientConfig('http://127.0.0.1:9999/mcp'), config)
+})

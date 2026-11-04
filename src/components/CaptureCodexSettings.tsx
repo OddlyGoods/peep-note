@@ -11,7 +11,7 @@ const messages = {
   zh: { title: '魔法笔', label: '模型', hint: '圈选屏幕上想了解的内容，AI 即可为你解答。', requirement: '使用已登录的 Codex CLI 账号。', invalid: '请输入有效的模型 ID。' },
 }
 
-export default function CaptureCodexSettings({ value, customValue, onChange, modelOptions, requirement, controls }: { value: string; customValue?: string; onChange: (value: string, typing: boolean) => void; modelOptions?: readonly CaptureCodexModel[]; requirement?: string; controls?: ReactNode }) {
+export default function CaptureCodexSettings({ value, customValue, onChange, modelOptions, requirement, controls, footer }: { value: string; customValue?: string; onChange: (value: string, typing: boolean) => void; modelOptions?: readonly CaptureCodexModel[]; requirement?: string; controls?: ReactNode; footer?: ReactNode }) {
   const { language, t } = useI18n(), copy = messages[language]
   const active = useScreenActive()
   const id = useId()
@@ -71,5 +71,6 @@ export default function CaptureCodexSettings({ value, customValue, onChange, mod
       className="input w-full font-mono text-xs mt-2" placeholder={t('customAiModelId')} autoComplete="off" spellCheck={false} autoFocus
       aria-invalid={!isCaptureCodexModel(value)} onFocus={event => event.currentTarget.select()} />}
     <p className={`text-xs mt-2 leading-relaxed ${isCaptureCodexModel(value) ? 'text-gray-400' : 'text-red-400'}`}>{isCaptureCodexModel(value) ? (requirement ?? copy.requirement) : copy.invalid}</p>
+    {footer}
   </section>
 }

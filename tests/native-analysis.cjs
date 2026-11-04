@@ -18,7 +18,7 @@ app.whenReady().then(async () => {
   fs.writeFileSync(image, nativeImage.createFromBitmap(pixels, {width:80,height:40}).toPNG())
   const inputs = [], outputs = [], saves = []
   let session = new CaptureAnalysisWindow({firstCapture:{filePath:image,bounds:{x:600,y:120,width:120,height:100}},directory,
-    language:'ko',model:'gpt-6.1-sol',theme:'light',dev:false,workspaces:[{id:'general',name:'General',isDefault:true},{id:'project',name:'Project',isDefault:false}],
+    language:'ko',responseLanguage:'fr',model:'gpt-6.1-sol',theme:'light',dev:false,workspaces:[{id:'general',name:'General',isDefault:true},{id:'project',name:'Project',isDefault:false}],
     analyze: input => { inputs.push(input); return new Promise((resolve,reject) => { outputs.push(resolve); input.signal.addEventListener('abort',()=>reject(new Error('cancelled'))) }) },
     capture:async()=>{const filePath=path.join(directory,'second.png');fs.copyFileSync(image,filePath);return {filePath,bounds:{x:200,y:200,width:80,height:40}}},
     save:(...args)=>{saves.push(args);return 'saved-note'},onClosed:()=>{},
@@ -28,18 +28,32 @@ app.whenReady().then(async () => {
   await until(()=>session.window.isVisible())
   await until(()=>js('!!document.querySelector(".capture-analysis-waiting")'))
   assert.equal(session.state.status,'running')
+  assert.equal(inputs[0].responseLanguage,'fr')
   assert.equal(await js('document.querySelectorAll(".capture-analysis-body img").length'),0)
   assert.equal(await js('document.querySelector(".capture-analysis-header").textContent.includes("gpt-6.1-sol")'),false)
   assert.equal(await js('getComputedStyle(document.querySelector(".capture-analysis-shell")).borderTopLeftRadius'),'12px')
   const elapsed = await js('document.querySelector(".capture-analysis-elapsed").textContent')
+  await until(()=>js('!!document.querySelector(".capture-analysis-orb")'))
+  const firstOrb = await js('document.querySelector(".capture-analysis-orb").toDataURL()')
+  assert.equal(await js('getComputedStyle(document.querySelector(".capture-analysis-body")).display'),'flex')
+  assert.equal(await js('document.querySelector(".capture-analysis-orb").getBoundingClientRect().width'),64)
   await wait(1200)
+  assert.notEqual(await js('document.querySelector(".capture-analysis-orb").toDataURL()'),firstOrb,'the thinking orb should animate while waiting')
   assert.notEqual(await js('document.querySelector(".capture-analysis-elapsed").textContent'),elapsed)
+  session.window.webContents.debugger.attach('1.3')
+  await session.window.webContents.debugger.sendCommand('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]})
+  await wait(120)
+  const stillOrb = await js('document.querySelector(".capture-analysis-orb").toDataURL()')
+  await wait(120)
+  assert.equal(await js('document.querySelector(".capture-analysis-orb").toDataURL()'),stillOrb,'reduced-motion preference should keep a static orb')
+  session.window.webContents.debugger.detach()
   assert.equal(await js('getComputedStyle(document.querySelector(".capture-analysis-header")).webkitAppRegion'),'drag')
   assert.ok(session.window.getBounds().x <= 504)
   fs.writeFileSync('/tmp/peepnote-analysis-waiting.png',(await session.window.webContents.capturePage()).toPNG())
   outputs[0]('## 오류 원인\n\n포트가 사용 중입니다.\n\n추가 로그 화면을 캡처해 주세요.\n\n```bash\nexample command\n```')
   await until(()=>session.state.status==='ready')
   await until(()=>js('!!document.querySelector(".capture-analysis-markdown h2")'))
+  assert.equal(await js('document.querySelectorAll(".capture-analysis-orb").length'),0)
   await wait(120)
   fs.writeFileSync('/tmp/peepnote-analysis-ready.png',(await session.window.webContents.capturePage()).toPNG())
   await js('document.documentElement.dataset.theme="dark"')
@@ -167,6 +181,6 @@ app.whenReady().then(async () => {
   fs.writeFileSync('/tmp/peepnote-magic-tools-dark.png',(await settings.webContents.capturePage()).toPNG())
   settings.close()
   clearTimeout(deadline)
-  console.log('ANALYSIS_QA_SUCCESS waiting timer, provider metadata, API/tool switching, scoped custom models, model catalog/selection, Markdown, position, dragging, follow-up capture/context, save-and-close, failed-save recovery, four tool selections and custom memory, close/cancel')
+  console.log('ANALYSIS_QA_SUCCESS animated thinking orb lifecycle, waiting timer, provider metadata, API/tool switching, scoped custom models, model catalog/selection, Markdown, position, dragging, follow-up capture/context, save-and-close, failed-save recovery, four tool selections and custom memory, close/cancel')
   app.exit(0)
 }).catch(error=>{console.error(error);app.exit(1)})

@@ -1,3 +1,4 @@
+import SettingsSaveFooter from './SettingsSaveFooter'
 import { useEffect, useRef, useState } from 'react'
 import { Check, Copy, Loader2, Plug } from 'lucide-react'
 import { api } from '../lib/api'
@@ -20,6 +21,7 @@ const copy = {
       'qwen-code': 'Run the copied command in your terminal, then restart Qwen Code. Use /mcp to check the peepnote connection.',
     },
     tokenHint: 'The copied content includes a private connection token; do not share it.',
+    saveFirst: 'Save your changes before copying the connection configuration.',
     failed: 'Could not update MCP settings or copy the configuration. Please try again.'
   },
   ko: {
@@ -35,6 +37,7 @@ const copy = {
       'qwen-code': '복사한 명령어를 터미널에서 실행한 뒤 Qwen Code를 재시작하세요. /mcp에서 peepnote 연결을 확인할 수 있습니다.',
     },
     tokenHint: '복사한 내용에 연결 전용 토큰이 포함되어 있으니 공유하지 마세요.',
+    saveFirst: '연결 설정을 복사하려면 먼저 저장해 주세요.',
     failed: 'MCP 설정을 변경하거나 복사하지 못했습니다. 다시 시도해 주세요.'
   },
   ja: {
@@ -50,6 +53,7 @@ const copy = {
       'qwen-code': 'コピーしたコマンドをターミナルで実行し、Qwen Code を再起動してください。/mcp で peepnote の接続を確認できます。',
     },
     tokenHint: 'コピーした内容には専用の接続トークンが含まれるため、共有しないでください。',
+    saveFirst: '接続設定をコピーする前に保存してください。',
     failed: 'MCP 設定の変更またはコピーに失敗しました。もう一度お試しください。'
   },
   zh: {
@@ -65,6 +69,7 @@ const copy = {
       'qwen-code': '在终端中运行复制的命令，然后重启 Qwen Code。使用 /mcp 检查 peepnote 连接。',
     },
     tokenHint: '复制的内容含有专用连接令牌，请勿分享。',
+    saveFirst: '请先保存，再复制连接配置。',
     failed: '无法更改 MCP 设置或复制配置，请重试。'
   }
 }
@@ -75,8 +80,9 @@ export default function McpPanel() {
   const active = useScreenActive()
   const status = useMcpStatusStore(state => state.status)
   const refreshStatus = useMcpStatusStore(state => state.refresh)
-  const setEnabled = useMcpStatusStore(state => state.setEnabled)
-  const setNotificationsEnabled = useMcpStatusStore(state => state.setNotificationsEnabled)
+  const savePreferences = useMcpStatusStore(state => state.savePreferences)
+  const [enabledDraft, setEnabledDraft] = useState<boolean | null>(null)
+  const [notificationsDraft, setNotificationsDraft] = useState<boolean | null>(null)
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -87,6 +93,10 @@ export default function McpPanel() {
     } catch {}
     return 'codex'
   })
+  const savedClient = useRef(client)
+  const enabled = enabledDraft ?? status?.enabled ?? false
+  const notificationsEnabled = notificationsDraft ?? status?.notificationsEnabled ?? true
+  const dirty = !!status && (enabled !== status.enabled || notificationsEnabled !== status.notificationsEnabled || client !== savedClient.current)
   const request = useRef(0)
   useEffect(() => {
     if (!active) return
@@ -95,13 +105,15 @@ export default function McpPanel() {
       .catch(() => { if (current === request.current) setFailed(true) })
     return () => { request.current++ }
   }, [active, refreshStatus])
-  async function toggle() {
+  async function save() {
     if (!status || busy) return
-    request.current++
     setBusy(true); setFailed(false); setCopied(false)
-    try { await setEnabled(!status.enabled) }
-    catch { setFailed(true) }
-    finally { setBusy(false) }
+    try {
+      await savePreferences({ enabled, notificationsEnabled })
+      try { localStorage.setItem('openpeepnote_mcp_client', client) } catch {}
+      savedClient.current = client
+      setEnabledDraft(null); setNotificationsDraft(null)
+    } finally { setBusy(false) }
   }
   async function copyConfig() {
     setBusy(true); setFailed(false); setCopied(false)
@@ -112,50 +124,44 @@ export default function McpPanel() {
     } catch { setFailed(true) }
     finally { setBusy(false) }
   }
-  async function toggleNotifications() {
-    if (!status || busy) return
-    setBusy(true); setFailed(false)
-    try { await setNotificationsEnabled(!(status.notificationsEnabled ?? true)) }
-    catch { setFailed(true) }
-    finally { setBusy(false) }
-  }
   return <section className="card p-5" aria-labelledby="mcp-panel-title" aria-busy={busy}>
     <h2 id="mcp-panel-title" className="flex items-center gap-2 text-sm font-semibold text-gray-200 mb-4"><Plug className="w-4 h-4 text-violet-400" />{text.title}</h2>
     <div className="flex items-start justify-between gap-4">
       <div><p className="text-sm text-gray-300">{text.enable}</p><p className="text-xs text-gray-400 mt-1 leading-relaxed">{text.description} {text.limits}</p></div>
-      <button type="button" role="switch" aria-label={text.enable} aria-checked={status?.enabled ?? false} disabled={!status || busy} onClick={toggle}
-        className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-40 ${status?.enabled ? 'bg-violet-500' : 'bg-gray-700'}`}>
-        <span className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition-transform ${status?.enabled ? 'translate-x-5' : ''}`} />
+      <button type="button" role="switch" aria-label={text.enable} aria-checked={enabled} disabled={!status || busy} onClick={() => { setEnabledDraft(!enabled === status?.enabled ? null : !enabled); setCopied(false) }}
+        className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-40 ${enabled ? 'bg-violet-500' : 'bg-gray-700'}`}>
+        <span className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition-transform ${enabled ? 'translate-x-5' : ''}`} />
       </button>
     </div>
-    {status?.enabled && <div className="mt-4 border-t pt-4" style={{ borderColor: 'var(--soft-border)' }}>
+    {enabled && <div className="mt-4 border-t pt-4" style={{ borderColor: 'var(--soft-border)' }}>
       <label htmlFor="mcp-endpoint" className="block text-xs text-gray-400 mb-1.5">{text.endpoint}</label>
-      <input id="mcp-endpoint" readOnly value={status.endpoint} className="input w-full font-mono text-xs" />
+      <input id="mcp-endpoint" readOnly value={status?.endpoint ?? ''} className="input w-full font-mono text-xs" />
       <p id="mcp-client-label" className="text-xs text-gray-400 mt-4 mb-2">{text.client}</p>
       <div role="group" aria-labelledby="mcp-client-label" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {MCP_CLIENTS.map(option => <button key={option.id} type="button" disabled={busy} aria-pressed={client === option.id}
           data-active={client === option.id}
           onClick={() => {
             setClient(option.id); setCopied(false); setFailed(false)
-            try { localStorage.setItem('openpeepnote_mcp_client', option.id) } catch {}
           }}
           className={`settings-provider-button rounded-lg border px-2 py-2 text-xs font-medium transition-colors disabled:opacity-40 ${client === option.id ? 'bg-violet-600/20 text-violet-300 border-violet-500/40' : 'text-gray-400 border-gray-700 hover:border-gray-600 hover:text-gray-300'}`}>
           {option.label}
         </button>)}
       </div>
       <p className="text-xs text-gray-400 leading-relaxed mt-3">{text.setup[client]} {text.tokenHint}</p>
-      <button type="button" onClick={copyConfig} disabled={busy} className="btn-secondary ml-auto flex items-center gap-1.5 text-xs mt-3">
+      <button type="button" onClick={copyConfig} disabled={busy || !status?.enabled} className="btn-secondary ml-auto flex items-center gap-1.5 text-xs mt-3">
         {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
         {copied ? t('copied') : client === 'codex' ? text.configButton : text.commandButton}
       </button>
+      {!status?.enabled && <p className="text-xs text-gray-400 mt-2 text-right">{text.saveFirst}</p>}
     </div>}
     <div className="mt-4 border-t pt-4 flex items-start justify-between gap-4" style={{ borderColor: 'var(--soft-border)' }}>
       <div><p className="text-sm text-gray-300">{text.notifications}</p><p className="text-xs text-gray-400 mt-1 leading-relaxed">{text.notificationHint}</p></div>
-      <button type="button" role="switch" aria-label={text.notifications} aria-checked={status?.notificationsEnabled ?? true} disabled={!status || busy} onClick={toggleNotifications}
-        className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-40 ${(status?.notificationsEnabled ?? true) ? 'bg-violet-500' : 'bg-gray-700'}`}>
-        <span className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition-transform ${(status?.notificationsEnabled ?? true) ? 'translate-x-5' : ''}`} />
+      <button type="button" role="switch" aria-label={text.notifications} aria-checked={notificationsEnabled} disabled={!status || busy} onClick={() => setNotificationsDraft(!notificationsEnabled === status?.notificationsEnabled ? null : !notificationsEnabled)}
+        className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-40 ${notificationsEnabled ? 'bg-violet-500' : 'bg-gray-700'}`}>
+        <span className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition-transform ${notificationsEnabled ? 'translate-x-5' : ''}`} />
       </button>
     </div>
     {failed && <p role="alert" className="text-xs text-red-400 mt-3">{text.failed}</p>}
+    <SettingsSaveFooter dirty={dirty} disabled={!status || busy} onSave={save} />
   </section>
 }

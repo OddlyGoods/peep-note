@@ -4,6 +4,7 @@ import { api } from '../lib/api'
 type McpStatus = Awaited<ReturnType<typeof api.mcp.status>>
 interface McpStatusStore {
   status: McpStatus | null
+  savePreferences: (preferences: { enabled: boolean; notificationsEnabled: boolean }) => Promise<void>
   refresh: () => Promise<void>
   setEnabled: (enabled: boolean) => Promise<void>
   setNotificationsEnabled: (enabled: boolean) => Promise<void>
@@ -24,6 +25,12 @@ export const useMcpStatusStore = create<McpStatusStore>(set => ({
       throw error
     }).finally(() => { pending = null })
     return pending
+  },
+  savePreferences: async preferences => {
+    revision++
+    const status = await api.mcp.savePreferences(preferences)
+    revision++
+    set({ status })
   },
   setEnabled: async enabled => {
     revision++

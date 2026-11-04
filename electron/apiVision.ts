@@ -14,7 +14,7 @@ export interface ApiVisionConfig { provider: AiProvider; apiKey: string; baseUrl
 export async function runApiVision(input: CodexVisionInput, config: ApiVisionConfig, request: typeof fetch = fetch): Promise<string> {
   input.signal.throwIfAborted()
   if (!config.apiKey?.trim()) throw new ApiVisionError('api_missing_key')
-  const prompt = capturePrompt(input.language, input.turns, input.question)
+  const prompt = capturePrompt(input.language, input.turns, input.question, input.responseLanguage)
   let bytes = 0
   const images: string[] = []
   for (const image of input.images) {

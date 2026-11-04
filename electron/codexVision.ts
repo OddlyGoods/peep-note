@@ -1,3 +1,4 @@
+import type { AiResponseLanguage } from '../shared/aiResponseLanguage'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
@@ -34,7 +35,7 @@ export function findCodexLaunch(env: NodeJS.ProcessEnv = process.env, platform =
 }
 
 export interface CodexVisionInput {
-  model: string; language: CaptureLanguage; turns: CaptureTurn[]; question: string; images: string[]
+  model: string; responseLanguage?: AiResponseLanguage; language: CaptureLanguage; turns: CaptureTurn[]; question: string; images: string[]
   directory: string; signal: AbortSignal; onText: (text: string) => void
 }
 export async function runCodexVision(input: CodexVisionInput, options: {
@@ -96,7 +97,7 @@ export async function runCodexVision(input: CodexVisionInput, options: {
     })
     child.stderr.on('data', (chunk: string) => { diagnostics = (diagnostics + chunk).slice(-12_000) })
     child.stdin.on('error', () => {})
-    child.stdin.end(capturePrompt(input.language, input.turns, input.question))
+    child.stdin.end(capturePrompt(input.language, input.turns, input.question, input.responseLanguage))
     child.once('error', () => { cleanup(); reject(new CodexVisionError('cli_missing')) })
     child.once('close', async code => {
       cleanup()

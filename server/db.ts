@@ -102,6 +102,7 @@ export async function initDb(appDataPath: string) {
   try { db.run("ALTER TABLE settings ADD COLUMN qwen_api_key TEXT") } catch {}
   try { db.run("ALTER TABLE settings ADD COLUMN qwen_base_url TEXT") } catch {}
   try { db.run('ALTER TABLE settings ADD COLUMN ai_model TEXT') } catch {}
+  try { db.run("ALTER TABLE settings ADD COLUMN ai_response_language TEXT NOT NULL DEFAULT 'auto'") } catch {}
   try { db.run("ALTER TABLE settings ADD COLUMN magic_pen TEXT NOT NULL DEFAULT '{}'") } catch {}
   try { db.run("ALTER TABLE settings ADD COLUMN capture_codex_model TEXT NOT NULL DEFAULT 'gpt-6.1-sol'") } catch {}
   try { db.run('ALTER TABLE settings ADD COLUMN ai_context_length INTEGER NOT NULL DEFAULT 32768') } catch {}

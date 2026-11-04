@@ -26,6 +26,10 @@ export function createMcpAccess(directory?: string) {
     }
     state = next
   }
+  function setPreferences(next: { enabled: boolean; notificationsEnabled: boolean }) {
+    if (next.enabled === state.enabled && next.notificationsEnabled === state.notificationsEnabled) return
+    persist({ ...next, token: next.enabled ? (state.enabled ? state.token : randomBytes(32).toString('hex')) : '' })
+  }
   function clientConfig(endpoint: string, client: McpClient = 'codex') {
     if (!state.enabled) throw new Error('MCP_DISABLED')
     const authorization = `Bearer ${state.token}`
@@ -42,14 +46,14 @@ export function createMcpAccess(directory?: string) {
   }
   return {
     clientConfig,
+    setPreferences,
     get enabled() { return state.enabled },
     get notificationsEnabled() { return state.notificationsEnabled },
     setNotificationsEnabled(enabled: boolean) {
-      if (enabled !== state.notificationsEnabled) persist({ ...state, notificationsEnabled: enabled })
+      setPreferences({ enabled: state.enabled, notificationsEnabled: enabled })
     },
     setEnabled(enabled: boolean) {
-      if (enabled === state.enabled) return
-      persist({ ...state, enabled, token: enabled ? randomBytes(32).toString('hex') : '' })
+      setPreferences({ enabled, notificationsEnabled: state.notificationsEnabled })
     },
     accepts(header: string | undefined) {
       if (!state.enabled || !header) return false

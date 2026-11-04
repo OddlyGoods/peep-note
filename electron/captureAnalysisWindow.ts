@@ -32,6 +32,7 @@ export class CaptureAnalysisWindow {
   private controller: AbortController | null = null
   private disposed = false
   private busyCapture = false
+  private interruptedTurn: CaptureTurn | null = null
 
   constructor(private options: AnalysisWindowOptions) {
     this.value = { status: 'waiting', maximized: false, language: options.language, model: options.model, provider: options.provider ?? 'Codex', turns: [], question: '', draft: '', startedAt: null,
@@ -56,7 +57,7 @@ export class CaptureAnalysisWindow {
   }
 
   get state(): CaptureAnalysisState { return this.value }
-  get isBusy() { return this.value.status === 'running' || this.busyCapture }
+  get isBusy() { return this.value.status === 'running' || this.value.status === 'stopping' || this.busyCapture }
   private publish(patch: Partial<CaptureAnalysisState>) {
     if (this.disposed) return
     this.value = { ...this.value, ...patch }
@@ -66,11 +67,12 @@ export class CaptureAnalysisWindow {
     this.images.push(file)
   }
   private async run(question: string) {
-    if (this.disposed || this.value.status === 'running') return
+    if (this.disposed || this.isBusy) return
     const textLength = this.value.turns.reduce((sum, turn) => sum + turn.question.length + turn.answer.length, question.length)
     if (textLength > 80_000 || this.images.length > 6 || this.value.turns.length >= 16) {
       this.publish({ error: 'context_limit', status: 'error' }); return
     }
+    this.interruptedTurn = null
     const controller = this.controller = new AbortController(), startedAt = Date.now()
     const stream = new ProgressiveText(controller.signal, draft => this.publish({ draft }))
     this.publish({ status: 'running', question, startedAt, error: null, draft: '' })
@@ -88,15 +90,35 @@ export class CaptureAnalysisWindow {
     } catch (error) {
       if (!controller.signal.aborted && !this.disposed) this.publish({ status: 'error', draft: '',
         error: error instanceof CodexVisionError || error instanceof ApiVisionError ? error.code : 'failed' })
-    } finally { stream.dispose(); if (this.controller === controller) this.controller = null }
+    } finally {
+      stream.dispose()
+      if (this.controller === controller) {
+        this.controller = null
+        if (this.value.status === 'stopping') this.publish({ status: 'stopped' })
+      }
+    }
   }
-  async retry() { if (!this.isBusy && this.value.status === 'error' && this.value.error !== 'context_limit') await this.run(this.value.question) }
+  stop() {
+    if (this.disposed || this.value.status !== 'running' || !this.controller) return
+    const response = splitCaptureResponse(this.value.draft)
+    this.interruptedTurn = response.body.trim() ? { question: this.value.question, answer: response.body, title: response.title,
+      interrupted: true, elapsedMs: Math.max(0, Date.now() - (this.value.startedAt ?? Date.now())), imageCount: this.images.length,
+      model: this.value.model, provider: this.value.provider } : null
+    this.publish({ status: 'stopping', draft: '', error: null, saved: false,
+      turns: this.interruptedTurn ? [...this.value.turns, this.interruptedTurn] : this.value.turns })
+    this.controller.abort()
+  }
+  async retry() {
+    if (this.isBusy || !['error', 'stopped'].includes(this.value.status) || this.value.error === 'context_limit') return
+    if (this.interruptedTurn) this.publish({ turns: this.value.turns.filter(turn => turn !== this.interruptedTurn) })
+    await this.run(this.value.question)
+  }
   async ask(question: unknown) {
-    if (this.isBusy || this.value.status !== 'ready' || typeof question !== 'string' || !question.trim()) return
+    if (this.isBusy || !['ready', 'stopped'].includes(this.value.status) || typeof question !== 'string' || !question.trim()) return
     await this.run(question.trim().slice(0, 4000))
   }
   async capture(question: unknown) {
-    if (this.disposed || this.isBusy || this.value.status !== 'ready') return
+    if (this.disposed || this.isBusy || !['ready', 'stopped'].includes(this.value.status)) return
     if (this.images.length >= 6) { this.publish({ error: 'context_limit', status: 'error' }); return }
     this.busyCapture = true
     this.publish({ capturing: true })

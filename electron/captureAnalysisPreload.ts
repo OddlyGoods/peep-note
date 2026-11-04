@@ -3,7 +3,7 @@ import type { CaptureAnalysisState } from '../shared/captureAnalysis'
 const action = (name: string, value?: unknown) => ipcRenderer.invoke('capture-analysis-action', name, value)
 contextBridge.exposeInMainWorld('captureAnalysis', {
   state: () => action('state'), capture: (question: string) => action('capture', question),
-  ask: (question: string) => action('ask', question), retry: () => action('retry'),
+  ask: (question: string) => action('ask', question), retry: () => action('retry'), stop: () => action('stop'),
   save: (workspace: string | null) => action('save', workspace), maximize: () => action('maximize'), close: () => action('close'),
   onState: (callback: (state: CaptureAnalysisState) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, state: CaptureAnalysisState) => callback(state)

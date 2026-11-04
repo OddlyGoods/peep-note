@@ -308,6 +308,8 @@ test('capture analysis saves only the Markdown conversation and title without at
   assert.match(saved.content, /Try this fix/)
   assert.deepEqual(saved.attachments, [])
   assert.equal(saved.file_path, null)
+  const partialId = saveCaptureAnalysis([{ question: 'Explain', title: 'Partial note', answer: 'Partial answer.', interrupted: true, elapsedMs: 123 }], 'ja', workspace.id)
+  assert.match((await json(`/api/logs/${partialId}`)).content, /応答を停止しました/, 'saved partial answers are marked as interrupted in the selected language')
   assert.equal(fs.readFileSync(transient, 'utf8'), 'synthetic image fixture', 'analysis owns its temporary images until the window closes')
   assert.deepEqual(fs.readdirSync(screenshots), before, 'saving creates no managed image copies')
   assert.throws(() => saveCaptureAnalysis([], 'en', workspace.id), /No completed response/)

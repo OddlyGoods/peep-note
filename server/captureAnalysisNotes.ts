@@ -10,6 +10,6 @@ export function saveCaptureAnalysis(turns: CaptureTurn[], language: CaptureLangu
   const firstLine = turns[0].title?.trim().slice(0, 100) || turns[0].answer.split('\n').find(line => line.trim())?.replace(/^[#>*\s]+/, '').replace(/[*`]/g, '').slice(0, 100)
   run(`INSERT INTO logs (id, user_id, title, content, log_type, content_format, tags, attachments, workspace_id, is_secret, created_at, updated_at, ocr_status)
     VALUES (?, ?, ?, ?, 'note', 'markdown', '[]', ?, ?, 0, ?, ?, 'idle')`,
-  [id, LOCAL_PROFILE_ID, firstLine || captureAnalysisCopy[language].noteTitle, captureNoteMarkdown(turns), '[]', workspace ? workspace.id : defaultWorkspace?.id ?? null, now, now])
+  [id, LOCAL_PROFILE_ID, firstLine || captureAnalysisCopy[language].noteTitle, captureNoteMarkdown(turns, language), '[]', workspace ? workspace.id : defaultWorkspace?.id ?? null, now, now])
   return id
 }

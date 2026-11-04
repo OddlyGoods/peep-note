@@ -920,6 +920,7 @@ function setupIPC() {
       case 'ask': return session.ask(value)
       case 'capture': return session.capture(value)
       case 'retry': return session.retry()
+      case 'stop': return session.stop()
       case 'save': return session.save(value)
       case 'close': return session.close()
       case 'maximize': return session.maximize()

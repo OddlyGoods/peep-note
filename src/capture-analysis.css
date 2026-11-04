@@ -62,3 +62,6 @@ html[data-theme='dark'] .capture-answer-copy[data-state='error'] { color: #fb718
 .capture-reply-menu button span { flex: 1; text-align: left; }
 .capture-reply-menu button:hover, .capture-reply-menu button:focus-visible { background: rgb(139 92 246 / .12); outline: none; }
 .capture-reply-menu button[aria-selected='true'] { color: var(--workspace-badge-text); background: rgb(139 92 246 / .1); }
+
+.capture-analysis-stopped { display: flex; align-items: center; gap: 12px; margin-top: 12px; color: var(--quick-excerpt); font-size: 12px; }
+.capture-analysis-stop { color: var(--workspace-badge-text); }

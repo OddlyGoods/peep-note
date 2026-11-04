@@ -11,6 +11,7 @@ type CardViewState = SavedCardViews & {
   setRecordExpanded: (id: string, expanded: boolean) => void
   setGroupExpanded: (id: string, expanded: boolean) => void
   setGroupRecordsExpanded: (id: string, expanded: boolean) => void
+  setListExpanded: (recordIds: string[], groupIds: string[], expanded: boolean) => void
 }
 
 const browserStorage: StateStorage = {
@@ -27,6 +28,17 @@ function updateFlag(flags: Flags, id: string, active: boolean): Flags {
   return next
 }
 
+function updateFlags(flags: Flags, ids: string[], active: boolean): Flags {
+  let next = flags
+  for (const id of ids) {
+    if (!id || (next[id] === true) === active) continue
+    if (next === flags) next = { ...flags }
+    if (active) next[id] = true
+    else delete next[id]
+  }
+  return next
+}
+
 function readFlags(value: unknown): Flags {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
   return Object.fromEntries(Object.entries(value).filter(([id, flag]) => id.length > 0 && flag === true)) as Flags
@@ -40,7 +52,12 @@ export function createCardViewStore(storage: StateStorage = browserStorage) {
     expandedGroupRecords: {},
     setRecordExpanded: (id, expanded) => set(state => ({ collapsedRecords: updateFlag(state.collapsedRecords, id, !expanded) })),
     setGroupExpanded: (id, expanded) => set(state => ({ collapsedGroups: updateFlag(state.collapsedGroups, id, !expanded) })),
-    setGroupRecordsExpanded: (id, expanded) => set(state => ({ expandedGroupRecords: updateFlag(state.expandedGroupRecords, id, expanded) }))
+    setGroupRecordsExpanded: (id, expanded) => set(state => ({ expandedGroupRecords: updateFlag(state.expandedGroupRecords, id, expanded) })),
+    setListExpanded: (recordIds, groupIds, expanded) => set(state => ({
+      collapsedRecords: updateFlags(state.collapsedRecords, recordIds, !expanded),
+      collapsedGroups: updateFlags(state.collapsedGroups, groupIds, !expanded),
+      expandedGroupRecords: updateFlags(state.expandedGroupRecords, groupIds, expanded),
+    }))
   }), {
     name: 'openpeepnote_card_views',
     version: 1,

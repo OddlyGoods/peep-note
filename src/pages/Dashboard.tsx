@@ -2,9 +2,10 @@ import { useScreenActive } from '../lib/screenActivity'
 import { useEffect, useState, useRef } from 'react'
 import { format } from 'date-fns'
 import { ko, ja, zhCN } from 'date-fns/locale'
-import { Plus, Search, FileText, Layers, X, ArrowUp, Trash2, SquareMousePointer } from 'lucide-react'
+import { Plus, Search, FileText, Layers, X, ArrowUp, Trash2, SquareMousePointer, ChevronsUpDown, ChevronsDownUp } from 'lucide-react'
 import { useLogStore } from '../stores/logStore'
 import { useWorkspaceStore } from '../stores/workspaceStore'
+import { useCardViewStore } from '../stores/cardViewStore'
 import { api } from '../lib/api'
 import LogCard from '../components/LogCard'
 import GroupCard from '../components/GroupCard'
@@ -25,6 +26,11 @@ export default function Dashboard() {
   } = useLogStore()
 
   const { selectedId: selectedWorkspaceId, workspaces } = useWorkspaceStore()
+  const setListExpanded = useCardViewStore(state => state.setListExpanded)
+  const setAllExpanded = (expanded: boolean) => setListExpanded(
+    [...logs.map(log => log.id), ...groups.flatMap(group => group.logs.map(log => log.id))],
+    groups.map(group => group.id), expanded,
+  )
 
   const [showNewLog, setShowNewLog] = useState(false)
   const [searchInput, setSearchInput] = useState(searchQuery)
@@ -395,13 +401,27 @@ export default function Dashboard() {
       {/* 로그 목록 */}
       <div
         ref={scrollRef}
-        className="dashboard-scroll-area flex-1 overflow-y-auto px-6 pt-6 pb-40"
+        className="dashboard-scroll-area flex-1 overflow-y-auto px-6 pt-1.5 pb-40"
         data-screen-scroll="main" data-screen-scroll-restore={revealLogId ? 'skip' : undefined} data-screen-scroll-key={JSON.stringify([dateFrom, dateTo, filterType, searchQuery, selectedWorkspaceId])} aria-busy={loading || deleteTransitionLoading}
         onScroll={e => {
           const target = e.target as HTMLDivElement
           setShowScrollTop(target.scrollTop > 240)
         }}
       >
+        <div className="mb-1.5 flex flex-wrap items-center justify-end gap-2" role="group" aria-label={t('records')}>
+          <button type="button" onClick={() => setAllExpanded(true)}
+            disabled={loading || deleteTransitionLoading || (!logs.length && !groups.length)}
+            title={t('expandAll')} aria-label={t('expandAll')}
+            className="inline-flex items-center justify-center rounded-md bg-transparent p-1 text-violet-500 transition-colors hover:bg-violet-500/10 hover:text-violet-400 disabled:cursor-not-allowed disabled:opacity-40">
+            <ChevronsUpDown className="h-4 w-4" />
+          </button>
+          <button type="button" onClick={() => setAllExpanded(false)}
+            disabled={loading || deleteTransitionLoading || (!logs.length && !groups.length)}
+            title={t('collapseAll')} aria-label={t('collapseAll')}
+            className="inline-flex items-center justify-center rounded-md bg-transparent p-1 text-violet-500 transition-colors hover:bg-violet-500/10 hover:text-violet-400 disabled:cursor-not-allowed disabled:opacity-40">
+            <ChevronsDownUp className="h-4 w-4" />
+          </button>
+        </div>
         {deleteTransitionLoading ? (
           <div className="space-y-3 animate-pulse" aria-label="Loading records">
             {[0, 1, 2, 3].map(index => (

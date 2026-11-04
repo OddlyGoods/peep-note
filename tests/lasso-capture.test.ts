@@ -119,7 +119,7 @@ test('live preview draws an open yellow marker while the resulting capture still
 test('renderer auto-closes a freehand drag, allows retry after a tiny selection, and supports cancel and monitor reset', () => {
   const fixture = rendererFixture()
   fixture.init()
-  assert.ok(fixture.elements['hint-text'].textContent.includes('드래그로 영역 그리기'))
+  assert.equal(fixture.elements['hint-text'].textContent, '드래그로 영역지정 · Esc 취소')
   fixture.pointer('pointerdown', 10, 10)
   assert.equal(fixture.held.size, 1)
   fixture.pointer('pointerup', 11, 11)
@@ -137,7 +137,7 @@ test('renderer auto-closes a freehand drag, allows retry after a tiny selection,
   assert.equal(fixture.monitorChanges, 1)
   assert.equal(fixture.held.size, 0)
   fixture.init('lasso', 'en')
-  assert.ok(fixture.elements['hint-text'].textContent.includes('Draw around'))
+  assert.ok(fixture.elements['hint-text'].textContent.includes('Drag to select'))
   fixture.pointer('pointerup', 100, 100)
   assert.equal(fixture.captured.length, 1)
   fixture.documentEvents.keydown({ key: 'Escape' })

@@ -4,6 +4,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import vm from 'node:vm'
 import { DEFAULT_HOTKEYS, getActiveHotkeys, resolveHotkeys } from '../shared/hotkeys'
+import { createLiveCapture } from '../electron/liveCapture'
+import { parseLassoCapture } from '../shared/lassoCapture'
 
 const lasso = require('../public/lasso.js')
 const triangle = [{ x: 10, y: 10 }, { x: 90, y: 10 }, { x: 10, y: 70 }]
@@ -49,9 +51,9 @@ function rendererFixture() {
   const elements: Record<string, any> = { c: frame.canvas }
   const events: Record<string, Record<string, Function>> = {}
   const ipc: Record<string, Function> = {}
-  const captured: string[] = [], regions: any[] = []
+  const captured: string[] = [], regions: any[] = [], liveRequests: any[] = []
   const outputCanvases: ReturnType<typeof canvasFixture>[] = []
-  let cancellations = 0, monitorChanges = 0
+  let cancellations = 0, monitorChanges = 0, imageLoads = 0
   for (const id of ['c', 'size-badge', 'hint-text', 'change-monitor']) {
     elements[id] ??= { style: {}, textContent: '' }
     events[id] = {}
@@ -62,11 +64,11 @@ function rendererFixture() {
     setPointerCapture: (id: number) => held.add(id), hasPointerCapture: (id: number) => held.has(id), releasePointerCapture: (id: number) => held.delete(id) })
   const documentEvents: Record<string, Function> = {}
   const bridge = { on: (name: string, listener: Function) => { ipc[name] = listener }, snippingDone: (value: string) => captured.push(value),
-    snippingCancel: () => cancellations++, recordingRegionDone: (value: any) => regions.push(value), changeSnippingMonitor: () => monitorChanges++ }
+    snippingCancel: () => cancellations++, requestLassoCapture: (value: any) => liveRequests.push(value), recordingRegionDone: (value: any) => regions.push(value), changeSnippingMonitor: () => monitorChanges++ }
   const context = { window: { electronAPI: bridge, PeepNoteLasso: lasso, innerWidth: 200, innerHeight: 120 },
-    document: { documentElement: { lang: '' }, getElementById: (id: string) => elements[id], addEventListener: (name: string, listener: Function) => { documentEvents[name] = listener },
+    document: { documentElement: { lang: '', classList: { toggle() {} } }, getElementById: (id: string) => elements[id], addEventListener: (name: string, listener: Function) => { documentEvents[name] = listener },
       createElement: () => { const output = canvasFixture(); outputCanvases.push(output); return output.canvas } },
-    Image: class { naturalWidth = 400; naturalHeight = 240; onload: any; set src(_value: string) { this.onload() } },
+    Image: class { naturalWidth = 400; naturalHeight = 240; onload: any; set src(_value: string) { imageLoads++; this.onload() } },
     requestAnimationFrame: (_callback: Function) => 1 }
   // The production crop helper uses document only to create the output canvas.
   const nativeCrop = lasso.crop
@@ -74,9 +76,10 @@ function rendererFixture() {
   const html = fs.readFileSync(path.join(__dirname, '../public/snipping.html'), 'utf8')
   const script = html.match(/<script>([\s\S]*?)<\/script>/)![1]
   vm.runInNewContext(script, context)
-  const init = (mode = 'lasso', language = 'ko') => ipc['snipping-init']({ mode, language, dataUrl: 'test-image', width: 200, height: 120 })
+  const init = (mode = 'lasso', language = 'ko', live = false) => ipc['snipping-init']({ mode, language, live, dataUrl: live ? undefined : 'test-image', width: 200, height: 120 })
   const pointer = (name: string, x: number, y: number) => events.c[name]({ clientX: x, clientY: y, pointerId: 1, button: 0, preventDefault() {} })
-  return { init, pointer, captured, regions, outputCanvases, held, events, ipc, elements, documentEvents,
+  return { init, pointer, captured, regions, liveRequests, outputCanvases, held, events, ipc, elements, documentEvents,
+    get imageLoads() { return imageLoads },
     get cancellations() { return cancellations }, get monitorChanges() { return monitorChanges } }
 }
 
@@ -137,4 +140,67 @@ test('Alt+5 is a distinct, backward-compatible and disableable default shortcut'
   assert.equal(resolveHotkeys({ captureFreeform: 'Control+Shift+5' }).captureFreeform, 'Control+Shift+5')
   assert.equal(getActiveHotkeys({ disabled: { captureFreeform: true } }).captureFreeform, '')
   assert.equal(getActiveHotkeys({ disabled: { captureFreeform: true } }).takeScreenshot, 'Alt+2')
+})
+
+test('live drawing starts without loading a screenshot and only requests an image after a valid drag', () => {
+  const fixture = rendererFixture()
+  fixture.init('lasso', 'ko', true)
+  assert.equal(fixture.imageLoads, 0)
+  fixture.pointer('pointerdown', 10, 10)
+  fixture.pointer('pointerup', 11, 11)
+  assert.equal(fixture.liveRequests.length, 0)
+  fixture.pointer('pointerdown', 10, 10)
+  fixture.pointer('pointermove', 90, 10)
+  fixture.pointer('pointerup', 10, 70)
+  assert.equal(fixture.imageLoads, 0)
+  assert.equal(fixture.captured.length, 0)
+  assert.deepEqual(JSON.parse(JSON.stringify(fixture.liveRequests)), [{ points: triangle, width: 200, height: 120 }])
+  fixture.ipc['lasso-source']('fresh-screenshot-after-pointer-release')
+  assert.equal(fixture.imageLoads, 1)
+  assert.equal(fixture.captured.length, 1)
+  assert.equal(fixture.outputCanvases[0].canvas.width, 160)
+  fixture.ipc['lasso-source']('duplicate-source')
+  assert.equal(fixture.captured.length, 1)
+})
+
+test('live capture hides the selector before taking the first screenshot and rejects duplicate requests', async () => {
+  const calls: string[] = []
+  let release!: () => void
+  const capture = createLiveCapture({ hide: () => calls.push('hide'), wait: () => new Promise(resolve => { release = resolve }),
+    capture: async () => { calls.push('capture'); return 'fresh-source' }, deliver: source => calls.push(source), onError: () => calls.push('error') })
+  assert.deepEqual(calls, [])
+  const running = capture.start()
+  assert.deepEqual(calls, ['hide'])
+  await capture.start()
+  release()
+  await running
+  assert.deepEqual(calls, ['hide', 'capture', 'fresh-source'])
+  assert.equal(capture.pending, true)
+})
+
+test('cancelling live capture during compositor wait or source acquisition prevents late delivery', async () => {
+  for (const cancelDuringCapture of [false, true]) {
+    let release!: () => void
+    let calls = 0, delivered = false
+    const pause = () => new Promise<void>(resolve => { release = resolve })
+    const capture = createLiveCapture({ hide() {}, wait: cancelDuringCapture ? async () => {} : pause,
+      capture: async () => { calls++; if (cancelDuringCapture) await pause(); return 'source' }, deliver: () => { delivered = true }, onError() {} })
+    const running = capture.start()
+    if (cancelDuringCapture) await Promise.resolve()
+    capture.dispose()
+    release()
+    await running
+    assert.equal(calls, cancelDuringCapture ? 1 : 0)
+    assert.equal(delivered, false)
+  }
+})
+
+test('live selection IPC accepts only bounded points in the active viewport', () => {
+  const value = { points: triangle, width: 200, height: 120 }
+  assert.deepEqual(parseLassoCapture(value, 200, 120), value)
+  for (const invalid of [null, {}, { ...value, width: 400 }, { ...value, points: triangle.slice(0, 2) },
+    { ...value, points: [...triangle, { x: Infinity, y: 0 }] }, { ...value, points: [...triangle, { x: -1, y: 0 }] },
+    { ...value, points: Array.from({ length: 8193 }, () => ({ x: 10, y: 10 })) }]) {
+    assert.equal(parseLassoCapture(invalid, 200, 120), null)
+  }
 })

@@ -2,9 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <script data-live-mode>if (new URLSearchParams(location.search).get("live") === "1") document.documentElement.classList.add("live-lasso")</script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { width: 100%; height: 100%; overflow: hidden; background: #000; cursor: crosshair; user-select: none; touch-action: none; }
+    /* One alpha step keeps the transparent selector hit-testable on Windows
+       while letting the real desktop remain visible and keep updating. */
+    html.live-lasso, html.live-lasso body { background: rgba(0,0,0,0.004); }
     canvas { display: block; position: fixed; top: 0; left: 0; }
     #hint {
       position: fixed;
@@ -67,6 +71,8 @@
     let pendingImage = null
     let recordingRegionMode = false
     let lassoMode = false
+    let liveLassoMode = false
+    let pendingSelection = null
     let points = []
     let pointerId = null
     let renderFrame = 0
@@ -94,11 +100,20 @@
     window.electronAPI.on('snipping-init', (payload) => {
       const dataUrl = typeof payload === 'string' ? payload : payload.dataUrl
       img = null
+      pendingImage = null
+      pendingSelection = null
       ctx.clearRect(0, 0, canvas.width, canvas.height)
       resetDrag()
       lassoMode = typeof payload === 'object' && payload?.mode === 'lasso'
+      liveLassoMode = lassoMode && payload?.live === true
+      document.documentElement.classList.toggle('live-lasso', liveLassoMode)
       recordingRegionMode = typeof payload === 'object' && payload?.mode === 'recording-region'
       applyLanguage(typeof payload === 'object' && payload?.language ? payload.language : language)
+      canvas.width = payload?.width || window.innerWidth
+      canvas.height = payload?.height || window.innerHeight
+      canvas.style.width = canvas.width + 'px'
+      canvas.style.height = canvas.height + 'px'
+      if (liveLassoMode) { draw(); return }
       const image = new Image()
       pendingImage = image
       image.onload = () => {
@@ -114,6 +129,22 @@
       image.src = dataUrl
     })
 
+    window.electronAPI.on('lasso-source', dataUrl => {
+      if (!liveLassoMode || !pendingSelection) return
+      const selected = pendingSelection
+      const image = new Image()
+      pendingImage = image
+      image.onload = () => {
+        if (pendingImage !== image || pendingSelection !== selected) return
+        const output = lasso.crop(image, selected.points, selected.width, selected.height)
+        pendingSelection = null
+        if (output) window.electronAPI.snippingDone(output.toDataURL('image/png'))
+        else window.electronAPI.snippingCancel()
+      }
+      image.onerror = () => { if (pendingImage === image) window.electronAPI.snippingCancel() }
+      image.src = dataUrl
+    })
+
     document.getElementById('change-monitor').addEventListener('click', () => {
       resetDrag()
       draw()
@@ -121,20 +152,22 @@
     })
 
     function draw() {
-      if (!img) return
+      if (!img && !liveLassoMode) return
       ctx.clearRect(0, 0, canvas.width, canvas.height)
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-
-      // dim overlay
-      ctx.fillStyle = 'rgba(0,0,0,0.5)'
-      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      if (!liveLassoMode) {
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+        ctx.fillStyle = 'rgba(0,0,0,0.5)'
+        ctx.fillRect(0, 0, canvas.width, canvas.height)
+      }
 
       if (dragging && lassoMode) {
-        ctx.save()
-        lasso.trace(ctx, points)
-        ctx.clip('evenodd')
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-        ctx.restore()
+        if (!liveLassoMode) {
+          ctx.save()
+          lasso.trace(ctx, points)
+          ctx.clip('evenodd')
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+          ctx.restore()
+        }
         lasso.trace(ctx, points)
         ctx.strokeStyle = '#a78bfa'
         ctx.lineWidth = 2
@@ -207,7 +240,7 @@
     }
 
     canvas.addEventListener('pointerdown', event => {
-      if (!img || event.button !== 0 || dragging) return
+      if ((!img && !liveLassoMode) || pendingSelection || event.button !== 0 || dragging) return
       event.preventDefault()
       applyLanguage(language)
       dragging = true
@@ -231,6 +264,17 @@
       const selectedPoints = points
       resetDrag()
       if (lassoMode) {
+        if (liveLassoMode) {
+          if (!lasso.selection(selectedPoints, canvas.width, canvas.height)) {
+            draw()
+            document.getElementById('hint-text').textContent = messages[language].retry
+            return
+          }
+          pendingSelection = { points: selectedPoints, width: canvas.width, height: canvas.height }
+          draw()
+          window.electronAPI.requestLassoCapture(pendingSelection)
+          return
+        }
         const output = lasso.crop(img, selectedPoints, canvas.width, canvas.height)
         if (!output) {
           draw()

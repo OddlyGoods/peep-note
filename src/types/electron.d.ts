@@ -44,6 +44,7 @@ declare global {
       startSnipping: (forceChoose?: boolean) => Promise<string | null>
       selectRecordingRegion: (forceChoose?: boolean) => Promise<{ sourceId: string; x: number; y: number; width: number; height: number; canvasWidth: number; canvasHeight: number } | null>
       snippingDone: (dataUrl: string) => void
+      requestLassoCapture: (selection: import('../../shared/lassoCapture').LassoCaptureSelection) => void
       snippingCancel: () => void
       changeSnippingMonitor: () => void
       recordingRegionDone: (region: { x: number; y: number; width: number; height: number; canvasWidth: number; canvasHeight: number }) => void

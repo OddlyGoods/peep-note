@@ -42,8 +42,7 @@ import { dataStorageCopy, dataStorageErrorKey, type DataLocationResult } from '.
 import { getActiveHotkeys, resolveHotkeys } from '../shared/hotkeys'
 import { handleFavoritesShortcut } from './favoritesShortcut'
 import { createCaptureAction } from './captureAction'
-import { createLiveCapture } from './liveCapture'
-import { parseLassoCapture } from '../shared/lassoCapture'
+import { createMultiMonitorLasso } from './multiMonitorLasso'
 import { getCaptureCodexModels } from './codexModelCatalog'
 import { CaptureAnalysisWindow, type AnalysisCapture } from './captureAnalysisWindow'
 import { saveCaptureAnalysis } from '../server/captureAnalysisNotes'
@@ -96,9 +95,9 @@ if (!gotLock) {
 let mainWindow: BrowserWindow | null = null
 let overlayWindow: BrowserWindow | null = null
 let snippingWindow: BrowserWindow | null = null
-// Capturing a desktop thumbnail is asynchronous. Keep a separate guard for
-// that short period before the selector BrowserWindow exists, otherwise a
-// repeated global shortcut can open two overlapping selector windows.
+let lassoSession: ReturnType<typeof createMultiMonitorLasso> | null = null
+// Guard asynchronous preparation and the whole multi-monitor Magic Pen session
+// so repeated shortcuts cannot open overlapping selectors.
 let snippingPreparing = false
 let capturePickerWindow: BrowserWindow | null = null
 let quickSwitchWindow: BrowserWindow | null = null
@@ -714,7 +713,7 @@ async function captureScreenshot(forceChoose = false): Promise<string | null> {
 // ── 스니핑 도구 ────────────────────────────────────────────────────
 function attachSnippingMonitorSwitch(
   regionWindow: BrowserWindow,
-  mode: 'screenshot' | 'recording-region' | 'lasso',
+  mode: 'screenshot' | 'recording-region',
   onSourceChanged: (sourceId: string) => void = () => {}
 ) {
   let active = true
@@ -730,12 +729,6 @@ function attachSnippingMonitorSwitch(
       await new Promise(resolve => setTimeout(resolve, 150))
       if (!active || regionWindow.isDestroyed()) return
       const { display, index } = selection
-      if (mode === 'lasso') {
-        regionWindow.setBounds(display.bounds)
-        regionWindow.webContents.send('snipping-init', { live: true, mode,
-          width: display.bounds.width, height: display.bounds.height, language: loadSettings().language })
-        return
-      }
       const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: display.size })
       if (!active || regionWindow.isDestroyed()) return
       const source = sources.find(item => item.display_id === String(display.id)) ?? sources[index]
@@ -771,141 +764,113 @@ async function startSnipping(forceChoose = false, shape: 'rectangle' | 'lasso' =
   if (snippingWindow || snippingPreparing) return null
   snippingPreparing = true
 
+  // Magic Pen is ready on every monitor at once; no saved monitor or picker.
+  // Keep the capture guard for the entire session so rectangle/recording
+  // shortcuts cannot open another selector while these windows are active.
+  if (shape === 'lasso') {
+    try {
+      const displays = screen.getAllDisplays()
+      lassoSession = createMultiMonitorLasso({
+        displays, preferredDisplayId: screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).id,
+        language: loadSettings().language ?? 'en', ipc: ipcMain, screen,
+        createWindow: display => new BrowserWindow({ ...display.bounds, frame: false, alwaysOnTop: true,
+          skipTaskbar: true, resizable: false, movable: false, transparent: true, backgroundColor: '#00000000',
+          hasShadow: false, show: false,
+          webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false },
+        }),
+        load: window => window.loadURL(isDev ? 'http://localhost:5173/snipping.html?live=1' : 'app://dist/snipping.html?live=1'),
+        capture: async displayId => {
+          const display = screen.getAllDisplays().find(item => item.id === displayId)
+          if (!display) throw new Error('Selected display is unavailable')
+          const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: display.size })
+          const source = sources.find(item => item.display_id === String(display.id))
+            ?? (displays.length === 1 && sources.length === 1 ? sources[0] : undefined)
+          if (!source || source.thumbnail.isEmpty()) throw new Error('Selected display is unavailable')
+          return source.thumbnail.toDataURL()
+        },
+        onError: error => console.error('Live freeform capture failed:', error),
+      })
+      const captured = await lassoSession.result
+      if (!captured) return null
+      const filepath = path.join(target?.directory ?? screenshotsDir, `screenshot_${Date.now()}.png`)
+      fs.writeFileSync(filepath, Buffer.from(captured.dataUrl.split(',')[1], 'base64'))
+      target?.onBounds(captured.bounds)
+      return filepath
+    } catch (error) {
+      console.error('Freeform capture error:', error)
+      return null
+    } finally {
+      lassoSession?.close()
+      lassoSession = null
+      snippingPreparing = false
+    }
+  }
+
   let selection: { display: Electron.Display; index: number } | null
-  try {
-    if (shape === 'lasso') {
-      const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint())
-      selection = { display, index: screen.getAllDisplays().findIndex(item => item.id === display.id) }
-    } else selection = await chooseCaptureDisplay(forceChoose)
-  } catch (err) {
+  try { selection = await chooseCaptureDisplay(forceChoose) }
+  catch (err) {
     snippingPreparing = false
     console.error('Capture display selection error:', err)
     return null
   }
-  if (!selection) {
-    snippingPreparing = false
-    return null
-  }
+  if (!selection) { snippingPreparing = false; return null }
   const { display, index } = selection
   const { x, y, width, height } = display.bounds
-
-  // 오버레이 잠깐 숨기고 깨끗한 스크린샷 캡처
   const overlayWasVisible = overlayWindow?.isVisible() ?? false
-  if (overlayWasVisible && shape !== 'lasso') overlayWindow?.hide()
-  if (shape !== 'lasso') await new Promise(r => setTimeout(r, 150))
+  if (overlayWasVisible) overlayWindow?.hide()
+  await new Promise(r => setTimeout(r, 150))
 
-  let dataUrl: string | undefined
+  let dataUrl: string
   try {
-    if (shape !== 'lasso') {
-      const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: display.size })
-      const source = sources.find(item => item.display_id === String(display.id)) ?? sources[index] ?? sources[0]
-      if (!source) throw new Error('No desktop capture source')
-      dataUrl = source.thumbnail.toDataURL()
-    }
+    const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: display.size })
+    const source = sources.find(item => item.display_id === String(display.id)) ?? sources[index] ?? sources[0]
+    if (!source) throw new Error('No desktop capture source')
+    dataUrl = source.thumbnail.toDataURL()
   } catch (err) {
     snippingPreparing = false
     if (overlayWasVisible) overlayWindow?.show()
     console.error('Desktop capture source error:', err)
     return null
   }
-  snippingWindow = new BrowserWindow({
-    x, y, width, height,
-    frame: false,
-    alwaysOnTop: true,
-    skipTaskbar: true,
-    resizable: false,
-    movable: false,
-    transparent: shape === 'lasso',
-    backgroundColor: shape === 'lasso' ? '#00000000' : '#000000',
-    hasShadow: shape !== 'lasso',
-    show: shape !== 'lasso',
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true,
-      nodeIntegration: false
-    }
+  const regionWindow = snippingWindow = new BrowserWindow({
+    x, y, width, height, frame: false, alwaysOnTop: true, skipTaskbar: true, resizable: false, movable: false,
+    transparent: false, backgroundColor: '#000000', hasShadow: true,
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false },
   })
   snippingPreparing = false
-
-  if (isDev) {
-    snippingWindow.loadURL(`http://localhost:5173/snipping.html${shape === 'lasso' ? '?live=1' : ''}`)
-  } else {
-    snippingWindow.loadURL(`app://dist/snipping.html${shape === 'lasso' ? '?live=1' : ''}`)
-  }
-
-  snippingWindow.webContents.once('did-finish-load', () => {
-    snippingWindow?.webContents.send('snipping-init', { dataUrl, width, height, live: shape === 'lasso', mode: shape === 'lasso' ? 'lasso' : 'screenshot', language: loadSettings().language })
-    if (shape === 'lasso') { snippingWindow?.show(); snippingWindow?.focus() }
+  regionWindow.webContents.once('did-finish-load', () => {
+    if (!regionWindow.isDestroyed()) regionWindow.webContents.send('snipping-init', { dataUrl, width, height, live: false, mode: 'screenshot', language: loadSettings().language })
   })
+  void regionWindow.loadURL(isDev ? 'http://localhost:5173/snipping.html' : 'app://dist/snipping.html')
 
-  return new Promise((resolve) => {
-    const regionWindow = snippingWindow!
-    const removeMonitorSwitch = attachSnippingMonitorSwitch(regionWindow, shape === 'lasso' ? 'lasso' : 'screenshot')
+  return new Promise(resolve => {
+    const removeMonitorSwitch = attachSnippingMonitorSwitch(regionWindow, 'screenshot')
     let settled = false
     const finish = (filepath: string | null) => {
       if (settled) return
       settled = true
-      liveCapture.dispose()
       removeMonitorSwitch()
       ipcMain.removeListener('snipping-done', onDone)
       ipcMain.removeListener('snipping-cancel', onCancel)
-      ipcMain.removeListener('snipping-capture-lasso', onLiveCapture)
-      regionWindow.removeListener('closed', onCancel)
+      regionWindow.removeListener('closed', onClosed)
       if (!regionWindow.isDestroyed()) regionWindow.close()
       snippingWindow = null
-      if (overlayWasVisible && !target) overlayWindow?.show()
+      if (overlayWasVisible) overlayWindow?.show()
       resolve(filepath)
     }
-    const onDone = (_e: Electron.IpcMainEvent, croppedDataUrl: string) => {
-      if (_e.sender !== regionWindow.webContents || (!regionWindow.isVisible() && !(shape === 'lasso' && liveCapture.pending))) return
-      const base64 = croppedDataUrl.replace(/^data:image\/png;base64,/, '')
-      const filename = `screenshot_${Date.now()}.png`
-      const filepath = path.join(target?.directory ?? screenshotsDir, filename)
+    const onDone = (event: Electron.IpcMainEvent, croppedDataUrl: string) => {
+      if (event.sender !== regionWindow.webContents || !regionWindow.isVisible()) return
+      const filepath = path.join(screenshotsDir, `screenshot_${Date.now()}.png`)
       try {
-        fs.writeFileSync(filepath, Buffer.from(base64, 'base64'))
+        fs.writeFileSync(filepath, Buffer.from(croppedDataUrl.replace(/^data:image\/png;base64,/, ''), 'base64'))
         finish(filepath)
       } catch { finish(null) }
     }
-
-    const onCancel = () => finish(null)
-    const liveCapture = createLiveCapture({
-      hide: () => regionWindow.hide(),
-      capture: async () => {
-        const currentDisplay = screen.getDisplayMatching(regionWindow.getBounds())
-        const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: currentDisplay.size })
-        const source = sources.find(item => item.display_id === String(currentDisplay.id))
-          ?? (sources.length === 1 ? sources[0] : undefined)
-        if (!source || source.thumbnail.isEmpty()) throw new Error('Selected display is unavailable')
-        return source.thumbnail.toDataURL()
-      },
-      deliver: dataUrl => { if (!regionWindow.isDestroyed()) regionWindow.webContents.send('lasso-source', dataUrl) },
-      onError: error => {
-        console.error('Live freeform capture failed:', error)
-        if (!regionWindow.isDestroyed()) {
-          regionWindow.show()
-          regionWindow.focus()
-          regionWindow.webContents.send('snipping-error')
-        }
-      },
-    })
-    const onLiveCapture = (event: Electron.IpcMainEvent, input: unknown) => {
-      if (shape !== 'lasso' || event.sender !== regionWindow.webContents || !regionWindow.isVisible()) return
-      const bounds = regionWindow.getContentBounds()
-      const parsed = parseLassoCapture(input, bounds.width, bounds.height)
-      if (!parsed) {
-        regionWindow.webContents.send('snipping-error')
-        return
-      }
-      const xs = parsed.points.map(point => point.x), ys = parsed.points.map(point => point.y)
-      target?.onBounds({ x: bounds.x + Math.min(...xs), y: bounds.y + Math.min(...ys),
-        width: Math.max(...xs) - Math.min(...xs), height: Math.max(...ys) - Math.min(...ys) })
-      void liveCapture.start()
-    }
-
+    const onClosed = () => finish(null)
+    const onCancel = (event: Electron.IpcMainEvent) => { if (event.sender === regionWindow.webContents) finish(null) }
     ipcMain.on('snipping-done', onDone)
-    ipcMain.on('snipping-capture-lasso', onLiveCapture)
-    ipcMain.once('snipping-cancel', onCancel)
-    regionWindow.once('closed', onCancel)
+    ipcMain.on('snipping-cancel', onCancel)
+    regionWindow.once('closed', onClosed)
   })
 }
 
@@ -1248,6 +1213,7 @@ function setupIPC() {
       overlayWindow?.webContents.send('language-changed', language)
       quickSwitchWindow?.webContents.send('language-changed', language)
       snippingWindow?.webContents.send('language-changed', language)
+      lassoSession?.setLanguage(language)
     }
     const theme = (settings as { theme?: unknown }).theme
     if (theme === 'dark' || theme === 'light') {
@@ -1512,7 +1478,7 @@ function setupAutoUpdater() {
 // After suspend/resume, some Linux GPU/Wayland compositor combinations can
 // retain the last Chromium frame until a repaint is explicitly requested.
 function refreshWindowsAfterResume() {
-  const windows = [mainWindow, overlayWindow, quickSwitchWindow, snippingWindow]
+  const windows = [mainWindow, overlayWindow, quickSwitchWindow, snippingWindow, ...(lassoSession?.windows ?? [])]
   for (const win of windows) {
     if (win && !win.isDestroyed()) requestWindowRepaint(win)
   }

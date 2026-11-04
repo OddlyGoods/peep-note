@@ -16,25 +16,30 @@ try {
   for (const [source, output] of [
     ['electron/preload.ts', 'preload.cjs'], ['electron/liveCapture.ts', 'liveCapture.cjs'],
     ['electron/captureAction.ts', 'captureAction.cjs'], ['shared/lassoCapture.ts', 'selection.cjs'],
+    ['electron/multiMonitorLasso.ts', 'multiMonitorLasso.cjs'],
   ]) buildSync({ entryPoints: [path.join(root, source)], bundle: true, format: 'cjs', platform: 'node', external: ['electron'], outfile: path.join(fixture, output) })
   const html = fs.readFileSync(path.join(root, 'public/snipping.html'), 'utf8')
   const gesture = `<script>window.electronAPI.on('snipping-init',payload=>{if(!payload.live)return;setTimeout(()=>{const c=document.getElementById('c');c.setPointerCapture=()=>{};c.hasPointerCapture=()=>false;for(const [type,x,y] of [['pointerdown',100,100],['pointermove',500,100],['pointerup',100,500]])c.dispatchEvent(new PointerEvent(type,{clientX:x,clientY:y,pointerId:3,button:0,bubbles:true}));},100)});</script>`
   fs.writeFileSync(path.join(fixture, 'selector.html'), html.replace('</body>', gesture + '</body>'))
+  fs.writeFileSync(path.join(fixture, 'manual-selector.html'), html)
   fs.copyFileSync(path.join(root, 'public/lasso.js'), path.join(fixture, 'lasso.js'))
   fs.mkdirSync(path.join(fixture, 'cursors'))
   fs.copyFileSync(path.join(root, 'public/cursors/ai-pen-32.png'), path.join(fixture, 'cursors/ai-pen-32.png'))
   fs.copyFileSync(path.join(root, 'tests/native-capture.cjs'), path.join(fixture, 'main.cjs'))
+  fs.copyFileSync(path.join(root, 'tests/native-multi-monitor-capture.cjs'), path.join(fixture, 'multi-monitor.cjs'))
   const env = { ...process.env }
   delete env.ELECTRON_RUN_AS_NODE
-  const result = spawnSync('xvfb-run', ['-a', '-s', '-screen 0 1024x768x24', require('electron'), '--no-sandbox', path.join(fixture, 'main.cjs')], {
-    env, encoding: 'utf8', timeout: 20000, maxBuffer: 4 * 1024 * 1024,
-  })
-  if (result.error) throw result.error
-  if (result.status !== 0 || !result.stdout.includes('"stage":"SUCCESS"')) {
-    process.stderr.write(result.stdout + result.stderr)
-    throw new Error(`Native capture regression failed (${result.status})`)
+  for (const entry of ['main.cjs', 'multi-monitor.cjs']) {
+    const result = spawnSync('xvfb-run', ['-a', '-s', '-screen 0 1024x768x24', require('electron'), '--no-sandbox', path.join(fixture, entry)], {
+      env, encoding: 'utf8', timeout: 20000, maxBuffer: 4 * 1024 * 1024,
+    })
+    if (result.error) throw result.error
+    if (result.status !== 0 || !result.stdout.includes('"stage":"SUCCESS"')) {
+      process.stderr.write(result.stdout + result.stderr)
+      throw new Error(`Native capture regression failed (${result.status})`)
+    }
+    process.stdout.write(result.stdout.split('\n').filter(line => line.startsWith('LIVE_QA')).join('\n') + '\n')
   }
-  process.stdout.write(result.stdout.split('\n').filter(line => line.startsWith('LIVE_QA')).join('\n') + '\n')
 } finally {
   fs.rmSync(fixture, { recursive: true, force: true })
 }

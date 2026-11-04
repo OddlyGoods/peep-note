@@ -87,7 +87,7 @@ function rendererFixture() {
   const html = fs.readFileSync(path.join(__dirname, '../public/snipping.html'), 'utf8')
   const script = html.match(/<script>([\s\S]*?)<\/script>/)![1]
   vm.runInNewContext(script, context)
-  const init = (mode = 'lasso', language = 'ko', live = false) => ipc['snipping-init']({ mode, language, live, dataUrl: live ? undefined : 'test-image', width: 200, height: 120 })
+  const init = (mode = 'lasso', language = 'ko', live = false, canChangeMonitor = true) => ipc['snipping-init']({ mode, language, live, canChangeMonitor, dataUrl: live ? undefined : 'test-image', width: 200, height: 120 })
   const pointer = (name: string, x: number, y: number) => events.c[name]({ clientX: x, clientY: y, pointerId: 1, button: 0, preventDefault() {} })
   return { init, pointer, captured, regions, liveRequests, outputCanvases, held, events, ipc, elements, documentEvents, frame,
     render: () => { const callback = renderFrame; renderFrame = undefined; callback?.() },
@@ -198,6 +198,14 @@ test('live drawing starts without loading a screenshot and only requests an imag
   assert.equal(fixture.outputCanvases[0].canvas.width, 212)
   fixture.ipc['lasso-source']('duplicate-source')
   assert.equal(fixture.captured.length, 1)
+})
+
+test('all-monitor Magic Pen hides the monitor picker while rectangle capture retains it', () => {
+  const fixture = rendererFixture()
+  fixture.init('lasso', 'en', true, false)
+  assert.equal(fixture.elements['change-monitor'].style.display, 'none')
+  fixture.init('screenshot', 'en')
+  assert.equal(fixture.elements['change-monitor'].style.display, '')
 })
 
 test('live capture hides the selector before taking the first screenshot and rejects duplicate requests', async () => {

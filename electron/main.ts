@@ -28,7 +28,7 @@ import { startServer } from '../server/index'
 import { attachmentPath, isLinkedAttachment } from '../shared/attachments'
 import { importLocalAttachments, attachmentFileSize } from './attachmentFiles'
 import { directoryUsage } from './dataUsage'
-import { queryAll } from '../server/db'
+import { queryAll, queryOne } from '../server/db'
 import { cleanupUnreferencedMedia } from '../server/media'
 import { DataStorageError, prepareDataLocation, scheduleDataLocation } from './dataStorage'
 import { restartAfterDataLocationChange } from './restart'
@@ -38,6 +38,8 @@ import { handleFavoritesShortcut } from './favoritesShortcut'
 import { createCaptureAction } from './captureAction'
 import { createLiveCapture } from './liveCapture'
 import { parseLassoCapture } from '../shared/lassoCapture'
+import { getCaptureCodexModels } from './codexModelCatalog'
+import { normalizeCaptureCodexModel } from '../shared/codexModels'
 import { CaptureAnalysisWindow, type AnalysisCapture } from './captureAnalysisWindow'
 import { saveCaptureAnalysis } from '../server/captureAnalysisNotes'
 import { LOCAL_PROFILE_ID } from '../server/localProfile'
@@ -130,7 +132,8 @@ async function startCaptureAnalysis() {
     const language: CaptureLanguage = ['ko', 'ja', 'zh'].includes(String(settings.language)) ? settings.language as CaptureLanguage : 'en'
     const workspaces = queryAll<{ id: string; name: string; is_default: number }>('SELECT id, name, is_default FROM workspaces WHERE user_id = ? ORDER BY is_default DESC, created_at', [LOCAL_PROFILE_ID])
       .map(item => ({ id: item.id, name: item.name, isDefault: !!item.is_default }))
-    const session = new CaptureAnalysisWindow({ firstCapture, directory, language, theme: settings.theme === 'dark' ? 'dark' : 'light', dev: isDev,
+    const model = normalizeCaptureCodexModel(queryOne<{ capture_codex_model: string }>('SELECT capture_codex_model FROM settings WHERE user_id = ?', [LOCAL_PROFILE_ID])?.capture_codex_model)
+    const session = new CaptureAnalysisWindow({ model, firstCapture, directory, language, theme: settings.theme === 'dark' ? 'dark' : 'light', dev: isDev,
       workspaces, capture: () => captureForAnalysis(directory),
       save: (turns, images, workspaceId) => {
         const id = saveCaptureAnalysis(turns, images, screenshotsDir, language, workspaceId)
@@ -1073,6 +1076,10 @@ function registerHotkeys() {
 
 // ── IPC 핸들러 ─────────────────────────────────────────────────────────
 function setupIPC() {
+  ipcMain.handle('get-capture-codex-models', event => {
+    if (event.sender !== mainWindow?.webContents) throw new Error('Unknown settings window')
+    return getCaptureCodexModels()
+  })
   ipcMain.handle('capture-analysis-action', async (event, action: string, value: unknown) => {
     const session = captureAnalysis
     if (!session || session.window.isDestroyed() || event.sender !== session.window.webContents) throw new Error('Unknown analysis window')

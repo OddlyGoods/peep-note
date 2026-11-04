@@ -1,9 +1,10 @@
 export type CaptureLanguage = 'en' | 'ko' | 'ja' | 'zh'
 export type CaptureAnalysisError = 'cli_missing' | 'login_required' | 'timeout' | 'failed' | 'context_limit'
-export interface CaptureTurn { question: string; answer: string; elapsedMs: number; imageCount?: number }
+export interface CaptureTurn { question: string; answer: string; elapsedMs: number; imageCount?: number; model?: string }
 export interface CaptureAnalysisState {
   status: 'waiting' | 'running' | 'ready' | 'error'
   language: CaptureLanguage
+  model: string
   turns: CaptureTurn[]
   question: string
   draft: string

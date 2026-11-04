@@ -287,3 +287,20 @@ test('capture analysis saves a Markdown conversation and independent image copie
   assert.throws(() => saveCaptureAnalysis(turns, [saved.attachments[0], transient], screenshots, 'en', workspace.id))
   assert.deepEqual(fs.readdirSync(screenshots), before, 'failed saves clean up any copies already created')
 })
+
+test('capture Codex model persists independently of summary providers and survives database reinitialization', async () => {
+  const initial = await json('/api/settings')
+  assert.equal(initial.capture_codex_model, 'gpt-6.1-sol')
+  try {
+    const saved = await json('/api/settings', 'PUT', { capture_codex_model: 'gpt-6-luna' })
+    assert.equal(saved.capture_codex_model, 'gpt-6-luna')
+    const changedProvider = await json('/api/settings', 'PUT', { ai_provider: 'qwen', ai_model: 'qwen3.8-flash' })
+    assert.equal(changedProvider.capture_codex_model, 'gpt-6-luna')
+    getDb().close()
+    await initDb(root)
+    assert.equal((await json('/api/settings')).capture_codex_model, 'gpt-6-luna')
+    assert.equal((await json('/api/settings', 'PUT', { capture_codex_model: ' future-codex-vision ' })).capture_codex_model, 'future-codex-vision')
+    for (const value of [null, '', 42, 'x\n--model', 'x'.repeat(129)]) assert.equal((await call('/api/settings', 'PUT', { capture_codex_model: value })).status, 400)
+    assert.equal((await json('/api/settings')).capture_codex_model, 'future-codex-vision')
+  } finally { await json('/api/settings', 'PUT', { capture_codex_model: initial.capture_codex_model, ai_provider: initial.ai_provider, ai_model: initial.ai_model }) }
+})

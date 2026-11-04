@@ -1,10 +1,12 @@
-const { app, protocol, net, ipcMain, nativeImage } = require('electron')
+const { app, protocol, net, ipcMain, nativeImage, BrowserWindow } = require('electron')
 const fs = require('node:fs'), path = require('node:path'), assert = require('node:assert/strict')
 const { pathToFileURL } = require('node:url')
 const { CaptureAnalysisWindow } = require('./analysis.cjs')
+const { getCaptureCodexModels } = require('./catalog.cjs')
 protocol.registerSchemesAsPrivileged([{scheme:'app',privileges:{secure:true,standard:true,supportFetchAPI:true}}])
 app.setPath('userData', path.join(__dirname, 'isolated-data'))
 app.disableHardwareAcceleration()
+app.on('window-all-closed', () => {})
 const deadline = setTimeout(() => { console.error('Analysis fixture timeout'); app.exit(1) }, 20000)
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms))
 async function until(fn) { for (let i=0;i<100;i++) { if (await fn()) return; await wait(30) } throw new Error('Condition timed out') }
@@ -16,7 +18,7 @@ app.whenReady().then(async () => {
   fs.writeFileSync(image, nativeImage.createFromBitmap(pixels, {width:80,height:40}).toPNG())
   const inputs = [], outputs = [], saves = []
   const session = new CaptureAnalysisWindow({firstCapture:{filePath:image,bounds:{x:600,y:120,width:120,height:100}},directory,
-    language:'ko',theme:'light',dev:false,workspaces:[{id:'general',name:'General',isDefault:true}],
+    language:'ko',model:'gpt-6.1-sol',theme:'light',dev:false,workspaces:[{id:'general',name:'General',isDefault:true}],
     analyze: input => { inputs.push(input); return new Promise((resolve,reject) => { outputs.push(resolve); input.signal.addEventListener('abort',()=>reject(new Error('cancelled'))) }) },
     capture:async()=>{const filePath=path.join(directory,'second.png');fs.copyFileSync(image,filePath);return {filePath,bounds:{x:200,y:200,width:80,height:40}}},
     save:(...args)=>{saves.push(args);return 'saved-note'},onClosed:()=>{},
@@ -26,6 +28,7 @@ app.whenReady().then(async () => {
   await until(()=>session.window.isVisible())
   await until(()=>js('!!document.querySelector(".capture-analysis-waiting")'))
   assert.equal(session.state.status,'running')
+  assert.equal(await js('document.querySelector(".capture-analysis-model").textContent'),'gpt-6.1-sol')
   const elapsed = await js('document.querySelector(".capture-analysis-elapsed").textContent')
   await wait(1200)
   assert.notEqual(await js('document.querySelector(".capture-analysis-elapsed").textContent'),elapsed)
@@ -39,6 +42,9 @@ app.whenReady().then(async () => {
   await js('document.querySelector(".capture-analysis-actions .capture-secondary").click()')
   await until(()=>inputs.length===2)
   assert.equal(inputs[1].turns.length,1)
+  assert.equal(inputs[1].model,'gpt-6.1-sol')
+  assert.equal(inputs[1].turns[0].model,'gpt-6.1-sol')
+  assert.ok(await js('document.querySelector(".capture-analysis-time").textContent.includes("gpt-6.1-sol")'))
   assert.equal(inputs[1].images.length,2)
   assert.equal(session.window.isVisible(),true,'follow-up must show its waiting window before the response arrives')
   outputs[1]('다음 명령으로 해결할 수 있습니다.')
@@ -56,7 +62,29 @@ app.whenReady().then(async () => {
   session.close();await third
   assert.equal(inputs[2].signal.aborted,true)
   assert.ok(session.window.isDestroyed())
+  const models = await getCaptureCodexModels()
+  assert.ok(models.length && models.every(item => item.value && item.label))
+  const settings = new BrowserWindow({width:740,height:430,show:false,webPreferences:{preload:path.join(__dirname,'settingsPreload.js'),contextIsolation:true,nodeIntegration:false}})
+  ipcMain.handle('get-capture-codex-models',()=>models)
+  await settings.loadFile(path.join(__dirname,'model-picker.html')); settings.show()
+  const settingsJs = code => settings.webContents.executeJavaScript(code)
+  await until(()=>settingsJs('!!document.querySelector(".settings-select-trigger")'))
+  await settingsJs('document.querySelector(".settings-select-trigger").click()')
+  await until(()=>settingsJs('!!document.querySelector("[role=listbox]")'))
+  assert.ok(await settingsJs('document.querySelector("[role=listbox]").textContent.includes("GPT-6")'))
+  fs.writeFileSync('/tmp/peepnote-codex-model-picker.png',(await settings.webContents.capturePage()).toPNG())
+  await settingsJs('Array.from(document.querySelectorAll("[role=option]")).find(el=>el.textContent.includes("Luna")||el.textContent.includes("LUNA")).click()')
+  await until(()=>settingsJs('window.modelChanges?.value === "gpt-6-luna"'))
+  assert.equal(await settingsJs('window.modelChanges.typing'),false)
+  await settingsJs('document.querySelector(".settings-select-trigger").click()')
+  await until(()=>settingsJs('!!document.querySelector("[role=listbox]")'))
+  await settingsJs('Array.from(document.querySelectorAll("[role=option]")).at(-1).click()')
+  await until(()=>settingsJs('!!document.querySelector("input")'))
+  await settingsJs(`const input=document.querySelector('input');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'future-vision-model');input.dispatchEvent(new Event('input',{bubbles:true}));`)
+  await until(()=>settingsJs('window.modelChanges?.value === "future-vision-model"'))
+  assert.equal(await settingsJs('window.modelChanges.typing'),true)
+  settings.close()
   clearTimeout(deadline)
-  console.log('ANALYSIS_QA_SUCCESS waiting timer, Markdown, position, dragging, follow-up capture/context, save, close/cancel')
+  console.log('ANALYSIS_QA_SUCCESS waiting timer, model labels/catalog/selection/custom input, Markdown, position, dragging, follow-up capture/context, save, close/cancel')
   app.exit(0)
 }).catch(error=>{console.error(error);app.exit(1)})

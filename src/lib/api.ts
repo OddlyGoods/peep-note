@@ -239,6 +239,7 @@ export interface Settings {
   theme: string
   ai_provider: 'openai' | 'anthropic' | 'gemini' | 'qwen'
   ai_model: string
+  capture_codex_model?: string
   ai_context_length?: number
   ai_models?: Partial<AiModelMap>
   openai_api_key: string | null

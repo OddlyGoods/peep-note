@@ -10,6 +10,7 @@ export interface AnalysisWindowOptions {
   firstCapture: AnalysisCapture
   directory: string
   language: CaptureLanguage
+  model: string
   theme: 'dark' | 'light'
   dev: boolean
   capture: () => Promise<AnalysisCapture | null>
@@ -28,7 +29,7 @@ export class CaptureAnalysisWindow {
   private busyCapture = false
 
   constructor(private options: AnalysisWindowOptions) {
-    this.value = { status: 'waiting', language: options.language, turns: [], question: '', draft: '', startedAt: null,
+    this.value = { status: 'waiting', language: options.language, model: options.model, turns: [], question: '', draft: '', startedAt: null,
       error: null, capturing: false, saving: false, saved: false, thumbnails: [],
       workspaceId: options.workspaces.find(item => item.isDefault)?.id ?? null, workspaces: options.workspaces }
     const workArea = screen.getDisplayMatching(options.firstCapture.bounds).workArea
@@ -68,12 +69,12 @@ export class CaptureAnalysisWindow {
     const controller = this.controller = new AbortController(), startedAt = Date.now()
     this.publish({ status: 'running', question, startedAt, error: null, draft: '' })
     try {
-      const answer = await (this.options.analyze ?? runCodexVision)({ language: this.value.language, turns: this.value.turns,
+      const answer = await (this.options.analyze ?? runCodexVision)({ model: this.value.model, language: this.value.language, turns: this.value.turns,
         question, images: [...this.images], directory: this.options.directory, signal: controller.signal,
         onText: draft => { if (!controller.signal.aborted) this.publish({ draft }) } })
       if (controller.signal.aborted || this.disposed) return
       this.publish({ status: 'ready', draft: '', saved: false,
-        turns: [...this.value.turns, { question, answer, elapsedMs: Date.now() - startedAt, imageCount: this.images.length }] })
+        turns: [...this.value.turns, { question, answer, elapsedMs: Date.now() - startedAt, imageCount: this.images.length, model: this.value.model }] })
     } catch (error) {
       if (!controller.signal.aborted && !this.disposed) this.publish({ status: 'error', draft: '',
         error: error instanceof CodexVisionError ? error.code : 'failed' })

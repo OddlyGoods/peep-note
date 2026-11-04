@@ -25,6 +25,7 @@ declare global {
       chooseDataLocation: () => Promise<string | null>
       changeDataLocation: (directory: string) => Promise<DataLocationResult>
       setRecordingActive: (active: boolean) => Promise<void>
+      getCaptureCodexModels?: () => Promise<import('../../shared/codexModels').CaptureCodexModel[]>
       getSettings: () => Promise<Record<string, unknown>>
       saveSettings: (settings: unknown) => Promise<{ ok: boolean }>
       setHotkeysEnabled: (enabled: boolean) => Promise<{ ok: boolean }>

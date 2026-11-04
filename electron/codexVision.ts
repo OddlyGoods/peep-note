@@ -4,6 +4,8 @@ import path from 'path'
 import { spawn, type ChildProcessWithoutNullStreams } from 'child_process'
 import { capturePrompt, type CaptureAnalysisError, type CaptureLanguage, type CaptureTurn } from '../shared/captureAnalysis'
 
+import { isCaptureCodexModel } from '../shared/codexModels'
+
 export class CodexVisionError extends Error {
   constructor(public code: CaptureAnalysisError) { super(code) }
 }
@@ -32,7 +34,7 @@ export function findCodexLaunch(env: NodeJS.ProcessEnv = process.env, platform =
 }
 
 export interface CodexVisionInput {
-  language: CaptureLanguage; turns: CaptureTurn[]; question: string; images: string[]
+  model: string; language: CaptureLanguage; turns: CaptureTurn[]; question: string; images: string[]
   directory: string; signal: AbortSignal; onText: (text: string) => void
 }
 export async function runCodexVision(input: CodexVisionInput, options: {
@@ -40,12 +42,13 @@ export async function runCodexVision(input: CodexVisionInput, options: {
   timeoutMs?: number
   spawn?: typeof spawn
 } = {}): Promise<string> {
+  if (!isCaptureCodexModel(input.model)) throw new CodexVisionError('failed')
   if (input.signal.aborted) throw new Error('cancelled')
   const launch = options.launch ?? findCodexLaunch()
   const outputPath = path.join(input.directory, 'answer.md')
   await fs.promises.rm(outputPath, { force: true })
   const args = [...launch.prefix, 'exec', '--ephemeral', '--ignore-user-config', '--ignore-rules', '--skip-git-repo-check',
-    '--sandbox', 'read-only', '--disable', 'shell_tool', '--disable', 'apps', '--disable', 'plugins',
+    '--model', input.model.trim(), '--sandbox', 'read-only', '--disable', 'shell_tool', '--disable', 'apps', '--disable', 'plugins',
     '-c', 'approval_policy="never"', '-c', 'web_search="disabled"', '-c', 'project_doc_max_bytes=0',
     '--cd', input.directory, '--json', '--color', 'never', '--output-last-message', outputPath]
   for (const image of input.images) args.push('--image', image)
@@ -98,7 +101,8 @@ export async function runCodexVision(input: CodexVisionInput, options: {
     child.once('close', async code => {
       cleanup()
       if (pending) line(pending)
-      if (input.signal.aborted) { reject(new Error('cancelled')); return }
+      if (!isCaptureCodexModel(input.model)) throw new CodexVisionError('failed')
+  if (input.signal.aborted) { reject(new Error('cancelled')); return }
       if (timedOut) { reject(new CodexVisionError('timeout')); return }
       if (code !== 0 || stopped || protocolError) {
         reject(new CodexVisionError(/(?:not (?:logged|signed) in|login required|please (?:log|sign) in|unauthorized|401|token.*expired)/i.test(diagnostics) ? 'login_required' : 'failed')); return

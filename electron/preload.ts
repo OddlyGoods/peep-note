@@ -55,6 +55,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setRecordingActive: (active: boolean) => ipcRenderer.invoke('set-recording-active', active),
 
   // 설정
+  getCaptureCodexModels: () => ipcRenderer.invoke('get-capture-codex-models'),
   getSettings: () => ipcRenderer.invoke('get-settings'),
   saveSettings: (settings: unknown) => ipcRenderer.invoke('save-settings', settings),
   setHotkeysEnabled: (enabled: boolean) => ipcRenderer.invoke('set-hotkeys-enabled', enabled),

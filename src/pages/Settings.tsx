@@ -9,6 +9,8 @@ import UpdatePanel from '../components/UpdatePanel'
 import ConfirmModal from '../components/ConfirmModal'
 import { dataStorageErrorKey } from '../../shared/dataStorage'
 import DataLocationField from '../components/DataLocationField'
+import CaptureCodexSettings from '../components/CaptureCodexSettings'
+import { DEFAULT_CAPTURE_CODEX_MODEL, isCaptureCodexModel, normalizeCaptureCodexModel } from '../../shared/codexModels'
 import AiConnectionTest from '../components/AiConnectionTest'
 import McpPanel from '../components/McpPanel'
 import RemotePanel from '../components/RemotePanel'
@@ -203,6 +205,8 @@ export default function Settings() {
   const [saveStatus, setSaveStatus] = useState<AutosaveStatus>('idle')
   const [loadFailed, setLoadFailed] = useState(false)
   const [aiProvider, setAiProvider] = useState<AiProvider>('openai')
+  const [captureCodexModel, setCaptureCodexModel] = useState(DEFAULT_CAPTURE_CODEX_MODEL)
+  const [captureModelTyping, setCaptureModelTyping] = useState(false)
   const [aiContextLength, setAiContextLength] = useState(String(DEFAULT_AI_CONTEXT_LENGTH))
   const validAiContextLength = isAiContextLength(Number(aiContextLength))
   const [aiModelChoices, setAiModelChoices] = useState(() => Object.fromEntries(
@@ -259,9 +263,10 @@ export default function Settings() {
     openai_api_key: openaiKey || null, anthropic_api_key: anthropicKey || null,
     gemini_api_key: geminiKey || null, qwen_api_key: qwenKey || null,
     qwen_base_url: qwenBaseUrl.trim() || 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
+    capture_codex_model: isCaptureCodexModel(captureCodexModel) ? captureCodexModel.trim() : undefined,
     ai_context_length: validAiContextLength ? Number(aiContextLength) : undefined,
   }), [hotkeys, selectedLanguage, autoAdvanceDateRange, fixedStartDate, trashRetentionDays,
-    openaiKey, anthropicKey, geminiKey, qwenKey, qwenBaseUrl, aiContextLength, validAiContextLength])
+    openaiKey, anthropicKey, geminiKey, qwenKey, qwenBaseUrl, aiContextLength, validAiContextLength, captureCodexModel])
   const aiSelection = useMemo<Partial<SettingsType> | null>(() => aiModel.trim() ? ({
     ai_provider: aiProvider, ai_model: aiModel.trim(),
     ai_models: Object.fromEntries(Object.entries(aiModelChoices).filter(([, choice]) => choice.model.trim()).map(([provider, choice]) => [provider, choice.model.trim()])),
@@ -281,8 +286,8 @@ export default function Settings() {
     }
     for (const key of Object.keys(draft) as (keyof SettingsType)[]) {
       if (JSON.stringify(draft[key]) === JSON.stringify(previousDraft.current[key])) continue
-      if (key === 'ai_context_length' && draft[key] === undefined) { autosave.cancel([key]); continue }
-      const immediate = ['hotkeys', 'language', 'auto_advance_date_range', 'fixed_start_date', 'trash_retention_days'].includes(key)
+      if (['ai_context_length', 'capture_codex_model'].includes(key) && draft[key] === undefined) { autosave.cancel([key]); continue }
+      const immediate = ['hotkeys', 'language', 'auto_advance_date_range', 'fixed_start_date', 'trash_retention_days'].includes(key) || (key === 'capture_codex_model' && !captureModelTyping)
       autosave.schedule({ [key]: draft[key] }, immediate ? 0 : 500)
     }
     previousDraft.current = draft
@@ -292,7 +297,7 @@ export default function Settings() {
       previousAi.current = aiSelection
     }
     previousProvider.current = aiProvider
-  }, [loading, settings, draft, aiSelection, customAiModel, aiProvider, autosave])
+  }, [loading, settings, draft, aiSelection, customAiModel, aiProvider, autosave, captureModelTyping])
 
   useEffect(() => { if (!active) void autosave.flush() }, [active, autosave])
   useEffect(() => {
@@ -311,6 +316,7 @@ export default function Settings() {
       setHotkeys(resolveHotkeys(s.hotkeys))
       const provider = s.ai_provider ?? 'openai'
       setAiProvider(provider)
+      setCaptureCodexModel(normalizeCaptureCodexModel(s.capture_codex_model))
       setAiContextLength(String(normalizeAiContextLength(s.ai_context_length)))
       const models = getAiModels(s.ai_models, provider, s.ai_model)
       setAiModelChoices(Object.fromEntries((Object.keys(models) as AiProvider[]).map(value => [value, getAiModelSelection(value, models[value])])) as Record<AiProvider, { model: string; custom: boolean }>)
@@ -824,6 +830,7 @@ export default function Settings() {
                 baseUrl={aiProvider === 'qwen' ? qwenBaseUrl : undefined} />
             </div>
           </section>
+          <CaptureCodexSettings value={captureCodexModel} onChange={(value, typing) => { setCaptureCodexModel(value); setCaptureModelTyping(typing) }} />
           <McpPanel />
         </SettingsPane>
         <SettingsPane section="remote" selected={section === 'remote'}>

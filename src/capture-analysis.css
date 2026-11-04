@@ -41,3 +41,7 @@ html[data-theme='light'] .capture-secondary, html[data-theme='light'] .capture-a
 html[data-theme='light'] .capture-analysis-time, html[data-theme='light'] .capture-analysis-elapsed { color: #64748b; }
 html[data-theme='light'] .capture-analysis-actions option { background: #fff; }
 html[data-theme='light'] .capture-analysis-error { color: #e11d48; }
+
+.capture-analysis-model { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #94a3b8; font-size: 11px; }
+.capture-analysis-time { flex-wrap: wrap; overflow-wrap: anywhere; }
+html[data-theme='light'] .capture-analysis-model { color: #64748b; }

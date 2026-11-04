@@ -33,7 +33,7 @@ html[data-theme] body:has(> #capture-analysis-root) { background: transparent !i
 .capture-analysis-waiting[data-streaming='true'] { flex-direction: row; justify-content: flex-start; min-height: 0; gap: 8px; margin-top: 12px; }
 .capture-analysis-waiting[data-streaming='true'] .capture-analysis-orb { width: 22px !important; height: 22px !important; }
 .capture-analysis-orb { flex-shrink: 0; }
-.capture-analysis-waiting-caption { display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--quick-excerpt); font-size: 12px; }
+.capture-analysis-waiting-caption { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: var(--quick-excerpt); font-size: 12px; }
 .capture-analysis-elapsed { font-variant-numeric: tabular-nums; color: var(--quick-excerpt); min-width: 42px; }
 .capture-analysis-error { color: #fb7185; line-height: 1.65; padding: 8px 0; }
 .capture-analysis-error button { margin-top: 10px; }

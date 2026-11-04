@@ -546,12 +546,12 @@ function createTray() {
 
   const language = loadSettings().language
   const text = language === 'ko'
-    ? { open: 'PeepNote 열기', quick: '빠른 기록', screenshot: '캡쳐', freeform: '자유 영역 캡처', video: '동영상 녹화', about: '앱 정보', quit: '종료' }
+    ? { open: 'PeepNote 열기', quick: '빠른 기록', screenshot: '캡쳐', freeform: '매직펜', video: '동영상 녹화', about: '앱 정보', quit: '종료' }
     : language === 'ja'
-      ? { open: 'PeepNoteを開く', quick: 'クイック記録', screenshot: 'キャプチャ', freeform: 'フリーハンドキャプチャ', video: '画面録画を開始', about: 'アプリ情報', quit: '終了' }
+      ? { open: 'PeepNoteを開く', quick: 'クイック記録', screenshot: 'キャプチャ', freeform: 'マジックペン', video: '画面録画を開始', about: 'アプリ情報', quit: '終了' }
       : language === 'zh'
-        ? { open: '打开 PeepNote', quick: '快速记录', screenshot: '截图', freeform: '自由区域截图', video: '开始屏幕录制', about: '应用信息', quit: '退出' }
-        : { open: 'Show PeepNote', quick: 'Quick note', screenshot: 'Capture', freeform: 'Freeform capture', video: 'Recording', about: 'About', quit: 'Quit' }
+        ? { open: '打开 PeepNote', quick: '快速记录', screenshot: '截图', freeform: '魔法笔', video: '开始屏幕录制', about: '应用信息', quit: '退出' }
+        : { open: 'Show PeepNote', quick: 'Quick note', screenshot: 'Capture', freeform: 'Magic Pen', video: 'Recording', about: 'About', quit: 'Quit' }
   const menu = Menu.buildFromTemplate([
     { label: text.open, click: () => showMainWindow() },
     { type: 'separator' },

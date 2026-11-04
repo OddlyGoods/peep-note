@@ -5,10 +5,10 @@ import { useI18n } from '../i18n'
 import { useScreenActive } from '../lib/screenActivity'
 
 const messages = {
-  en: { title: 'Capture analysis', label: 'Codex model', hint: 'Choose the model used to analyze Alt+S captures. Changes apply to new capture conversations.', requirement: 'Uses your signed-in Codex CLI account.', invalid: 'Enter a valid model ID.' },
-  ko: { title: '캡처 분석', label: '코덱스 모델', hint: 'Alt+S 캡처를 분석할 모델을 선택하세요. 변경한 모델은 새 캡처 대화부터 적용됩니다.', requirement: 'Codex CLI에 로그인한 계정을 사용합니다.', invalid: '올바른 모델 ID를 입력해 주세요.' },
-  ja: { title: 'キャプチャ分析', label: 'Codexモデル', hint: 'Alt+Sでキャプチャした画像を分析するモデルを選択します。変更は新しい会話から適用されます。', requirement: 'Codex CLIにログインしたアカウントを使用します。', invalid: '有効なモデルIDを入力してください。' },
-  zh: { title: '截图分析', label: 'Codex 模型', hint: '选择用于分析 Alt+S 截图的模型。更改将应用于新的截图对话。', requirement: '使用已登录的 Codex CLI 账号。', invalid: '请输入有效的模型 ID。' },
+  en: { title: 'Magic Pen', label: 'Codex model', hint: 'Draw around anything on your screen to get an AI explanation.', requirement: 'Uses your signed-in Codex CLI account.', invalid: 'Enter a valid model ID.' },
+  ko: { title: '매직펜', label: '코덱스 모델', hint: '화면에서 궁금한 부분을 그려 선택하면 AI가 바로 설명해 줍니다.', requirement: 'Codex CLI에 로그인한 계정을 사용합니다.', invalid: '올바른 모델 ID를 입력해 주세요.' },
+  ja: { title: 'マジックペン', label: 'Codexモデル', hint: '画面の気になる部分を囲むと、AIがその内容を説明します。', requirement: 'Codex CLIにログインしたアカウントを使用します。', invalid: '有効なモデルIDを入力してください。' },
+  zh: { title: '魔法笔', label: 'Codex 模型', hint: '圈选屏幕上想了解的内容，AI 即可为你解答。', requirement: '使用已登录的 Codex CLI 账号。', invalid: '请输入有效的模型 ID。' },
 }
 
 export default function CaptureCodexSettings({ value, customValue, onChange }: { value: string; customValue?: string; onChange: (value: string, typing: boolean) => void }) {

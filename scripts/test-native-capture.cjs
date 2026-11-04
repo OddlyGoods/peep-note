@@ -21,6 +21,8 @@ try {
   const gesture = `<script>window.electronAPI.on('snipping-init',payload=>{if(!payload.live)return;setTimeout(()=>{const c=document.getElementById('c');c.setPointerCapture=()=>{};c.hasPointerCapture=()=>false;for(const [type,x,y] of [['pointerdown',100,100],['pointermove',500,100],['pointerup',100,500]])c.dispatchEvent(new PointerEvent(type,{clientX:x,clientY:y,pointerId:3,button:0,bubbles:true}));},100)});</script>`
   fs.writeFileSync(path.join(fixture, 'selector.html'), html.replace('</body>', gesture + '</body>'))
   fs.copyFileSync(path.join(root, 'public/lasso.js'), path.join(fixture, 'lasso.js'))
+  fs.mkdirSync(path.join(fixture, 'cursors'))
+  fs.copyFileSync(path.join(root, 'public/cursors/ai-pen-32.png'), path.join(fixture, 'cursors/ai-pen-32.png'))
   fs.copyFileSync(path.join(root, 'tests/native-capture.cjs'), path.join(fixture, 'main.cjs'))
   const env = { ...process.env }
   delete env.ELECTRON_RUN_AS_NODE

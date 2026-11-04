@@ -9,6 +9,10 @@
     /* One alpha step keeps the transparent selector hit-testable on Windows
        while letting the real desktop remain visible and keep updating. */
     html.live-lasso, html.live-lasso body { background: rgba(0,0,0,0.004); }
+    /* The hotspot sits on the pen tip, not at the image's top-left corner. */
+    html.live-lasso, html.live-lasso body, html.live-lasso canvas {
+      cursor: url('./cursors/ai-pen-32.png') 5 27, crosshair;
+    }
     canvas { display: block; position: fixed; top: 0; left: 0; }
     #hint {
       position: fixed;

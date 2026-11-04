@@ -25,7 +25,15 @@ app.whenReady().then(async()=>{
      }
      mark('MARGIN_OK',{size});live.dispose();region.close();resolve(file)});
    ipcMain.on('snipping-cancel',()=>{mark('CANCEL');app.exit(3)});
-   region.webContents.once('did-finish-load',()=>{region.webContents.send('snipping-init',{live:true,mode:'lasso',width,height,language:'en'});region.show();region.focus();stage='selector-ready';mark(stage)});
+   region.webContents.once('did-finish-load',async()=>{
+     try {
+       const cursor=await region.webContents.executeJavaScript('getComputedStyle(document.getElementById("c")).cursor');
+       const asset=await region.webContents.executeJavaScript('new Promise(resolve=>{const image=new Image();image.onload=()=>resolve([image.naturalWidth,image.naturalHeight]);image.onerror=()=>resolve(null);image.src="./cursors/ai-pen-32.png"})');
+       if(!cursor.includes('ai-pen-32.png')||!cursor.includes('5 27')||JSON.stringify(asset)!=='[32,32]')throw Error('Pen cursor did not load');
+       mark('CURSOR_OK',{hotspot:[5,27],size:asset});
+       region.webContents.send('snipping-init',{live:true,mode:'lasso',width,height,language:'en'});region.show();region.focus();stage='selector-ready';mark(stage);
+     }catch(error){mark('CURSOR_ERROR',{message:error.message});app.exit(7)}
+   });
    region.loadFile(path.join(__dirname,'selector.html'),{query:{live:'1'}});
  }),()=>preview,error=>{mark('ACTION_ERROR',{message:error.message});app.exit(4)});
  await action();stage='preview-sent';mark(stage);

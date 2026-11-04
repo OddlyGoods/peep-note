@@ -81,14 +81,14 @@ export default function CaptureAnalysis() {
         <button type="submit" className="capture-icon-button" disabled={busy || !question.trim() || state?.status !== 'ready'} aria-label={copy.send} title={copy.send}><Send size={16} /></button>
       </form>
       <div className="capture-analysis-actions">
-        <CaptureWorkspaceSelect items={state?.workspaces ?? []} value={workspaceId ?? state?.workspaceId ?? null}
-          disabled={busy || !!state?.saving || !!state?.saved} onChange={setWorkspaceId} />
-        <div className="flex-1" />
         <button className="capture-secondary overlay-close btn-secondary" disabled={busy || state?.status !== 'ready'} title={copy.captureHint} onClick={() => {
           followScroll.current = true
           void window.captureAnalysis?.capture(question)
           setQuestion('')
         }}><Camera size={14} />{copy.followup}</button>
+        <div className="flex-1" />
+        <CaptureWorkspaceSelect items={state?.workspaces ?? []} value={workspaceId ?? state?.workspaceId ?? null}
+          disabled={busy || !!state?.saving || !!state?.saved} onChange={setWorkspaceId} />
         <button className="capture-primary overlay-save btn-primary" disabled={busy || !state?.turns.length || state.saving || state.saved} onClick={() => {
           setSaveFailed(false)
           void window.captureAnalysis?.save(workspaceId ?? state?.workspaceId ?? null).then(ok => setSaveFailed(!ok)).catch(() => setSaveFailed(true))

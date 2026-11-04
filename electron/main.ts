@@ -42,7 +42,7 @@ import { dataStorageCopy, dataStorageErrorKey, type DataLocationResult } from '.
 import { getActiveHotkeys, resolveHotkeys } from '../shared/hotkeys'
 import { handleFavoritesShortcut } from './favoritesShortcut'
 import { createCaptureAction } from './captureAction'
-import { createMultiMonitorLasso } from './multiMonitorLasso'
+import { createMultiMonitorLasso, lassoWindowOptions } from './multiMonitorLasso'
 import { getCaptureCodexModels } from './codexModelCatalog'
 import { CaptureAnalysisWindow, type AnalysisCapture } from './captureAnalysisWindow'
 import { saveCaptureAnalysis } from '../server/captureAnalysisNotes'
@@ -773,9 +773,7 @@ async function startSnipping(forceChoose = false, shape: 'rectangle' | 'lasso' =
       lassoSession = createMultiMonitorLasso({
         displays, preferredDisplayId: screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).id,
         language: loadSettings().language ?? 'en', ipc: ipcMain, screen,
-        createWindow: display => new BrowserWindow({ ...display.bounds, frame: false, alwaysOnTop: true,
-          skipTaskbar: true, resizable: false, movable: false, transparent: true, backgroundColor: '#00000000',
-          hasShadow: false, show: false,
+        createWindow: display => new BrowserWindow({ ...lassoWindowOptions(display),
           webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false },
         }),
         load: window => window.loadURL(isDev ? 'http://localhost:5173/snipping.html?live=1' : 'app://dist/snipping.html?live=1'),

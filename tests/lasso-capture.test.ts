@@ -65,7 +65,7 @@ function rendererFixture() {
   const outputCanvases: ReturnType<typeof canvasFixture>[] = []
   let renderFrame: Function | undefined
   let cancellations = 0, monitorChanges = 0, imageLoads = 0
-  for (const id of ['c', 'size-badge', 'hint-text', 'change-monitor']) {
+  for (const id of ['c', 'size-badge', 'hint', 'hint-text', 'change-monitor']) {
     elements[id] ??= { style: {}, textContent: '' }
     events[id] = {}
     elements[id].addEventListener = (name: string, listener: Function) => { events[id][name] = listener }

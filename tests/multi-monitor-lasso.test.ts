@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { EventEmitter } from 'node:events'
-import { createMultiMonitorLasso } from '../electron/multiMonitorLasso'
+import { createMultiMonitorLasso, lassoWindowOptions } from '../electron/multiMonitorLasso'
 
 const displays = [
   { id: 21, bounds: { x: -1920, y: -200, width: 1920, height: 1080 } },
@@ -32,6 +32,30 @@ function fixture(overrides: Partial<Parameters<typeof createMultiMonitorLasso>[0
   const send = (index: number, channel: string, value?: unknown) => ipc.emit(channel, { sender: windows[index].webContents }, value)
   return { ipc, screen, windows, captured, errors, session, send }
 }
+
+test('Linux selectors use overlay window placement while Windows keeps its native window type', () => {
+  for (const display of displays) {
+    const linux = lassoWindowOptions(display, 'linux'), windows = lassoWindowOptions(display, 'win32')
+    assert.equal(linux.type, 'dock')
+    assert.equal(windows.type, undefined)
+    for (const options of [linux, windows]) {
+      assert.equal(options.x, display.bounds.x)
+      assert.equal(options.y, display.bounds.y)
+      assert.equal(options.alwaysOnTop, true)
+      assert.equal(options.transparent, true)
+      assert.equal(options.frame, false)
+    }
+  }
+})
+
+test('monitor hints stay below a top desktop panel, including displays with negative origins', async () => {
+  const f = fixture({ displays: displays.map((display, index) => ({ ...display,
+    workArea: { ...display.bounds, y: display.bounds.y + (index === 0 ? 27 : 0) } })) })
+  await flush()
+  assert.deepEqual(f.windows.map(window => window.webContents.messages[0][1].hintTop), [41, 14])
+  f.session.close()
+  assert.equal(await f.session.result, null)
+})
 
 for (const index of [0, 1]) {
   test(`Magic Pen selects monitor ${index + 1} directly and hides every overlay before capture`, async () => {
@@ -118,4 +142,16 @@ test('invalid viewport data is rejected, and renderer/load failures clean up all
   assert.equal(await failure.session.result, null)
   assert.ok(failure.windows.every(window => window.destroyed))
   assert.deepEqual(failure.ipc.eventNames(), [])
+})
+
+test('closing an already destroyed native window never accesses its webContents during cleanup', async () => {
+  const f = fixture()
+  await flush()
+  const window = f.windows[0]
+  window.destroyed = true
+  Object.defineProperty(window, 'webContents', { get() { throw new Error('Object has been destroyed') } })
+  assert.doesNotThrow(() => window.emit('closed'))
+  assert.equal(await f.session.result, null)
+  assert.ok(f.windows[1].destroyed)
+  assert.deepEqual(f.ipc.eventNames(), [])
 })

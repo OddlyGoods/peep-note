@@ -1,9 +1,19 @@
-import type { BrowserWindow, Display, IpcMain, IpcMainEvent, Rectangle, Screen } from 'electron'
+import type { BrowserWindow, BrowserWindowConstructorOptions, Display, IpcMain, IpcMainEvent, Rectangle, Screen } from 'electron'
 import { parseLassoCapture } from '../shared/lassoCapture'
 import { createLiveCapture } from './liveCapture'
 
-type Monitor = Pick<Display, 'id' | 'bounds'>
+type Monitor = Pick<Display, 'id' | 'bounds'> & Partial<Pick<Display, 'workArea'>>
 export interface MultiMonitorLassoResult { dataUrl: string; bounds: Rectangle }
+
+export function lassoWindowOptions(display: Monitor, platform = process.platform): BrowserWindowConstructorOptions {
+  return { ...display.bounds, frame: false, alwaysOnTop: true, skipTaskbar: true, resizable: false, movable: false,
+    transparent: true, backgroundColor: '#00000000', hasShadow: false, show: false,
+    // GNOME constrains full-monitor normal/toolbar windows to the active monitor
+    // even after setBounds(). A dock is an overlay surface with explicit placement;
+    // no struts are set, so it does not reserve desktop space.
+    ...(platform === 'linux' ? { type: 'dock' } : {}),
+  }
+}
 
 // Each window keeps its own DIP viewport. This avoids stretching a single
 // Chromium surface across monitors with different scale factors or origins.
@@ -41,8 +51,9 @@ export function createMultiMonitorLasso(options: {
     options.screen.removeListener('display-metrics-changed', onDisplaysChanged)
     for (const { window } of entries) {
       window.removeListener('closed', onClosed)
+      if (window.isDestroyed()) continue
       window.webContents.removeListener('render-process-gone', onClosed)
-      if (!window.isDestroyed()) window.close()
+      window.close()
     }
     resolve(value)
   }
@@ -100,12 +111,13 @@ export function createMultiMonitorLasso(options: {
         window.once('closed', onClosed)
         window.webContents.once('render-process-gone', onClosed)
       }
-      await Promise.all(entries.map(async ({ window }) => {
+      await Promise.all(entries.map(async ({ display, window }) => {
         await options.load(window)
         if (!active || window.isDestroyed()) return
         const { width, height } = window.getContentBounds()
         window.webContents.send('snipping-init', { live: true, mode: 'lasso', width, height,
-          language: options.language, canChangeMonitor: false })
+          language: options.language, canChangeMonitor: false,
+          hintTop: Math.max(14, (display.workArea?.y ?? display.bounds.y) - display.bounds.y + 14) })
       }))
       if (!active) return
       if (!entries.length) { finish(); return }

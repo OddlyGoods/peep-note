@@ -3,7 +3,7 @@
 const { app, BrowserWindow, ipcMain, nativeImage } = require('electron')
 const { EventEmitter } = require('node:events')
 const assert = require('node:assert/strict'), path = require('node:path')
-const { createMultiMonitorLasso } = require('./multiMonitorLasso.cjs')
+const { createMultiMonitorLasso, lassoWindowOptions } = require('./multiMonitorLasso.cjs')
 app.setPath('userData', path.join(__dirname, 'isolated-multi-monitor-data'))
 app.disableHardwareAcceleration()
 app.on('window-all-closed', () => {})
@@ -22,11 +22,10 @@ const images = displays.map((display, index) => {
   return nativeImage.createFromBitmap(pixels, display.bounds).toDataURL()
 })
 app.whenReady().then(async () => {
-  for (const selected of [1, 0, null]) {
+  for (const selected of [1, 0, null, 'closed']) {
     const captures = [], errors = []
     const session = createMultiMonitorLasso({ displays, preferredDisplayId: 21, language: 'en', ipc: ipcMain, screen: new EventEmitter(),
-      createWindow: display => new BrowserWindow({ ...display.bounds, frame: false, transparent: true, backgroundColor: '#00000000',
-        alwaysOnTop: true, show: false, resizable: false, movable: false, hasShadow: false, skipTaskbar: true,
+      createWindow: display => new BrowserWindow({ ...lassoWindowOptions(display),
         webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false } }),
       load: window => window.loadFile(path.join(__dirname, 'manual-selector.html'), { query: { live: '1' } }),
       capture: async id => {
@@ -42,7 +41,11 @@ app.whenReady().then(async () => {
     }
     session.setLanguage('ko')
     await until(async () => (await Promise.all(session.windows.map(window => window.webContents.executeJavaScript('document.documentElement.lang')))).every(value => value === 'ko'))
-    if (selected === null) {
+    if (selected === 'closed') {
+      session.windows[0].destroy()
+      assert.equal(await session.result, null)
+      assert.deepEqual(captures, [])
+    } else if (selected === null) {
       await session.windows[1].webContents.executeJavaScript('document.dispatchEvent(new KeyboardEvent("keydown",{key:"Escape",bubbles:true}))')
       assert.equal(await session.result, null)
       assert.deepEqual(captures, [])

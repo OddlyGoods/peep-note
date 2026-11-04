@@ -1221,3 +1221,38 @@ test('all providers batch long groups within the configured context and preserve
     else run("DELETE FROM settings WHERE user_id = 'local'")
   }
 })
+
+test('custom model memory survives preset selection, provider changes and a database restart', async () => {
+  run("DELETE FROM settings WHERE user_id = 'local'")
+  try {
+    const entered = { qwen: 'qwen3.8-max-0902', openai: 'custom-openai-snapshot', codex: 'custom-codex-vision' }
+    await json('/api/settings', 'PUT', { ai_provider: 'qwen', ai_model: entered.qwen, ai_custom_models: entered })
+    await json('/api/settings', 'PUT', { ai_model: DEFAULT_AI_MODELS.qwen })
+    let saved = await json('/api/settings')
+    assert.equal(saved.ai_model, DEFAULT_AI_MODELS.qwen)
+    assert.deepEqual(saved.ai_custom_models, entered)
+    await json('/api/settings', 'PUT', { ai_provider: 'openai', ai_model: DEFAULT_AI_MODELS.openai })
+    await json('/api/settings', 'PUT', { language: 'ko', capture_codex_model: 'gpt-6.1-sol' })
+    getDb().close()
+    await initDb(root)
+    saved = await json('/api/settings')
+    assert.deepEqual(saved.ai_custom_models, entered)
+    assert.equal(saved.capture_codex_model, 'gpt-6.1-sol')
+    await json('/api/settings', 'PUT', { ai_custom_models: { qwen: '  newer-custom-qwen  ' } })
+    assert.deepEqual((await json('/api/settings')).ai_custom_models, { ...entered, qwen: 'newer-custom-qwen' })
+    for (const invalid of [null, [], 'bad', { qwen: '' }, { qwen: 42 }, { unknown: 'model' }]) {
+      assert.equal((await request('/api/settings', 'PUT', { ai_custom_models: invalid })).status, 400)
+    }
+  } finally { run("DELETE FROM settings WHERE user_id = 'local'") }
+})
+
+test('switching an existing custom model to a preset remembers the legacy custom value first', async () => {
+  run("DELETE FROM settings WHERE user_id = 'local'")
+  try {
+    await json('/api/settings', 'PUT', { ai_provider: 'qwen', ai_model: 'legacy-custom-qwen' })
+    await json('/api/settings', 'PUT', { ai_model: DEFAULT_AI_MODELS.qwen })
+    const saved = await json('/api/settings')
+    assert.equal(saved.ai_custom_models.qwen, 'legacy-custom-qwen')
+    assert.equal(saved.ai_custom_models.openai, undefined, 'unused custom inputs must not remember a preset/default')
+  } finally { run("DELETE FROM settings WHERE user_id = 'local'") }
+})

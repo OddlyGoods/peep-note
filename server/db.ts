@@ -104,6 +104,7 @@ export async function initDb(appDataPath: string) {
   try { db.run('ALTER TABLE settings ADD COLUMN ai_model TEXT') } catch {}
   try { db.run("ALTER TABLE settings ADD COLUMN capture_codex_model TEXT NOT NULL DEFAULT 'gpt-6.1-sol'") } catch {}
   try { db.run('ALTER TABLE settings ADD COLUMN ai_context_length INTEGER NOT NULL DEFAULT 32768') } catch {}
+  try { db.run("ALTER TABLE settings ADD COLUMN ai_custom_models TEXT NOT NULL DEFAULT '{}'") } catch {}
   try { db.run("ALTER TABLE settings ADD COLUMN ai_models TEXT NOT NULL DEFAULT '{}'") } catch {}
   try { db.run("ALTER TABLE settings ADD COLUMN language TEXT NOT NULL DEFAULT 'en'") } catch {}
   try { db.run('ALTER TABLE settings ADD COLUMN auto_advance_date_range INTEGER NOT NULL DEFAULT 1') } catch {}

@@ -9,6 +9,8 @@ import { resolveHotkeys } from '../../shared/hotkeys'
 
 import { DEFAULT_CAPTURE_CODEX_MODEL, isCaptureCodexModel, normalizeCaptureCodexModel } from '../../shared/codexModels'
 
+import { getCustomModelMemory, isCustomModelMemory } from '../../shared/customModelMemory'
+
 const settings = new Hono()
 const isSupportedLanguage = (value: unknown): value is 'en' | 'ko' | 'ja' | 'zh' =>
   value === 'en' || value === 'ko' || value === 'ja' || value === 'zh'
@@ -19,12 +21,12 @@ settings.get('/', async (c) => {
 
   const row = queryOne<any>('SELECT * FROM settings WHERE user_id = ?', [userId])
   if (!row) return c.json({
-    hotkeys: resolveHotkeys(), capture_codex_model: DEFAULT_CAPTURE_CODEX_MODEL,
+    hotkeys: resolveHotkeys(), ai_custom_models: {}, capture_codex_model: DEFAULT_CAPTURE_CODEX_MODEL,
     backup_enabled: false, backup_url: null, theme: 'light', trash_retention_days: DEFAULT_TRASH_RETENTION_DAYS,
     ai_provider: 'openai', ai_model: DEFAULT_AI_MODELS.openai, ai_context_length: DEFAULT_AI_CONTEXT_LENGTH, ai_models: getAiModels(null), openai_api_key: null, anthropic_api_key: null, gemini_api_key: null, qwen_api_key: null, qwen_base_url: 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1', language: 'en', auto_advance_date_range: true, fixed_start_date: true, secret_password_set: false
   })
   const { secret_password_hash: _secretPasswordHash, ...safeRow } = row
-  return c.json({ ...safeRow, capture_codex_model: normalizeCaptureCodexModel(row.capture_codex_model), ai_context_length: normalizeAiContextLength(row.ai_context_length), ai_models: getAiModels(row.ai_models, row.ai_provider, row.ai_model), trash_retention_days: normalizeTrashRetentionDays(row.trash_retention_days), secret_password_set: !!_secretPasswordHash, hotkeys: resolveHotkeys(JSON.parse(row.hotkeys || '{}')), backup_enabled: !!row.backup_enabled, auto_advance_date_range: row.auto_advance_date_range !== 0, fixed_start_date: !!row.fixed_start_date })
+  return c.json({ ...safeRow, ai_custom_models: getCustomModelMemory(row.ai_custom_models, getAiModels(row.ai_models, row.ai_provider, row.ai_model), row.capture_codex_model), capture_codex_model: normalizeCaptureCodexModel(row.capture_codex_model), ai_context_length: normalizeAiContextLength(row.ai_context_length), ai_models: getAiModels(row.ai_models, row.ai_provider, row.ai_model), trash_retention_days: normalizeTrashRetentionDays(row.trash_retention_days), secret_password_set: !!_secretPasswordHash, hotkeys: resolveHotkeys(JSON.parse(row.hotkeys || '{}')), backup_enabled: !!row.backup_enabled, auto_advance_date_range: row.auto_advance_date_range !== 0, fixed_start_date: !!row.fixed_start_date })
 })
 
 const isPin = (value: unknown): value is string => typeof value === 'string' && /^\d{4}$/.test(value)
@@ -68,7 +70,8 @@ settings.put('/secret-password', async (c) => {
 settings.put('/', async (c) => {
   const userId = LOCAL_PROFILE_ID
 
-  const { hotkeys, backup_enabled, backup_url, theme, ai_provider, ai_model, capture_codex_model, ai_context_length, ai_models, openai_api_key, anthropic_api_key, gemini_api_key, qwen_api_key, qwen_base_url, language, auto_advance_date_range, fixed_start_date, trash_retention_days } = await c.req.json()
+  const { hotkeys, backup_enabled, backup_url, theme, ai_provider, ai_model, capture_codex_model, ai_context_length, ai_models, ai_custom_models, openai_api_key, anthropic_api_key, gemini_api_key, qwen_api_key, qwen_base_url, language, auto_advance_date_range, fixed_start_date, trash_retention_days } = await c.req.json()
+  if (ai_custom_models !== undefined && !isCustomModelMemory(ai_custom_models)) return c.json({ error: 'INVALID_AI_CUSTOM_MODELS' }, 400)
   if (capture_codex_model !== undefined && !isCaptureCodexModel(capture_codex_model)) {
     return c.json({ error: 'INVALID_CAPTURE_CODEX_MODEL' }, 400)
   }
@@ -98,10 +101,11 @@ settings.put('/', async (c) => {
   for (const [key, value] of Object.entries(ai_models ?? {})) models[key as AiProvider] = (value as string).trim()
   if (ai_model !== undefined) models[provider] = ai_model.trim()
   const model = models[provider]
+  const customModels = { ...getCustomModelMemory(cur?.ai_custom_models, getAiModels(cur?.ai_models, cur?.ai_provider, cur?.ai_model), cur?.capture_codex_model), ...getCustomModelMemory(ai_custom_models) }
 
   if (cur) {
     run(
-      'UPDATE settings SET hotkeys=?, backup_enabled=?, backup_url=?, theme=?, ai_provider=?, ai_model=?, capture_codex_model=?, ai_context_length=?, ai_models=?, openai_api_key=?, anthropic_api_key=?, gemini_api_key=?, qwen_api_key=?, qwen_base_url=?, language=?, auto_advance_date_range=?, fixed_start_date=?, trash_retention_days=?, updated_at=? WHERE user_id=?',
+      'UPDATE settings SET hotkeys=?, backup_enabled=?, backup_url=?, theme=?, ai_provider=?, ai_model=?, capture_codex_model=?, ai_context_length=?, ai_models=?, ai_custom_models=?, openai_api_key=?, anthropic_api_key=?, gemini_api_key=?, qwen_api_key=?, qwen_base_url=?, language=?, auto_advance_date_range=?, fixed_start_date=?, trash_retention_days=?, updated_at=? WHERE user_id=?',
       [
         hotkeys ? JSON.stringify(hotkeys) : cur.hotkeys,
         backup_enabled !== undefined ? (backup_enabled ? 1 : 0) : cur.backup_enabled,
@@ -112,6 +116,7 @@ settings.put('/', async (c) => {
         normalizeCaptureCodexModel(capture_codex_model ?? cur.capture_codex_model),
         ai_context_length ?? normalizeAiContextLength(cur.ai_context_length),
         JSON.stringify(models),
+        JSON.stringify(customModels),
         openai_api_key !== undefined ? openai_api_key : cur.openai_api_key,
         anthropic_api_key !== undefined ? anthropic_api_key : cur.anthropic_api_key,
         gemini_api_key !== undefined ? gemini_api_key : cur.gemini_api_key,
@@ -126,17 +131,17 @@ settings.put('/', async (c) => {
     )
   } else {
     run(
-      'INSERT INTO settings (user_id, hotkeys, backup_enabled, backup_url, theme, ai_provider, ai_model, capture_codex_model, ai_context_length, ai_models, openai_api_key, anthropic_api_key, gemini_api_key, qwen_api_key, qwen_base_url, language, auto_advance_date_range, fixed_start_date, trash_retention_days, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO settings (user_id, hotkeys, backup_enabled, backup_url, theme, ai_provider, ai_model, capture_codex_model, ai_context_length, ai_models, ai_custom_models, openai_api_key, anthropic_api_key, gemini_api_key, qwen_api_key, qwen_base_url, language, auto_advance_date_range, fixed_start_date, trash_retention_days, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [userId,
        JSON.stringify(resolveHotkeys(hotkeys)),
        backup_enabled ? 1 : 0, backup_url ?? null, theme ?? 'light',
-       provider, model, normalizeCaptureCodexModel(capture_codex_model), ai_context_length ?? DEFAULT_AI_CONTEXT_LENGTH, JSON.stringify(models), openai_api_key ?? null, anthropic_api_key ?? null, gemini_api_key ?? null, qwen_api_key ?? null, qwen_base_url ?? 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1', isSupportedLanguage(language) ? language : 'en', auto_advance_date_range === false ? 0 : 1, fixed_start_date === false ? 0 : 1, trash_retention_days ?? DEFAULT_TRASH_RETENTION_DAYS, now]
+       provider, model, normalizeCaptureCodexModel(capture_codex_model), ai_context_length ?? DEFAULT_AI_CONTEXT_LENGTH, JSON.stringify(models), JSON.stringify(customModels), openai_api_key ?? null, anthropic_api_key ?? null, gemini_api_key ?? null, qwen_api_key ?? null, qwen_base_url ?? 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1', isSupportedLanguage(language) ? language : 'en', auto_advance_date_range === false ? 0 : 1, fixed_start_date === false ? 0 : 1, trash_retention_days ?? DEFAULT_TRASH_RETENTION_DAYS, now]
     )
   }
 
   const row = queryOne<any>('SELECT * FROM settings WHERE user_id = ?', [userId])!
   const { secret_password_hash: _secretPasswordHash, ...safeRow } = row
-  return c.json({ ...safeRow, capture_codex_model: normalizeCaptureCodexModel(row.capture_codex_model), ai_context_length: normalizeAiContextLength(row.ai_context_length), ai_models: getAiModels(row.ai_models, row.ai_provider, row.ai_model), trash_retention_days: normalizeTrashRetentionDays(row.trash_retention_days), secret_password_set: !!_secretPasswordHash, hotkeys: resolveHotkeys(JSON.parse(row.hotkeys || '{}')), backup_enabled: !!row.backup_enabled, auto_advance_date_range: row.auto_advance_date_range !== 0, fixed_start_date: !!row.fixed_start_date })
+  return c.json({ ...safeRow, ai_custom_models: getCustomModelMemory(row.ai_custom_models, getAiModels(row.ai_models, row.ai_provider, row.ai_model), row.capture_codex_model), capture_codex_model: normalizeCaptureCodexModel(row.capture_codex_model), ai_context_length: normalizeAiContextLength(row.ai_context_length), ai_models: getAiModels(row.ai_models, row.ai_provider, row.ai_model), trash_retention_days: normalizeTrashRetentionDays(row.trash_retention_days), secret_password_set: !!_secretPasswordHash, hotkeys: resolveHotkeys(JSON.parse(row.hotkeys || '{}')), backup_enabled: !!row.backup_enabled, auto_advance_date_range: row.auto_advance_date_range !== 0, fixed_start_date: !!row.fixed_start_date })
 })
 
 export default settings

@@ -241,6 +241,7 @@ export interface Settings {
   ai_model: string
   capture_codex_model?: string
   ai_context_length?: number
+  ai_custom_models?: import('../../shared/customModelMemory').CustomModelMemory
   ai_models?: Partial<AiModelMap>
   openai_api_key: string | null
   anthropic_api_key: string | null

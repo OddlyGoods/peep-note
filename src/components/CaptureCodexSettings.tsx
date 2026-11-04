@@ -11,7 +11,7 @@ const messages = {
   zh: { title: '截图分析', label: 'Codex 模型', hint: '选择用于分析 Alt+S 截图的模型。更改将应用于新的截图对话。', requirement: '使用已登录的 Codex CLI 账号。', invalid: '请输入有效的模型 ID。' },
 }
 
-export default function CaptureCodexSettings({ value, onChange }: { value: string; onChange: (value: string, typing: boolean) => void }) {
+export default function CaptureCodexSettings({ value, customValue, onChange }: { value: string; customValue?: string; onChange: (value: string, typing: boolean) => void }) {
   const { language, t } = useI18n(), copy = messages[language]
   const active = useScreenActive()
   const id = useId()
@@ -40,7 +40,7 @@ export default function CaptureCodexSettings({ value, onChange }: { value: strin
     <label id={`${id}-label`} className="block text-xs font-medium text-gray-400 mb-2">{copy.label}</label>
     <div ref={menu} className="relative">
       <button ref={trigger} type="button" aria-haspopup="listbox" aria-expanded={open} aria-labelledby={`${id}-label ${id}-value`}
-        className="settings-select-trigger input flex items-center justify-between py-2.5 text-left hover:border-violet-400/50"
+        className="settings-select-trigger input flex items-center justify-between py-[7px] text-left hover:border-violet-400/50"
         onClick={() => setOpen(previous => !previous)} onKeyDown={event => { if (event.key === 'ArrowDown') { event.preventDefault(); setOpen(true) } }}>
         <span id={`${id}-value`} className="text-[13px] text-gray-200">{custom ? t('customAiModel') : models.find(item => item.value === value)?.label ?? value}</span>
         <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
@@ -61,7 +61,7 @@ export default function CaptureCodexSettings({ value, onChange }: { value: strin
         </button>)}
         <button type="button" role="option" aria-selected={custom}
           className={`settings-select-option w-full flex items-center justify-between px-3 py-2 rounded-md text-[13px] text-left transition-colors ${custom ? 'bg-violet-500/15 text-violet-300' : 'text-gray-300 hover:bg-gray-800 hover:text-gray-100'}`}
-          onClick={() => { setCustomOverride(true); setOpen(false) }}>{t('customAiModel')}{custom && <Check className="w-4 h-4" />}</button>
+          onClick={() => { setCustomOverride(true); onChange(customValue ?? (custom ? value : ''), true); setOpen(false) }}>{t('customAiModel')}{custom && <Check className="w-4 h-4" />}</button>
       </div>}
     </div>
     {custom && <input type="text" aria-label={t('customAiModelId')} value={value} onChange={event => onChange(event.target.value, true)}

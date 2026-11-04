@@ -9,13 +9,15 @@ import UpdatePanel from '../components/UpdatePanel'
 import ConfirmModal from '../components/ConfirmModal'
 import { dataStorageErrorKey } from '../../shared/dataStorage'
 import DataLocationField from '../components/DataLocationField'
+import RetentionSelect from '../components/RetentionSelect'
+import { getCustomModelMemory, type CustomModelMemory } from '../../shared/customModelMemory'
 import CaptureCodexSettings from '../components/CaptureCodexSettings'
 import { DEFAULT_CAPTURE_CODEX_MODEL, isCaptureCodexModel, normalizeCaptureCodexModel } from '../../shared/codexModels'
 import AiConnectionTest from '../components/AiConnectionTest'
 import McpPanel from '../components/McpPanel'
 import RemotePanel from '../components/RemotePanel'
 import { APP_DEVELOPER, APP_GITHUB_URL, APP_WEBSITE_URL } from '../../shared/appInfo'
-import { DEFAULT_TRASH_RETENTION_DAYS, TRASH_RETENTION_OPTIONS, normalizeTrashRetentionDays } from '../../shared/trashRetention'
+import { DEFAULT_TRASH_RETENTION_DAYS, normalizeTrashRetentionDays } from '../../shared/trashRetention'
 import { AI_MODELS, DEFAULT_AI_MODELS, getAiModels, getAiModelSelection, type AiProvider } from '../../shared/aiModels'
 import { DEFAULT_AI_CONTEXT_LENGTH, MIN_AI_CONTEXT_LENGTH, MAX_AI_CONTEXT_LENGTH, isAiContextLength, normalizeAiContextLength } from '../../shared/aiContext'
 import { resolveHotkeys, type HotkeyAction, type Hotkeys } from '../../shared/hotkeys'
@@ -205,6 +207,7 @@ export default function Settings() {
   const [saveStatus, setSaveStatus] = useState<AutosaveStatus>('idle')
   const [loadFailed, setLoadFailed] = useState(false)
   const [aiProvider, setAiProvider] = useState<AiProvider>('openai')
+  const [customModelMemory, setCustomModelMemory] = useState<CustomModelMemory>({})
   const [captureCodexModel, setCaptureCodexModel] = useState(DEFAULT_CAPTURE_CODEX_MODEL)
   const [captureModelTyping, setCaptureModelTyping] = useState(false)
   const [aiContextLength, setAiContextLength] = useState(String(DEFAULT_AI_CONTEXT_LENGTH))
@@ -214,7 +217,12 @@ export default function Settings() {
   ) as Record<AiProvider, { model: string; custom: boolean }>)
   const { model: aiModel, custom: customAiModel } = aiModelChoices[aiProvider]
   const setAiModel = (model: string) => setAiModelChoices(previous => ({ ...previous, [aiProvider]: { ...previous[aiProvider], model } }))
-  const setCustomAiModel = (custom: boolean) => setAiModelChoices(previous => ({ ...previous, [aiProvider]: { ...previous[aiProvider], custom } }))
+  const setCustomAiModel = (custom: boolean) => setAiModelChoices(previous => ({ ...previous, [aiProvider]: { ...previous[aiProvider], custom,
+    model: custom ? customModelMemory[aiProvider] ?? (previous[aiProvider].custom ? previous[aiProvider].model : '') : previous[aiProvider].model } }))
+  const changeCustomAiModel = (model: string) => {
+    setAiModel(model)
+    if (model.trim()) setCustomModelMemory(previous => ({ ...previous, [aiProvider]: model.trim() }))
+  }
   const customModelInputRef = useRef<HTMLInputElement>(null)
   const [openaiKey, setOpenaiKey] = useState('')
   const [anthropicKey, setAnthropicKey] = useState('')
@@ -258,7 +266,7 @@ export default function Settings() {
     }
   }, setSaveStatus))
   const draft = useMemo<Partial<SettingsType>>(() => ({
-    hotkeys, language: selectedLanguage, auto_advance_date_range: autoAdvanceDateRange,
+    ai_custom_models: customModelMemory, hotkeys, language: selectedLanguage, auto_advance_date_range: autoAdvanceDateRange,
     fixed_start_date: fixedStartDate, trash_retention_days: trashRetentionDays,
     openai_api_key: openaiKey || null, anthropic_api_key: anthropicKey || null,
     gemini_api_key: geminiKey || null, qwen_api_key: qwenKey || null,
@@ -266,11 +274,11 @@ export default function Settings() {
     capture_codex_model: isCaptureCodexModel(captureCodexModel) ? captureCodexModel.trim() : undefined,
     ai_context_length: validAiContextLength ? Number(aiContextLength) : undefined,
   }), [hotkeys, selectedLanguage, autoAdvanceDateRange, fixedStartDate, trashRetentionDays,
-    openaiKey, anthropicKey, geminiKey, qwenKey, qwenBaseUrl, aiContextLength, validAiContextLength, captureCodexModel])
+    openaiKey, anthropicKey, geminiKey, qwenKey, qwenBaseUrl, aiContextLength, validAiContextLength, captureCodexModel, customModelMemory])
   const aiSelection = useMemo<Partial<SettingsType> | null>(() => aiModel.trim() ? ({
-    ai_provider: aiProvider, ai_model: aiModel.trim(),
+    ai_provider: aiProvider, ai_model: aiModel.trim(), ai_custom_models: customModelMemory,
     ai_models: Object.fromEntries(Object.entries(aiModelChoices).filter(([, choice]) => choice.model.trim()).map(([provider, choice]) => [provider, choice.model.trim()])),
-  }) : null, [aiProvider, aiModel, aiModelChoices])
+  }) : null, [aiProvider, aiModel, aiModelChoices, customModelMemory])
   const previousDraft = useRef<Partial<SettingsType> | null>(null)
   const previousAi = useRef<Partial<SettingsType> | null>(null)
   const previousProvider = useRef(aiProvider)
@@ -319,6 +327,7 @@ export default function Settings() {
       setCaptureCodexModel(normalizeCaptureCodexModel(s.capture_codex_model))
       setAiContextLength(String(normalizeAiContextLength(s.ai_context_length)))
       const models = getAiModels(s.ai_models, provider, s.ai_model)
+      setCustomModelMemory(getCustomModelMemory(s.ai_custom_models, models, s.capture_codex_model))
       setAiModelChoices(Object.fromEntries((Object.keys(models) as AiProvider[]).map(value => [value, getAiModelSelection(value, models[value])])) as Record<AiProvider, { model: string; custom: boolean }>)
       if (s.openai_api_key) setOpenaiKey(s.openai_api_key)
       if (s.anthropic_api_key) setAnthropicKey(s.anthropic_api_key)
@@ -481,7 +490,7 @@ export default function Settings() {
                 }}
                 aria-haspopup="listbox"
                 aria-expanded={languageMenuOpen}
-                className="settings-select-trigger input flex items-center justify-between py-2.5 text-left hover:border-violet-400/50"
+                className="settings-select-trigger input flex items-center justify-between py-[7px] text-left hover:border-violet-400/50"
               >
                 <span className="text-[13px] text-gray-200">{{
                   en: t('english'), ko: t('korean'), ja: t('japanese'), zh: t('chinese')
@@ -527,18 +536,7 @@ export default function Settings() {
                   <label htmlFor="trash-retention-days" className="text-sm font-medium text-gray-200">{t('trashRetention')}</label>
                   <p id="trash-retention-description" className="text-xs text-gray-400 mt-1">{t('trashRetentionDescription')}</p>
                 </div>
-                <div className="relative shrink-0">
-                  <select
-                    id="trash-retention-days"
-                    aria-describedby="trash-retention-description"
-                    value={trashRetentionDays}
-                    onChange={event => setTrashRetentionDays(normalizeTrashRetentionDays(Number(event.target.value)))}
-                    className="settings-select-trigger input w-28 appearance-none pr-8 py-2 cursor-pointer hover:border-violet-400/50"
-                  >
-                    {TRASH_RETENTION_OPTIONS.map(days => <option key={days} value={days} style={{ background: 'var(--modal-bg)', color: 'var(--title-text)' }}>{t('retentionDays', { days })}</option>)}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                </div>
+                <RetentionSelect value={trashRetentionDays} onChange={setTrashRetentionDays} />
               </div>
               <div className="border-t border-gray-800 pt-4 flex items-center justify-between gap-5">
                 <div className="min-w-0">
@@ -685,7 +683,7 @@ export default function Settings() {
                     aria-haspopup="listbox"
                     aria-labelledby="ai-model-label ai-model-value"
                     aria-expanded={modelMenuOpen}
-                    className="settings-select-trigger input flex items-center justify-between py-2.5 text-left hover:border-violet-400/50"
+                    className="settings-select-trigger input flex items-center justify-between py-[7px] text-left hover:border-violet-400/50"
                   >
                     <span id="ai-model-value" className="text-[13px] text-gray-200">
                       {customAiModel ? t('customAiModel') : AI_MODELS[aiProvider].find(model => model.value === aiModel)?.label}
@@ -749,7 +747,7 @@ export default function Settings() {
                       value={aiModel}
                       placeholder={t('customAiModelId')}
                       onFocus={event => event.currentTarget.select()}
-                      onChange={event => setAiModel(event.target.value)}
+                      onChange={event => changeCustomAiModel(event.target.value)}
                       aria-invalid={!aiModel.trim()}
                       aria-describedby="custom-ai-model-hint"
                     />
@@ -830,7 +828,10 @@ export default function Settings() {
                 baseUrl={aiProvider === 'qwen' ? qwenBaseUrl : undefined} />
             </div>
           </section>
-          <CaptureCodexSettings value={captureCodexModel} onChange={(value, typing) => { setCaptureCodexModel(value); setCaptureModelTyping(typing) }} />
+          <CaptureCodexSettings value={captureCodexModel} customValue={customModelMemory.codex} onChange={(value, typing) => {
+            setCaptureCodexModel(value); setCaptureModelTyping(typing)
+            if (typing && isCaptureCodexModel(value)) setCustomModelMemory(previous => ({ ...previous, codex: value.trim() }))
+          }} />
           <McpPanel />
         </SettingsPane>
         <SettingsPane section="remote" selected={section === 'remote'}>

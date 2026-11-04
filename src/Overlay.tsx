@@ -2,6 +2,7 @@ import { useState, useEffect, useLayoutEffect, useRef, useId } from 'react'
 import { X, Maximize2, Minimize2, Camera, Video, FileText, Text as TextIcon, StopCircle, Code2, Globe, Hash, Lock, SlidersHorizontal, ChevronDown, Check, Loader2 } from 'lucide-react'
 import { api, type Workspace } from './lib/api'
 import { useI18n } from './i18n'
+import { useTheme } from './theme'
 import { startRegionRecording, RecordingRegion } from './lib/regionRecording'
 import type { AttachmentMode } from '../shared/attachments'
 import { useAttachmentPicker } from './lib/useAttachmentPicker'
@@ -38,6 +39,7 @@ function getWorkspaceFromStorage(): SelectedWorkspace | null {
 export default function Overlay() {
   const fieldId = useId()
   const { t } = useI18n()
+  const { theme } = useTheme()
   const [type, setType] = useState<LogType>('note')
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
@@ -588,8 +590,13 @@ export default function Overlay() {
             {/* 스크린샷 미리보기 (screenshot 타입) */}
             {previewUrl && type !== 'video' && (
               <div className="relative group h-28 rounded-lg overflow-hidden shrink-0" style={{ border: '1px solid rgba(99,102,241,0.2)' }}>
-                <img src={previewUrl} alt="preview" className="w-full h-full object-contain bg-black/20" />
+                <button type="button" aria-label={t('enlarge')} disabled={!filePath}
+                  onClick={() => { if (filePath) void window.electronAPI?.openImageViewer(filePath, theme) }}
+                  className="block w-full h-full cursor-pointer disabled:cursor-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-violet-400">
+                  <img src={previewUrl} alt={t('preview')} className="w-full h-full object-contain bg-black/20" />
+                </button>
                 <button
+                  type="button" aria-label={t('delete')}
                   onClick={() => { setPreviewUrl(null); setFilePath(null) }}
                   className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                   style={{ background: 'rgba(0,0,0,0.7)', border: '1px solid rgba(255,255,255,0.2)' }}>

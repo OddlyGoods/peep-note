@@ -33,6 +33,7 @@
       gap: 12px;
       white-space: nowrap;
     }
+    html.live-lasso #hint { top: 48px; }
     #change-monitor {
       pointer-events: auto;
       cursor: pointer;
@@ -111,7 +112,7 @@
       lassoMode = typeof payload === 'object' && payload?.mode === 'lasso'
       liveLassoMode = lassoMode && payload?.live === true
       document.getElementById('change-monitor').style.display = payload?.canChangeMonitor === false ? 'none' : ''
-      document.getElementById('hint').style.top = Math.max(14, Number(payload?.hintTop) || 14) + 'px'
+      document.getElementById('hint').style.top = Math.max(liveLassoMode ? 48 : 14, Number(payload?.hintTop) || 0) + 'px'
       document.documentElement.classList.toggle('live-lasso', liveLassoMode)
       recordingRegionMode = typeof payload === 'object' && payload?.mode === 'recording-region'
       applyLanguage(typeof payload === 'object' && payload?.language ? payload.language : language)

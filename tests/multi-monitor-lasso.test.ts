@@ -50,9 +50,9 @@ test('Linux selectors use overlay window placement while Windows keeps its nativ
 
 test('monitor hints stay below a top desktop panel, including displays with negative origins', async () => {
   const f = fixture({ displays: displays.map((display, index) => ({ ...display,
-    workArea: { ...display.bounds, y: display.bounds.y + (index === 0 ? 27 : 0) } })) })
+    workArea: { ...display.bounds, y: display.bounds.y + (index === 0 ? 40 : 0) } })) })
   await flush()
-  assert.deepEqual(f.windows.map(window => window.webContents.messages[0][1].hintTop), [41, 14])
+  assert.deepEqual(f.windows.map(window => window.webContents.messages[0][1].hintTop), [60, 48])
   f.session.close()
   assert.equal(await f.session.result, null)
 })

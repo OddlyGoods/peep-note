@@ -117,7 +117,7 @@ export function createMultiMonitorLasso(options: {
         const { width, height } = window.getContentBounds()
         window.webContents.send('snipping-init', { live: true, mode: 'lasso', width, height,
           language: options.language, canChangeMonitor: false,
-          hintTop: Math.max(14, (display.workArea?.y ?? display.bounds.y) - display.bounds.y + 14) })
+          hintTop: Math.max(48, (display.workArea?.y ?? display.bounds.y) - display.bounds.y + 20) })
       }))
       if (!active) return
       if (!entries.length) { finish(); return }

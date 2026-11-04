@@ -45,9 +45,9 @@ export default function CaptureAnalysis() {
   const busy = !state || state.status === 'running' || state.capturing
   const elapsed = state?.startedAt ? Math.max(0, (now - state.startedAt) / 1000).toFixed(1) : '0.0'
   useEffect(() => { if (composerOpen && !busy) composer.current?.focus() }, [composerOpen, busy])
-  const reply = (mode: CaptureReplyMode) => {
+  const reply = (mode: CaptureReplyMode, source: 'button' | 'menu') => {
     if (busy || state?.status !== 'ready') return
-    if (mode === 'text') { setComposerOpen(true); composer.current?.focus(); return }
+    if (mode === 'text') { setComposerOpen(open => source === 'button' ? !open : true); return }
     setComposerOpen(false)
     followScroll.current = true
     void window.captureAnalysis?.capture(question)

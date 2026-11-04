@@ -6,7 +6,7 @@ export type CaptureReplyMode = 'text' | 'magic-pen'
 export default function CaptureReplySelect({ disabled, labels, onReply }: {
   disabled: boolean
   labels: { reply: string; text: string; magicPen: string; method: string }
-  onReply: (mode: CaptureReplyMode) => void
+  onReply: (mode: CaptureReplyMode, source: 'button' | 'menu') => void
 }) {
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState<CaptureReplyMode>('text')
@@ -25,18 +25,18 @@ export default function CaptureReplySelect({ disabled, labels, onReply }: {
     container.current?.querySelector<HTMLButtonElement>('[role=option][aria-selected=true]')?.focus()
     return () => { document.removeEventListener('pointerdown', outside); document.removeEventListener('keydown', escape, true) }
   }, [open])
-  const reply = (next: CaptureReplyMode) => {
+  const reply = (next: CaptureReplyMode, source: 'button' | 'menu' = 'menu') => {
     if (disabled) return
     setMode(next)
     setOpen(false)
     trigger.current?.focus()
-    onReply(next)
+    onReply(next, source)
   }
   return <div ref={container} className="capture-reply-select">
     <div className="capture-reply-buttons">
       <button type="button" className="capture-reply-main capture-secondary overlay-close btn-secondary" disabled={disabled}
-        onClick={() => reply(mode)}>
-        {mode === 'text' ? <TextIcon size={14} /> : <Pencil size={14} />}{labels.reply}
+        onClick={() => reply(mode, 'button')}>
+        {labels.reply}
       </button>
       <button ref={trigger} type="button" className="capture-reply-trigger capture-secondary overlay-close btn-secondary" disabled={disabled}
         aria-label={labels.method} aria-haspopup="listbox" aria-expanded={open} aria-controls={open ? menuId : undefined}

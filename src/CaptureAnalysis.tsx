@@ -1,18 +1,21 @@
 import CaptureAnswerCopy from './components/CaptureAnswerCopy'
 import { ThinkingOrb } from 'thinking-orbs'
 import { useEffect, useRef, useState } from 'react'
-import { Camera, Check, Clock3, Loader2, Maximize2, Minimize2, RefreshCw, Save, Send, X } from 'lucide-react'
+import { Check, Clock3, Loader2, Maximize2, Minimize2, Pencil, RefreshCw, Save, Send, X } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import MarkdownLink from './components/MarkdownLink'
 import MarkdownCodeBlock from './components/MarkdownCodeBlock'
 import { captureAnalysisCopy, splitCaptureResponse, type CaptureAnalysisState } from '../shared/captureAnalysis'
 import CaptureWorkspaceSelect from './components/CaptureWorkspaceSelect'
+import CaptureReplySelect, { type CaptureReplyMode } from './components/CaptureReplySelect'
 
 export default function CaptureAnalysis() {
   const [state, setState] = useState<CaptureAnalysisState | null>(null)
   const [now, setNow] = useState(Date.now()), [question, setQuestion] = useState('')
   const [saveFailed, setSaveFailed] = useState(false)
+  const [composerOpen, setComposerOpen] = useState(false)
+  const composer = useRef<HTMLTextAreaElement>(null)
   const [workspaceId, setWorkspaceId] = useState<string | null>(null)
   const scroll = useRef<HTMLDivElement>(null), followScroll = useRef(true)
   useEffect(() => {
@@ -41,11 +44,21 @@ export default function CaptureAnalysis() {
   const draftBody = splitCaptureResponse(state?.draft ?? '').body
   const busy = !state || state.status === 'running' || state.capturing
   const elapsed = state?.startedAt ? Math.max(0, (now - state.startedAt) / 1000).toFixed(1) : '0.0'
+  useEffect(() => { if (composerOpen && !busy) composer.current?.focus() }, [composerOpen, busy])
+  const reply = (mode: CaptureReplyMode) => {
+    if (busy || state?.status !== 'ready') return
+    if (mode === 'text') { setComposerOpen(true); composer.current?.focus(); return }
+    setComposerOpen(false)
+    followScroll.current = true
+    void window.captureAnalysis?.capture(question)
+    setQuestion('')
+  }
   const ask = () => {
-    if (!question.trim() || busy) return
+    if (!question.trim() || busy || state?.status !== 'ready') return
     followScroll.current = true
     void window.captureAnalysis?.ask(question)
     setQuestion('')
+    setComposerOpen(false)
   }
   const markdown = (text: string) => <ReactMarkdown remarkPlugins={[remarkGfm]} components={{
     a: MarkdownLink, pre: MarkdownCodeBlock,
@@ -54,7 +67,7 @@ export default function CaptureAnalysis() {
   }}>{text}</ReactMarkdown>
   return <div className="capture-analysis-shell" data-maximized={!!state?.maximized}>
     <header className="capture-analysis-header">
-      <img className="capture-analysis-logo" src="/icon.png" alt="" draggable={false} /><strong>{copy.title}</strong>
+      <Pencil className="capture-analysis-logo" aria-hidden="true" /><strong>{copy.title}</strong>
       <div className="capture-analysis-window-controls">
         <button className="capture-titlebar-button" aria-label={state?.maximized ? copy.restore : copy.maximize} title={state?.maximized ? copy.restore : copy.maximize}
           onClick={() => void window.captureAnalysis?.maximize()}>{state?.maximized ? <Minimize2 size={12} /> : <Maximize2 size={12} />}</button>
@@ -84,17 +97,14 @@ export default function CaptureAnalysis() {
       </div>}
     </main>
     <footer className="capture-analysis-footer">
-      <form className="capture-analysis-composer" onSubmit={event => { event.preventDefault(); ask() }}>
-        <textarea rows={2} value={question} maxLength={4000} disabled={busy || state?.status !== 'ready'} placeholder={copy.question} aria-label={copy.question}
-          onChange={event => setQuestion(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); ask() } }} />
+      {composerOpen && <form className="capture-analysis-composer" onSubmit={event => { event.preventDefault(); ask() }}>
+        <textarea ref={composer} rows={2} value={question} maxLength={4000} disabled={busy || state?.status !== 'ready'} placeholder={copy.question} aria-label={copy.question}
+          onChange={event => setQuestion(event.target.value)} onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); setComposerOpen(false); return } if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); ask() } }} />
         <button type="submit" className="capture-icon-button" disabled={busy || !question.trim() || state?.status !== 'ready'} aria-label={copy.send} title={copy.send}><Send size={16} /></button>
-      </form>
+      </form>}
       <div className="capture-analysis-actions">
-        <button className="capture-secondary overlay-close btn-secondary" disabled={busy || state?.status !== 'ready'} title={copy.captureHint} onClick={() => {
-          followScroll.current = true
-          void window.captureAnalysis?.capture(question)
-          setQuestion('')
-        }}><Camera size={14} />{copy.followup}</button>
+        <CaptureReplySelect disabled={busy || state?.status !== 'ready'} onReply={reply}
+          labels={{ reply: copy.followup, text: copy.replyText, magicPen: copy.title, method: copy.replyMethod }} />
         <div className="flex-1" />
         <CaptureWorkspaceSelect items={state?.workspaces ?? []} value={workspaceId ?? state?.workspaceId ?? null}
           disabled={busy || !!state?.saving || !!state?.saved} onChange={setWorkspaceId} />

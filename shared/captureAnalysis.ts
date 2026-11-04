@@ -31,7 +31,7 @@ export interface CaptureAnalysisApi {
 }
 export const captureAnalysisCopy = {
   en: {
-    title: 'Magic Pen', waiting: 'Waiting for AI…', seconds: 's', followup: 'Reply', maximize: 'Maximize', restore: 'Restore',
+    title: 'Magic Pen', waiting: 'Waiting for AI…', seconds: 's', followup: 'Reply', replyText: 'Text', replyMethod: 'Reply method', maximize: 'Maximize', restore: 'Restore',
     save: 'Save', saved: 'Saved', saving: 'Saving…', question: 'Ask a follow-up…', send: 'Send',
     retry: 'Try again', close: 'Close', captureHint: 'Capture more information to continue this conversation.',
     initial: 'Explain what the selected content means and organize the key information and useful context.',
@@ -52,7 +52,7 @@ export const captureAnalysisCopy = {
     saveFailed: 'The note could not be saved. Try again.', noteTitle: 'Capture analysis',
   },
   ko: {
-    title: '매직펜', waiting: 'AI 응답 대기 중…', seconds: '초', followup: '답변', maximize: '최대화', restore: '이전 크기',
+    title: '매직펜', waiting: 'AI 응답 대기 중…', seconds: '초', followup: '답변', replyText: '텍스트', replyMethod: '답변 방식', maximize: '최대화', restore: '이전 크기',
     save: '저장', saved: '저장됨', saving: '저장 중…', question: '추가로 질문하세요…', send: '보내기',
     retry: '다시 시도', close: '닫기', captureHint: '필요한 정보를 다시 캡처해 대화를 이어갑니다.',
     initial: '선택한 내용이 무엇인지 설명하고, 핵심 정보와 알아두면 좋은 내용을 정리해줘.',
@@ -73,7 +73,7 @@ export const captureAnalysisCopy = {
     saveFailed: '메모를 저장하지 못했습니다. 다시 시도해 주세요.', noteTitle: '캡처 분석',
   },
   ja: {
-    title: 'マジックペン', waiting: 'AIの応答を待っています…', seconds: '秒', followup: '返信', maximize: '最大化', restore: '元に戻す',
+    title: 'マジックペン', waiting: 'AIの応答を待っています…', seconds: '秒', followup: '返信', replyText: 'テキスト', replyMethod: '返信方法', maximize: '最大化', restore: '元に戻す',
     save: '保存', saved: '保存済み', saving: '保存中…', question: '追加の質問…', send: '送信',
     retry: '再試行', close: '閉じる', captureHint: '追加情報をキャプチャして会話を続けます。',
     initial: '選択した内容の意味を説明し、要点と役立つ背景情報を整理してください。',
@@ -94,7 +94,7 @@ export const captureAnalysisCopy = {
     saveFailed: 'メモを保存できませんでした。再試行してください。', noteTitle: 'キャプチャ分析',
   },
   zh: {
-    title: '魔法笔', waiting: '正在等待 AI 回复…', seconds: '秒', followup: '回复', maximize: '最大化', restore: '还原',
+    title: '魔法笔', waiting: '正在等待 AI 回复…', seconds: '秒', followup: '回复', replyText: '文本', replyMethod: '回复方式', maximize: '最大化', restore: '还原',
     save: '保存', saved: '已保存', saving: '保存中…', question: '继续提问…', send: '发送',
     retry: '重试', close: '关闭', captureHint: '截取更多信息，继续当前对话。',
     initial: '说明所选内容的含义，整理关键信息和有用的背景知识。',

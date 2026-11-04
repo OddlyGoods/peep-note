@@ -4,7 +4,7 @@ html[data-theme] body:has(> #capture-analysis-root) { background: transparent !i
 .capture-analysis-shell { height: 100%; display: flex; flex-direction: column; overflow: hidden; border-radius: 12px; background: var(--overlay-bg); color: var(--title-text); border: 1px solid var(--medium-border); font-size: 13px; }
 .capture-analysis-shell[data-maximized='true'] { border-radius: 0; }
 .capture-analysis-header { display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: var(--titlebar-bg); border-bottom: 1px solid var(--soft-border); -webkit-app-region: drag; user-select: none; }
-.capture-analysis-logo { width: 16px; height: 16px; object-fit: contain; flex-shrink: 0; }
+.capture-analysis-logo { color: var(--workspace-badge-text); width: 16px; height: 16px; object-fit: contain; flex-shrink: 0; }
 .capture-analysis-header strong { font-size: 11px; font-weight: 700; letter-spacing: .05em; transform: translateY(1px); flex: 1; }
 .capture-analysis-shell button { -webkit-app-region: no-drag; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: background .12s; }
 .capture-icon-button, .capture-primary, .capture-secondary { gap: 6px; }
@@ -52,3 +52,13 @@ html[data-theme='light'] .capture-analysis-error { color: #e11d48; }
 html[data-theme='dark'] .capture-answer-copy:hover:not(:disabled) { color: #c4b5fd; }
 .capture-answer-copy[data-state='error'] { color: #e11d48; }
 html[data-theme='dark'] .capture-answer-copy[data-state='error'] { color: #fb7185; }
+
+.capture-reply-select { position: relative; flex-shrink: 0; }
+.capture-reply-buttons { display: flex; align-items: stretch; }
+.capture-analysis-shell .capture-reply-main { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.capture-analysis-shell .capture-reply-trigger { width: 26px; padding: 0; border-left: 0; border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.capture-reply-menu { position: absolute; bottom: 100%; left: 0; z-index: 40; min-width: 150px; margin-bottom: 5px; padding: 4px; border-radius: 8px; background: var(--overlay-bg); border: 1px solid var(--medium-border); box-shadow: var(--modal-shadow); }
+.capture-reply-menu button { width: 100%; gap: 8px; padding: 8px 10px; border: 0; border-radius: 5px; background: transparent; color: var(--title-text); font-size: 12px; }
+.capture-reply-menu button span { flex: 1; text-align: left; }
+.capture-reply-menu button:hover, .capture-reply-menu button:focus-visible { background: rgb(139 92 246 / .12); outline: none; }
+.capture-reply-menu button[aria-selected='true'] { color: var(--workspace-badge-text); background: rgb(139 92 246 / .1); }

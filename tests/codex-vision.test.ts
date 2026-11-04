@@ -1,0 +1,75 @@
+import assert from 'node:assert/strict'
+import { test } from 'node:test'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import { runCodexVision, CodexVisionError } from '../electron/codexVision'
+import { capturePrompt, captureNoteMarkdown, analysisWindowBounds, type CaptureTurn } from '../shared/captureAnalysis'
+
+const previous: CaptureTurn[] = [{ question: 'What failed?', answer: 'Capture the full error message.', elapsedMs: 1000 }]
+
+function fixture(script: string) {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'peepnote-vision-test-'))
+  const executable = path.join(directory, 'fake-codex.cjs')
+  fs.writeFileSync(executable, script)
+  return { directory, launch: { command: process.execPath, prefix: [executable], env: { ...process.env } },
+    dispose: () => fs.rmSync(directory, { recursive: true, force: true }) }
+}
+
+test('vision CLI receives images, prior conversation and explicit stateless, isolated options without a shell', async () => {
+  const f = fixture(`const fs=require('node:fs');let prompt='';process.stdin.setEncoding('utf8');process.stdin.on('data',s=>prompt+=s);process.stdin.on('end',()=>{fs.writeFileSync('request.json',JSON.stringify({args:process.argv.slice(2),prompt}));const e=JSON.stringify({type:'item.completed',item:{type:'agent_message',text:'한글 답변 🙂'}})+'\\n';const b=Buffer.from(e),i=b.indexOf(Buffer.from('한'))+1;process.stdout.write(b.subarray(0,i));setTimeout(()=>{process.stdout.write(b.subarray(i));},15)});`)
+  try {
+    const updates: string[] = []
+    const question = 'Explain this `$(do not execute)` and "quoted" error.'
+    const result = await runCodexVision({ language: 'ko', turns: previous, question, images: ['/example/first capture.png', '/example/second.png'],
+      directory: f.directory, signal: new AbortController().signal, onText: text => updates.push(text) }, { launch: f.launch })
+    assert.equal(result, '한글 답변 🙂')
+    assert.deepEqual(updates, ['한글 답변 🙂'])
+    const request = JSON.parse(fs.readFileSync(path.join(f.directory, 'request.json'), 'utf8'))
+    assert.ok(request.args.includes('--ephemeral'))
+    assert.ok(request.args.includes('--ignore-user-config'))
+    assert.ok(request.args.includes('read-only'))
+    assert.equal(request.args.at(-1), '-')
+    const images = request.args.flatMap((item: string, index: number) => item === '--image' ? [request.args[index + 1]] : [])
+    assert.deepEqual(images, ['/example/first capture.png', '/example/second.png'])
+    assert.ok(request.prompt.includes(JSON.stringify(question)))
+    assert.ok(request.prompt.includes(previous[0].answer))
+    assert.ok(request.prompt.includes('Reply in Korean'))
+    assert.equal(fs.existsSync(path.join(f.directory, 'answer.md')), false)
+  } finally { f.dispose() }
+})
+
+test('a successful final output file is used while failed/partial responses are never treated as success', async () => {
+  const f = fixture(`const fs=require('node:fs'),args=process.argv;process.stdin.resume();process.stdin.on('end',()=>{fs.writeFileSync(args[args.indexOf('--output-last-message')+1],'## Final answer');console.log(JSON.stringify({type:'item.completed',item:{type:'agent_message',text:'draft'}}))});`)
+  try {
+    assert.equal(await runCodexVision({ language: 'en', turns: [], question: 'Explain', images: [], directory: f.directory,
+      signal: new AbortController().signal, onText: () => {} }, { launch: f.launch }), '## Final answer')
+    fs.writeFileSync(f.launch.prefix[0], `process.stdin.resume();process.stdin.on('end',()=>{console.log(JSON.stringify({type:'turn.failed',error:{message:'401 Unauthorized'}}));process.exitCode=1});`)
+    await assert.rejects(runCodexVision({ language: 'en', turns: [], question: 'Explain', images: [], directory: f.directory,
+      signal: new AbortController().signal, onText: () => {} }, { launch: f.launch }), (error: unknown) => error instanceof CodexVisionError && error.code === 'login_required')
+    assert.equal(fs.existsSync(path.join(f.directory, 'answer.md')), false, 'the previous successful answer must be removed before retry')
+  } finally { f.dispose() }
+})
+
+test('closing or timing out cancels the child process and rejects without a completed answer', async () => {
+  const f = fixture(`require('node:fs').writeFileSync('child.pid',String(process.pid));process.stdin.resume();setInterval(()=>{},1000)`)
+  const input = { language: 'en' as const, turns: [], question: 'Explain', images: [], directory: f.directory, onText: () => {} }
+  try {
+    await assert.rejects(runCodexVision({ ...input, signal: new AbortController().signal }, { launch: f.launch, timeoutMs: 80 }), (error: unknown) => error instanceof CodexVisionError && error.code === 'timeout')
+    fs.rmSync(path.join(f.directory, 'child.pid'), { force: true })
+    const controller = new AbortController()
+    const pending = runCodexVision({ ...input, signal: controller.signal }, { launch: f.launch })
+    for (let attempt = 0; attempt < 100 && !fs.existsSync(path.join(f.directory, 'child.pid')); attempt++) await new Promise(resolve => setTimeout(resolve, 20))
+    controller.abort()
+    await assert.rejects(pending, /cancelled/)
+    const pid = Number(fs.readFileSync(path.join(f.directory, 'child.pid'), 'utf8'))
+    assert.throws(() => process.kill(pid, 0))
+  } finally { f.dispose() }
+})
+
+test('conversation export preserves follow-up questions and answers, and response windows stay on the captured display', () => {
+  assert.match(captureNoteMarkdown([...previous, { question: 'More\ncontext', answer: 'Use this fix.', elapsedMs: 20 }]), /> More\n> context\n\nUse this fix\./)
+  assert.ok(capturePrompt('ja', previous, 'Explain').includes('Japanese'))
+  assert.deepEqual(analysisWindowBounds({ x: -20, y: 700 }, { x: -1024, y: 0, width: 1024, height: 768 }), { x: -520, y: 248, width: 520, height: 520 })
+  assert.deepEqual(analysisWindowBounds({ x: 500, y: -50 }, { x: 0, y: 0, width: 320, height: 240 }), { x: 0, y: 0, width: 320, height: 240 })
+})

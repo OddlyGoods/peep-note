@@ -1,7 +1,7 @@
 const fs = require('fs')
 const path = require('path')
 
-const files = ['dist/index.html', 'dist/overlay.html', 'dist/snipping.html']
+const files = ['dist/index.html', 'dist/overlay.html', 'dist/snipping.html', 'dist/capture-analysis.html']
 files.forEach(f => {
   const fullPath = path.join(__dirname, '..', f)
   if (fs.existsSync(fullPath)) {

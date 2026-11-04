@@ -38,6 +38,10 @@ import { handleFavoritesShortcut } from './favoritesShortcut'
 import { createCaptureAction } from './captureAction'
 import { createLiveCapture } from './liveCapture'
 import { parseLassoCapture } from '../shared/lassoCapture'
+import { CaptureAnalysisWindow, type AnalysisCapture } from './captureAnalysisWindow'
+import { saveCaptureAnalysis } from '../server/captureAnalysisNotes'
+import { LOCAL_PROFILE_ID } from '../server/localProfile'
+import type { CaptureLanguage } from '../shared/captureAnalysis'
 import { openHtmlPreview } from './htmlPreview'
 import { APP_DEVELOPER, APP_GITHUB_URL, APP_WEBSITE_URL } from '../shared/appInfo'
 
@@ -99,8 +103,51 @@ let quickSwitchPreviousAccelerator = 'Alt+E'
 let globalHotkeysEnabled = true
 const captureToOverlay = createCaptureAction(() => startSnipping(), () => overlayWindow,
   error => console.error('Capture action failed:', error))
-const freeformCaptureToOverlay = createCaptureAction(() => startSnipping(false, 'lasso'), () => overlayWindow,
-  error => console.error('Freeform capture action failed:', error))
+let captureAnalysis: CaptureAnalysisWindow | null = null
+let analysisPreparing = false
+
+async function captureForAnalysis(directory: string): Promise<AnalysisCapture | null> {
+  let bounds = { ...screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea }
+  const filePath = await startSnipping(false, 'lasso', { directory, onBounds: value => { bounds = value } })
+  return filePath ? { filePath, bounds } : null
+}
+
+async function startCaptureAnalysis() {
+  if (analysisPreparing || snippingWindow || snippingPreparing) return
+  analysisPreparing = true
+  const previous = captureAnalysis
+  previous?.window.hide()
+  const directory = fs.mkdtempSync(path.join(app.getPath('temp'), 'peepnote-analysis-'))
+  try {
+    const firstCapture = await captureForAnalysis(directory)
+    if (!firstCapture) {
+      fs.rmSync(directory, { recursive: true, force: true })
+      if (previous && !previous.window.isDestroyed()) previous.window.show()
+      return
+    }
+    previous?.close()
+    const settings = loadSettings()
+    const language: CaptureLanguage = ['ko', 'ja', 'zh'].includes(String(settings.language)) ? settings.language as CaptureLanguage : 'en'
+    const workspaces = queryAll<{ id: string; name: string; is_default: number }>('SELECT id, name, is_default FROM workspaces WHERE user_id = ? ORDER BY is_default DESC, created_at', [LOCAL_PROFILE_ID])
+      .map(item => ({ id: item.id, name: item.name, isDefault: !!item.is_default }))
+    const session = new CaptureAnalysisWindow({ firstCapture, directory, language, theme: settings.theme === 'dark' ? 'dark' : 'light', dev: isDev,
+      workspaces, capture: () => captureForAnalysis(directory),
+      save: (turns, images, workspaceId) => {
+        const id = saveCaptureAnalysis(turns, images, screenshotsDir, language, workspaceId)
+        for (const win of [mainWindow, overlayWindow, quickSwitchWindow]) {
+          if (win && !win.isDestroyed()) win.webContents.send('log-created', id)
+        }
+        return id
+      },
+      onClosed: () => { if (captureAnalysis === session) captureAnalysis = null },
+    })
+    captureAnalysis = session
+  } catch (error) {
+    fs.rmSync(directory, { recursive: true, force: true })
+    if (previous && !previous.window.isDestroyed()) previous.window.show()
+    console.error('Capture analysis could not start:', error instanceof Error ? error.name : 'unknown')
+  } finally { analysisPreparing = false }
+}
 
 // A restored Linux compositor can accept show/focus before Chromium's surface
 // is ready. Request a few frames so the window does not remain transparent.
@@ -507,7 +554,7 @@ function createTray() {
     { type: 'separator' },
     { label: text.quick, click: () => toggleOverlay() },
     { label: text.screenshot, click: () => { void captureToOverlay() } },
-    { label: text.freeform, click: () => { void freeformCaptureToOverlay() } },
+    { label: text.freeform, click: () => { void startCaptureAnalysis() } },
     { label: text.video, click: () => startRecordingFromTray() },
     { type: 'separator' },
     { label: text.about, click: () => showAboutWindow() },
@@ -705,7 +752,10 @@ function attachSnippingMonitorSwitch(
   }
 }
 
-async function startSnipping(forceChoose = false, shape: 'rectangle' | 'lasso' = 'rectangle'): Promise<string | null> {
+async function startSnipping(forceChoose = false, shape: 'rectangle' | 'lasso' = 'rectangle', target?: {
+  directory: string
+  onBounds: (bounds: { x: number; y: number; width: number; height: number }) => void
+}): Promise<string | null> {
   if (snippingWindow || snippingPreparing) return null
   snippingPreparing = true
 
@@ -791,16 +841,18 @@ async function startSnipping(forceChoose = false, shape: 'rectangle' | 'lasso' =
       regionWindow.removeListener('closed', onCancel)
       if (!regionWindow.isDestroyed()) regionWindow.close()
       snippingWindow = null
-      if (overlayWasVisible) overlayWindow?.show()
+      if (overlayWasVisible && !target) overlayWindow?.show()
       resolve(filepath)
     }
     const onDone = (_e: Electron.IpcMainEvent, croppedDataUrl: string) => {
       if (_e.sender !== regionWindow.webContents || (!regionWindow.isVisible() && !(shape === 'lasso' && liveCapture.pending))) return
       const base64 = croppedDataUrl.replace(/^data:image\/png;base64,/, '')
       const filename = `screenshot_${Date.now()}.png`
-      const filepath = path.join(screenshotsDir, filename)
-      fs.writeFileSync(filepath, Buffer.from(base64, 'base64'))
-      finish(filepath)
+      const filepath = path.join(target?.directory ?? screenshotsDir, filename)
+      try {
+        fs.writeFileSync(filepath, Buffer.from(base64, 'base64'))
+        finish(filepath)
+      } catch { finish(null) }
     }
 
     const onCancel = () => finish(null)
@@ -827,10 +879,14 @@ async function startSnipping(forceChoose = false, shape: 'rectangle' | 'lasso' =
     const onLiveCapture = (event: Electron.IpcMainEvent, input: unknown) => {
       if (shape !== 'lasso' || event.sender !== regionWindow.webContents || !regionWindow.isVisible()) return
       const bounds = regionWindow.getContentBounds()
-      if (!parseLassoCapture(input, bounds.width, bounds.height)) {
+      const parsed = parseLassoCapture(input, bounds.width, bounds.height)
+      if (!parsed) {
         regionWindow.webContents.send('snipping-error')
         return
       }
+      const xs = parsed.points.map(point => point.x), ys = parsed.points.map(point => point.y)
+      target?.onBounds({ x: bounds.x + Math.min(...xs), y: bounds.y + Math.min(...ys),
+        width: Math.max(...xs) - Math.min(...xs), height: Math.max(...ys) - Math.min(...ys) })
       void liveCapture.start()
     }
 
@@ -987,7 +1043,7 @@ function registerHotkeys() {
       globalShortcut.register(hk.takeScreenshot, () => { void captureToOverlay() })
     }
     if (hk.captureFreeform) {
-      globalShortcut.register(hk.captureFreeform, () => { void freeformCaptureToOverlay() })
+      globalShortcut.register(hk.captureFreeform, () => { void startCaptureAnalysis() })
     }
     if (hk.startRecording) {
       globalShortcut.register(hk.startRecording, async () => {
@@ -1017,6 +1073,19 @@ function registerHotkeys() {
 
 // ── IPC 핸들러 ─────────────────────────────────────────────────────────
 function setupIPC() {
+  ipcMain.handle('capture-analysis-action', async (event, action: string, value: unknown) => {
+    const session = captureAnalysis
+    if (!session || session.window.isDestroyed() || event.sender !== session.window.webContents) throw new Error('Unknown analysis window')
+    switch (action) {
+      case 'state': return session.state
+      case 'ask': return session.ask(value)
+      case 'capture': return session.capture(value)
+      case 'retry': return session.retry()
+      case 'save': return session.save(value)
+      case 'close': return session.close()
+      default: throw new Error('Unknown analysis action')
+    }
+  })
   noteNotifications.registerIPC()
   ipcMain.handle('open-html-preview', async (event, source: unknown, title: unknown) => {
     if (event.sender !== mainWindow?.webContents || typeof source !== 'string' || source.length > 5_000_000) return false
@@ -1407,6 +1476,7 @@ function setupAutoUpdater() {
     }
   })
   app.on('before-quit', () => {
+    captureAnalysis?.close()
     noteNotifications.dismiss()
     if (updateController.snapshot().status !== 'installing') return
     for (const win of BrowserWindow.getAllWindows()) win.removeAllListeners('close')

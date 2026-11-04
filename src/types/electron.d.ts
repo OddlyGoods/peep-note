@@ -4,6 +4,7 @@ export {}
 
 declare global {
   interface Window {
+    captureAnalysis?: import('../../shared/captureAnalysis').CaptureAnalysisApi
     electronAPI?: {
       openHtmlPreview: (html: string, title: string) => Promise<boolean>
       takeScreenshot: () => Promise<string | null>

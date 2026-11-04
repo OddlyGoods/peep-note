@@ -59,7 +59,7 @@ export default defineConfig({
       },
       {
         // 프리로드
-        entry: ['electron/preload.ts', 'electron/noteToastPreload.ts'],
+        entry: ['electron/preload.ts', 'electron/noteToastPreload.ts', 'electron/captureAnalysisPreload.ts'],
         onstart(options) {
           options.reload()
         },
@@ -86,7 +86,8 @@ export default defineConfig({
       input: {
         main: path.resolve(__dirname, 'index.html'),
         overlay: path.resolve(__dirname, 'overlay.html'),
-        'quick-switch': path.resolve(__dirname, 'quick-switch.html')
+        'quick-switch': path.resolve(__dirname, 'quick-switch.html'),
+        'capture-analysis': path.resolve(__dirname, 'capture-analysis.html')
       }
     }
   }

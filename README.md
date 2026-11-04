@@ -57,7 +57,7 @@ The package and Linux executable are named `peep-note`. The app keeps its existi
 
 - Create text, Markdown, code, and HTML notes
 - Capture a selected screen region and record a selected screen region
-- Draw directly over the live screen with `Alt+S` and release to capture the selection; change or disable it in **Settings → Global shortcuts**
+- Draw directly over the live screen with `Alt+S` to ask Codex about a selected area. A movable response window shows elapsed time, supports follow-up questions and captures, and saves the conversation with its images as a Markdown note. Requires Codex CLI installed and signed in (`codex login`). Analysis runs without saving a Codex session; change or disable the shortcut in **Settings → Global shortcuts**.
 - Select and remember a preferred monitor for capture and recording
 - Organize records with workspaces, tags, date ranges, search, and groups
 - Restore deleted records from Trash during a configurable retention period (7, 10, 30, or 90 days; default 10), or permanently delete them. Individually deleted AI summaries are removed immediately; deleting a whole group keeps its summary in Trash with the group.

@@ -144,8 +144,8 @@ async function startCaptureAnalysis() {
 
     const session = new CaptureAnalysisWindow({ model, responseLanguage: resolveAiResponseLanguage(aiSettings?.ai_response_language, language), provider: selection.label, analyze: selection.mode === 'api' ? input => runApiVision(input, apiConfig) : input => runToolVision(selection.provider as MagicPenTool, input), firstCapture, directory, language, theme: settings.theme === 'dark' ? 'dark' : 'light', dev: isDev,
       workspaces, capture: () => captureForAnalysis(directory),
-      save: (turns, images, workspaceId) => {
-        const id = saveCaptureAnalysis(turns, images, screenshotsDir, language, workspaceId)
+      save: (turns, workspaceId) => {
+        const id = saveCaptureAnalysis(turns, language, workspaceId)
         for (const win of [mainWindow, overlayWindow, quickSwitchWindow]) {
           if (win && !win.isDestroyed()) win.webContents.send('log-created', id)
         }

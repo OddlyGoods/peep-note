@@ -20,7 +20,7 @@ export interface AnalysisWindowOptions {
   dev: boolean
   capture: () => Promise<AnalysisCapture | null>
   workspaces: CaptureAnalysisState['workspaces']
-  save: (turns: CaptureTurn[], images: string[], workspaceId: string | null) => string
+  save: (turns: CaptureTurn[], workspaceId: string | null) => string
   analyze?: (input: CodexVisionInput) => Promise<string>
   onClosed: () => void
 }
@@ -127,7 +127,7 @@ export class CaptureAnalysisWindow {
     const id = typeof workspaceId === 'string' && this.value.workspaces.some(item => item.id === workspaceId) ? workspaceId : this.value.workspaceId
     this.publish({ saving: true })
     try {
-      this.options.save(this.value.turns, this.images, id)
+      this.options.save(this.value.turns, id)
       this.publish({ saved: true, workspaceId: id })
       return true
     } catch { return false }

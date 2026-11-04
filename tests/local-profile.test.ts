@@ -265,15 +265,16 @@ test('renderer includes the current UI language in AI summary requests', async (
 })
 
 
-test('capture analysis saves a Markdown conversation and independent image copies in the selected workspace', async () => {
+test('capture analysis saves only the Markdown conversation and title without attaching or copying images', async () => {
   const workspace = await json('/api/workspaces', 'POST', { name: 'Capture analysis tests' })
   const transient = path.join(root, 'transient-capture.png')
   const screenshots = path.join(root, 'screenshots')
   fs.writeFileSync(transient, Buffer.from('synthetic image fixture'))
+  fs.mkdirSync(screenshots, { recursive: true })
+  const before = fs.readdirSync(screenshots)
   const turns = [{ question: 'What is this?', title: 'Generated note title', answer: '## Explanation\n\nAn example error.', elapsedMs: 1250 },
     { question: 'What next?', answer: 'Try this fix.', elapsedMs: 2500 }]
-  const id = saveCaptureAnalysis(turns, [transient], screenshots, 'en', workspace.id)
-  fs.unlinkSync(transient)
+  const id = saveCaptureAnalysis(turns, 'en', workspace.id)
   const saved = await json(`/api/logs/${id}`)
   assert.equal(saved.workspace_id, workspace.id)
   assert.equal(saved.title, 'Generated note title')
@@ -282,12 +283,13 @@ test('capture analysis saves a Markdown conversation and independent image copie
   assert.equal(saved.log_type, 'note')
   assert.match(saved.content, /What next/)
   assert.match(saved.content, /Try this fix/)
-  assert.equal(saved.attachments.length, 1)
-  assert.equal(fs.readFileSync(saved.attachments[0], 'utf8'), 'synthetic image fixture')
-  assert.equal(path.dirname(saved.attachments[0]), screenshots)
-  const before = fs.readdirSync(screenshots)
-  assert.throws(() => saveCaptureAnalysis(turns, [saved.attachments[0], transient], screenshots, 'en', workspace.id))
-  assert.deepEqual(fs.readdirSync(screenshots), before, 'failed saves clean up any copies already created')
+  assert.deepEqual(saved.attachments, [])
+  assert.equal(saved.file_path, null)
+  assert.equal(fs.readFileSync(transient, 'utf8'), 'synthetic image fixture', 'analysis owns its temporary images until the window closes')
+  assert.deepEqual(fs.readdirSync(screenshots), before, 'saving creates no managed image copies')
+  assert.throws(() => saveCaptureAnalysis([], 'en', workspace.id), /No completed response/)
+  assert.deepEqual(fs.readdirSync(screenshots), before)
+  fs.unlinkSync(transient)
 })
 
 test('capture Codex model persists independently of summary providers and survives database reinitialization', async () => {

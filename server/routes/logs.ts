@@ -7,6 +7,18 @@ import { cleanupUnreferencedMedia, imageMediaPaths, mediaPaths } from '../media'
 
 const logs = new Hono()
 
+const noteErrors = {
+  en: { notFound: 'Note not found.', nothingToDelete: 'No notes to delete.' },
+  ko: { notFound: '메모를 찾을 수 없습니다.', nothingToDelete: '삭제할 메모가 없습니다.' },
+  ja: { notFound: 'メモが見つかりません。', nothingToDelete: '削除するメモがありません。' },
+  zh: { notFound: '找不到此笔记。', nothingToDelete: '没有可删除的笔记。' },
+} as const
+
+function noteError(key: keyof typeof noteErrors.en) {
+  const language = queryOne<{ language: string }>('SELECT language FROM settings WHERE user_id = ?', [LOCAL_PROFILE_ID])?.language
+  return noteErrors[language === 'ko' || language === 'ja' || language === 'zh' ? language : 'en'][key]
+}
+
 const commentCount = (logId: string, userId: string) => queryOne<{ count: number }>(
   'SELECT COUNT(*) as count FROM comments WHERE log_id = ? AND user_id = ?', [logId, userId]
 )!.count
@@ -82,7 +94,7 @@ function validCommentFiles(value: unknown): value is string[] {
 logs.get('/:id/comments', c => {
   const userId = LOCAL_PROFILE_ID
   const logId = c.req.param('id')
-  if (!queryOne('SELECT id FROM logs WHERE deleted_at IS NULL AND id = ? AND user_id = ?', [logId, userId])) return c.json({ error: '메모를 찾을 수 없습니다.' }, 404)
+  if (!queryOne('SELECT id FROM logs WHERE deleted_at IS NULL AND id = ? AND user_id = ?', [logId, userId])) return c.json({ error: noteError('notFound') }, 404)
   return c.json(queryAll('SELECT * FROM comments WHERE log_id = ? AND user_id = ? ORDER BY created_at ASC', [logId, userId]).map(parseComment))
 })
 
@@ -90,7 +102,7 @@ logs.post('/:id/comments', async c => {
   const userId = LOCAL_PROFILE_ID
   const logId = c.req.param('id')
   const body = await c.req.json().catch(() => null)
-  if (!queryOne('SELECT id FROM logs WHERE deleted_at IS NULL AND id = ? AND user_id = ?', [logId, userId])) return c.json({ error: '메모를 찾을 수 없습니다.' }, 404)
+  if (!queryOne('SELECT id FROM logs WHERE deleted_at IS NULL AND id = ? AND user_id = ?', [logId, userId])) return c.json({ error: noteError('notFound') }, 404)
   const content = typeof body?.content === 'string' ? body.content.trim() : ''
   const attachments = body?.attachments === undefined ? [] : body.attachments
   if (!validCommentFiles(attachments)) return c.json({ error: '잘못된 첨부 파일입니다.' }, 400)
@@ -207,7 +219,7 @@ logs.post('/bulk-delete', async (c) => {
 
   const body: { ids?: unknown } = await c.req.json()
   const ids = [...new Set(Array.isArray(body.ids) ? body.ids.filter((id: unknown): id is string => typeof id === 'string' && id.length > 0) : [])]
-  if (ids.length === 0) return c.json({ error: '삭제할 메모가 없습니다.' }, 400)
+  if (ids.length === 0) return c.json({ error: noteError('nothingToDelete') }, 400)
 
   if (ids.length > 500) return c.json({ error: 'INVALID_IDS' }, 400)
   return c.json({ ok: true, deleted: moveToTrash(userId, ids) })
@@ -256,7 +268,7 @@ logs.post('/:id/move', async (c) => {
 
   const logId = c.req.param('id')
   const existing = queryOne('SELECT id FROM logs WHERE deleted_at IS NULL AND id = ? AND user_id = ?', [logId, userId])
-  if (!existing) return c.json({ error: '메모를 찾을 수 없습니다.' }, 404)
+  if (!existing) return c.json({ error: noteError('notFound') }, 404)
 
   const body = await c.req.json()
   const workspaceId = typeof body.workspace_id === 'string' ? body.workspace_id : ''
@@ -273,7 +285,7 @@ logs.get('/:id', async (c) => {
   const userId = LOCAL_PROFILE_ID
 
   const row = queryOne<any>('SELECT logs.*, (SELECT COUNT(*) FROM comments WHERE comments.log_id = logs.id AND comments.user_id = logs.user_id) AS comment_count FROM logs WHERE logs.deleted_at IS NULL AND logs.id = ? AND logs.user_id = ?', [c.req.param('id'), userId])
-  if (!row) return c.json({ error: '메모를 찾을 수 없습니다.' }, 404)
+  if (!row) return c.json({ error: noteError('notFound') }, 404)
   return c.json({ ...row, tags: JSON.parse(row.tags || '[]'), attachments: JSON.parse(row.attachments || '[]'), pinned: !!row.pinned, is_secret: !!row.is_secret })
 })
 
@@ -299,7 +311,7 @@ logs.put('/:id', async (c) => {
   const userId = LOCAL_PROFILE_ID
 
   const existing = queryOne('SELECT id FROM logs WHERE deleted_at IS NULL AND id = ? AND user_id = ?', [c.req.param('id'), userId])
-  if (!existing) return c.json({ error: '메모를 찾을 수 없습니다.' }, 404)
+  if (!existing) return c.json({ error: noteError('notFound') }, 404)
 
   const body = await c.req.json()
   const now  = Math.floor(Date.now() / 1000)
@@ -341,7 +353,7 @@ logs.put('/:id', async (c) => {
 logs.post('/:id/ocr', async c => {
   const userId = LOCAL_PROFILE_ID
   const row = queryOne<any>('SELECT * FROM logs WHERE id = ? AND user_id = ? AND deleted_at IS NULL AND is_secret = 0', [c.req.param('id'), userId])
-  if (!row) return c.json({ error: '메모를 찾을 수 없습니다.' }, 404)
+  if (!row) return c.json({ error: noteError('notFound') }, 404)
   const images = imageMediaPaths({ ...row, file_path: row.log_type === 'screenshot' ? row.file_path : null })
   if (images.length === 0) return c.json({ error: '이미지가 없습니다.' }, 400)
   if (row.ocr_status === 'pending' || row.ocr_status === 'processing') return c.json({ ok: true })
@@ -354,7 +366,7 @@ logs.post('/:id/ocr', async c => {
 logs.delete('/:id/ocr', async c => {
   const userId = LOCAL_PROFILE_ID
   const row = queryOne<{ id: string; ocr_status: string }>('SELECT id, ocr_status FROM logs WHERE id = ? AND user_id = ? AND deleted_at IS NULL', [c.req.param('id'), userId])
-  if (!row) return c.json({ error: '메모를 찾을 수 없습니다.' }, 404)
+  if (!row) return c.json({ error: noteError('notFound') }, 404)
   if (row.ocr_status === 'pending' || row.ocr_status === 'processing') return c.json({ error: '텍스트 추출이 끝난 뒤 삭제해 주세요.' }, 409)
   run("UPDATE logs SET ocr_text = '', ocr_status = 'idle' WHERE id = ? AND user_id = ?", [row.id, userId])
   return c.json({ ok: true })
@@ -365,7 +377,7 @@ logs.delete('/:id', async (c) => {
   const userId = LOCAL_PROFILE_ID
 
   const row = queryOne<any>('SELECT * FROM logs WHERE deleted_at IS NULL AND id = ? AND user_id = ?', [c.req.param('id'), userId])
-  if (!row) return c.json({ error: '메모를 찾을 수 없습니다.' }, 404)
+  if (!row) return c.json({ error: noteError('notFound') }, 404)
 
   moveToTrash(userId, [c.req.param('id')])
   return c.json({ ok: true })

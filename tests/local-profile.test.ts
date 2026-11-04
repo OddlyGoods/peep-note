@@ -265,6 +265,29 @@ test('renderer includes the current UI language in AI summary requests', async (
 })
 
 
+test('note errors follow the saved app language across reads, edits, comments, OCR, moves and deletion', async () => {
+  const previous = await json('/api/settings')
+  const translations = [
+    ['en', 'Note not found.', 'No notes to delete.'],
+    ['ko', '메모를 찾을 수 없습니다.', '삭제할 메모가 없습니다.'],
+    ['ja', 'メモが見つかりません。', '削除するメモがありません。'],
+    ['zh', '找不到此笔记。', '没有可删除的笔记。'],
+  ] as const
+  try {
+    for (const [language, notFound, nothingToDelete] of translations) {
+      await json('/api/settings', 'PUT', { language })
+      for (const [suffix, method] of [['', 'GET'], ['', 'PUT'], ['', 'DELETE'], ['/comments', 'GET'], ['/comments', 'POST'], ['/move', 'POST'], ['/ocr', 'POST'], ['/ocr', 'DELETE']]) {
+        const response = await call(`/api/logs/nonexistent-localization-note${suffix}`, method, method === 'GET' ? undefined : {})
+        assert.equal(response.status, 404)
+        assert.equal((await response.json()).error, notFound, `${language}: ${method} ${suffix}`)
+      }
+      const empty = await call('/api/logs/bulk-delete', 'POST', { ids: [] })
+      assert.equal(empty.status, 400)
+      assert.equal((await empty.json()).error, nothingToDelete)
+    }
+  } finally { await json('/api/settings', 'PUT', { language: previous.language }) }
+})
+
 test('capture analysis saves only the Markdown conversation and title without attaching or copying images', async () => {
   const workspace = await json('/api/workspaces', 'POST', { name: 'Capture analysis tests' })
   const transient = path.join(root, 'transient-capture.png')

@@ -27,7 +27,7 @@ html[data-theme] body:has(> #capture-analysis-root) { background: transparent !i
 .capture-analysis-markdown table { width: 100%; border-collapse: collapse; margin: 10px 0; }
 .capture-analysis-markdown th, .capture-analysis-markdown td { padding: 5px 8px; border: 1px solid var(--soft-border); text-align: left; }
 .capture-analysis-markdown blockquote { padding-left: 10px; border-left: 2px solid #8b5cf6; }
-.capture-analysis-time { display: flex; gap: 5px; align-items: center; color: var(--quick-excerpt); font-size: 11px; margin-top: 12px; }
+.capture-analysis-time { display: flex; gap: 5px; align-items: center; min-width: 0; flex: 1; color: var(--quick-excerpt); font-size: 11px; }
 .capture-analysis-body[data-waiting='true'] { display: flex; align-items: center; justify-content: center; }
 .capture-analysis-waiting { display: flex; flex-direction: column; align-items: center; gap: 14px; min-height: 160px; justify-content: center; width: 100%; }
 .capture-analysis-orb { flex-shrink: 0; }
@@ -46,8 +46,8 @@ html[data-theme] body:has(> #capture-analysis-root) { background: transparent !i
 html[data-theme='light'] .capture-analysis-composer { background: #fff; border-color: #b9c6d8; }
 html[data-theme='light'] .capture-analysis-error { color: #e11d48; }
 
-.capture-analysis-answer-actions { display: flex; justify-content: flex-start; margin-top: 6px; }
-.capture-answer-copy { gap: 6px; margin-left: -6px; padding: 4px 6px; border: 0; border-radius: 6px; background: transparent; color: var(--quick-excerpt); font-size: 11px; line-height: 1.5; }
+.capture-analysis-answer-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
+.capture-answer-copy { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 26px; height: 26px; padding: 6px; border: 0; border-radius: 6px; background: transparent; color: var(--quick-excerpt); }
 .capture-answer-copy:hover:not(:disabled) { background: #8b5cf61a; color: #7c3aed; }
 html[data-theme='dark'] .capture-answer-copy:hover:not(:disabled) { color: #c4b5fd; }
 .capture-answer-copy[data-state='error'] { color: #e11d48; }

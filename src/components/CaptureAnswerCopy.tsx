@@ -21,8 +21,8 @@ export default function CaptureAnswerCopy({ content }: { content: string }) {
     reset.current = setTimeout(() => setStatus('idle'), 1500)
   }
   return <button type="button" className="capture-answer-copy" data-state={status} disabled={busy}
-    onClick={() => void copy()} aria-label={t('copy')} title={t(status === 'error' ? 'copyFailed' : 'copy')}>
+    onClick={() => void copy()} aria-label={t('copy')} title={t(status === 'copied' ? 'copied' : status === 'error' ? 'copyFailed' : 'copy')}>
     {status === 'copied' ? <Check size={13} aria-hidden="true" /> : <Copy size={13} aria-hidden="true" />}
-    <span aria-live="polite">{t(status === 'copied' ? 'copied' : status === 'error' ? 'copyFailed' : 'copy')}</span>
+    <span className="sr-only" aria-live="polite">{t(status === 'copied' ? 'copied' : status === 'error' ? 'copyFailed' : 'copy')}</span>
   </button>
 }

@@ -140,8 +140,12 @@ export default function GroupCard({ group, onRefresh, startEditing = false, onSt
     } ${deletingVisual ? 'pointer-events-none opacity-45' : ''} ${checked ? 'border-violet-400/70 ring-1 ring-violet-400/25' : 'border-violet-500/30'}`}>
       {/* 그룹 헤더 */}
       <div
-        onClick={showCheckbox && !editing ? () => onCheck?.(!checked) : undefined}
-        className={`flex items-center gap-2 px-4 py-[0.425rem] bg-violet-500/10 border-b border-violet-500/20 ${showCheckbox && !editing ? 'cursor-pointer' : ''}`}
+        onClick={event => {
+          if (editing || (event.target as Element).closest('button, input, textarea, select, a')) return
+          if (showCheckbox) onCheck?.(!checked)
+          else if (!expanded) setGroupExpanded(group.id, true)
+        }}
+        className={`flex items-center gap-2 px-4 py-[0.425rem] bg-violet-500/10 border-b border-violet-500/20 ${!editing && (showCheckbox || !expanded) ? 'cursor-pointer' : ''}`}
       >
         {showCheckbox && !editing && (
           <button

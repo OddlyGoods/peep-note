@@ -19,6 +19,7 @@
     "test:features": "node scripts/test-features.cjs",
     "test:updates": "node scripts/test-updates.cjs",
     "verify:release": "node scripts/verify-release.cjs",
+    "test:capture-native": "node scripts/test-native-capture.cjs",
     "test:local": "node scripts/test-local.cjs",
     "typecheck": "tsc --noEmit",
     "test:privacy": "node scripts/audit-source.cjs",

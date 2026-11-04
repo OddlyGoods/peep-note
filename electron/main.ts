@@ -811,16 +811,26 @@ async function startSnipping(forceChoose = false, shape: 'rectangle' | 'lasso' =
         const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: currentDisplay.size })
         const source = sources.find(item => item.display_id === String(currentDisplay.id))
           ?? (sources.length === 1 ? sources[0] : undefined)
-        if (!source) throw new Error('Selected display is unavailable')
+        if (!source || source.thumbnail.isEmpty()) throw new Error('Selected display is unavailable')
         return source.thumbnail.toDataURL()
       },
       deliver: dataUrl => { if (!regionWindow.isDestroyed()) regionWindow.webContents.send('lasso-source', dataUrl) },
-      onError: error => { console.error('Live freeform capture failed:', error); finish(null) },
+      onError: error => {
+        console.error('Live freeform capture failed:', error)
+        if (!regionWindow.isDestroyed()) {
+          regionWindow.show()
+          regionWindow.focus()
+          regionWindow.webContents.send('snipping-error')
+        }
+      },
     })
     const onLiveCapture = (event: Electron.IpcMainEvent, input: unknown) => {
       if (shape !== 'lasso' || event.sender !== regionWindow.webContents || !regionWindow.isVisible()) return
       const bounds = regionWindow.getContentBounds()
-      if (!parseLassoCapture(input, bounds.width, bounds.height)) return
+      if (!parseLassoCapture(input, bounds.width, bounds.height)) {
+        regionWindow.webContents.send('snipping-error')
+        return
+      }
       void liveCapture.start()
     }
 

@@ -20,7 +20,7 @@ export function createLiveCapture(options: {
         if (!active) return
         const dataUrl = await options.capture()
         if (active) options.deliver(dataUrl)
-      } catch (error) { if (active) options.onError(error) }
+      } catch (error) { if (active) { pending = false; options.onError(error) } }
     },
   }
 }

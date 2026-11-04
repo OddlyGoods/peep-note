@@ -114,6 +114,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'hotkey-triggered',
       'screenshot-captured',
       'lasso-source',
+      'snipping-error',
       'start-recording',
       'start-recording-region',
       'stop-recording',

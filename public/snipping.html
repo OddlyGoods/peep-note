@@ -81,10 +81,10 @@
     let sx = 0, sy = 0, ex = 0, ey = 0
     let language = 'en'
     const messages = {
-      en: { screenshot: 'Drag to select an area · Esc to cancel', recording: 'Drag to select a recording area · Esc to cancel', monitor: 'Change monitor', lasso: 'Draw around an area · Release to capture · Esc to cancel', retry: 'Draw a larger closed area · Esc to cancel' },
-      ko: { screenshot: '드래그하여 영역 선택 · Esc 취소', recording: '드래그하여 녹화 영역 선택 · Esc 취소', monitor: '모니터 변경', lasso: '드래그로 영역 그리기 · 놓으면 캡처 · Esc 취소', retry: '더 넓은 영역을 그려 주세요 · Esc 취소' },
-      ja: { screenshot: 'ドラッグして範囲を選択 · Escでキャンセル', recording: 'ドラッグして録画範囲を選択 · Escでキャンセル', monitor: 'モニターを変更', lasso: 'ドラッグで囲む · 離してキャプチャ · Escでキャンセル', retry: 'もっと広い範囲を囲んでください · Escでキャンセル' },
-      zh: { screenshot: '拖动选择区域 · Esc 取消', recording: '拖动选择录制区域 · Esc 取消', monitor: '切换显示器', lasso: '拖动绘制边界 · 松开截图 · Esc 取消', retry: '请绘制更大的区域 · Esc 取消' }
+      en: { screenshot: 'Drag to select an area · Esc to cancel', recording: 'Drag to select a recording area · Esc to cancel', monitor: 'Change monitor', lasso: 'Draw around an area · Release to capture · Esc to cancel', retry: 'Draw a larger closed area · Esc to cancel', failed: 'Capture failed. Please draw the area again · Esc to cancel' },
+      ko: { screenshot: '드래그하여 영역 선택 · Esc 취소', recording: '드래그하여 녹화 영역 선택 · Esc 취소', monitor: '모니터 변경', lasso: '드래그로 영역 그리기 · 놓으면 캡처 · Esc 취소', retry: '더 넓은 영역을 그려 주세요 · Esc 취소', failed: '캡처하지 못했습니다. 영역을 다시 그려 주세요 · Esc 취소' },
+      ja: { screenshot: 'ドラッグして範囲を選択 · Escでキャンセル', recording: 'ドラッグして録画範囲を選択 · Escでキャンセル', monitor: 'モニターを変更', lasso: 'ドラッグで囲む · 離してキャプチャ · Escでキャンセル', retry: 'もっと広い範囲を囲んでください · Escでキャンセル', failed: 'キャプチャできませんでした。もう一度囲んでください · Escでキャンセル' },
+      zh: { screenshot: '拖动选择区域 · Esc 取消', recording: '拖动选择录制区域 · Esc 取消', monitor: '切换显示器', lasso: '拖动绘制边界 · 松开截图 · Esc 取消', retry: '请绘制更大的区域 · Esc 取消', failed: '截图失败，请重新绘制区域 · Esc 取消' }
     }
 
     function applyLanguage(value) {
@@ -109,8 +109,8 @@
       document.documentElement.classList.toggle('live-lasso', liveLassoMode)
       recordingRegionMode = typeof payload === 'object' && payload?.mode === 'recording-region'
       applyLanguage(typeof payload === 'object' && payload?.language ? payload.language : language)
-      canvas.width = payload?.width || window.innerWidth
-      canvas.height = payload?.height || window.innerHeight
+      canvas.width = liveLassoMode ? window.innerWidth : payload?.width || window.innerWidth
+      canvas.height = liveLassoMode ? window.innerHeight : payload?.height || window.innerHeight
       canvas.style.width = canvas.width + 'px'
       canvas.style.height = canvas.height + 'px'
       if (liveLassoMode) { draw(); return }
@@ -127,6 +127,18 @@
       }
       image.onerror = () => { if (pendingImage === image) window.electronAPI.snippingCancel() }
       image.src = dataUrl
+    })
+
+    window.electronAPI.on('snipping-error', () => {
+      pendingImage = null
+      pendingSelection = null
+      resetDrag()
+      if (liveLassoMode) {
+        canvas.width = window.innerWidth; canvas.height = window.innerHeight
+        canvas.style.width = canvas.width + 'px'; canvas.style.height = canvas.height + 'px'
+      }
+      draw()
+      document.getElementById('hint-text').textContent = messages[language].failed
     })
 
     window.electronAPI.on('lasso-source', dataUrl => {
@@ -301,6 +313,14 @@
 
     canvas.addEventListener('pointercancel', () => { resetDrag(); draw() })
     canvas.addEventListener('contextmenu', event => event.preventDefault())
+
+    window.addEventListener('resize', () => {
+      if (!liveLassoMode || pendingSelection) return
+      resetDrag()
+      canvas.width = window.innerWidth; canvas.height = window.innerHeight
+      canvas.style.width = canvas.width + 'px'; canvas.style.height = canvas.height + 'px'
+      draw()
+    })
 
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape') window.electronAPI.snippingCancel()

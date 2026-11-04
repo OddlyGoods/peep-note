@@ -65,7 +65,7 @@ function rendererFixture() {
   const documentEvents: Record<string, Function> = {}
   const bridge = { on: (name: string, listener: Function) => { ipc[name] = listener }, snippingDone: (value: string) => captured.push(value),
     snippingCancel: () => cancellations++, requestLassoCapture: (value: any) => liveRequests.push(value), recordingRegionDone: (value: any) => regions.push(value), changeSnippingMonitor: () => monitorChanges++ }
-  const context = { window: { electronAPI: bridge, PeepNoteLasso: lasso, innerWidth: 200, innerHeight: 120 },
+  const context = { window: { electronAPI: bridge, PeepNoteLasso: lasso, innerWidth: 200, innerHeight: 120, addEventListener() {} },
     document: { documentElement: { lang: '', classList: { toggle() {} } }, getElementById: (id: string) => elements[id], addEventListener: (name: string, listener: Function) => { documentEvents[name] = listener },
       createElement: () => { const output = canvasFixture(); outputCanvases.push(output); return output.canvas } },
     Image: class { naturalWidth = 400; naturalHeight = 240; onload: any; set src(_value: string) { imageLoads++; this.onload() } },
@@ -198,9 +198,42 @@ test('cancelling live capture during compositor wait or source acquisition preve
 test('live selection IPC accepts only bounded points in the active viewport', () => {
   const value = { points: triangle, width: 200, height: 120 }
   assert.deepEqual(parseLassoCapture(value, 200, 120), value)
+  assert.deepEqual(parseLassoCapture(value, 199, 119), value)
+  assert.deepEqual(parseLassoCapture(value, 202, 122), value)
+  assert.equal(parseLassoCapture(value, 197, 117), null)
   for (const invalid of [null, {}, { ...value, width: 400 }, { ...value, points: triangle.slice(0, 2) },
     { ...value, points: [...triangle, { x: Infinity, y: 0 }] }, { ...value, points: [...triangle, { x: -1, y: 0 }] },
     { ...value, points: Array.from({ length: 8193 }, () => ({ x: 10, y: 10 })) }]) {
     assert.equal(parseLassoCapture(invalid, 200, 120), null)
   }
+})
+
+test('a rejected capture clears the pending selection and lets the user retry with visible guidance', () => {
+  const fixture = rendererFixture()
+  fixture.init('lasso', 'ko', true)
+  const select = () => {
+    fixture.pointer('pointerdown', 10, 10)
+    fixture.pointer('pointermove', 90, 10)
+    fixture.pointer('pointerup', 10, 70)
+  }
+  select()
+  fixture.ipc['snipping-error']()
+  assert.ok(fixture.elements['hint-text'].textContent.includes('캡처하지 못했습니다'))
+  select()
+  assert.equal(fixture.liveRequests.length, 2)
+  fixture.ipc['lasso-source']('successful-retry')
+  assert.equal(fixture.captured.length, 1)
+})
+
+test('a failed native capture can be retried instead of leaving a hidden pending window', async () => {
+  let attempts = 0, errors = 0, delivered = 0
+  const capture = createLiveCapture({ hide() {}, wait: async () => {},
+    capture: async () => { if (++attempts === 1) throw new Error('source unavailable'); return 'source' },
+    deliver: () => delivered++, onError: () => errors++ })
+  await capture.start()
+  assert.equal(errors, 1)
+  assert.equal(capture.pending, false)
+  await capture.start()
+  assert.equal(attempts, 2)
+  assert.equal(delivered, 1)
 })

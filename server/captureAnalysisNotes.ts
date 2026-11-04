@@ -17,7 +17,7 @@ export function saveCaptureAnalysis(turns: CaptureTurn[], images: string[], scre
     const workspace = workspaceId && queryOne<{ id: string }>('SELECT id FROM workspaces WHERE id = ? AND user_id = ?', [workspaceId, LOCAL_PROFILE_ID])
     const defaultWorkspace = queryOne<{ id: string }>('SELECT id FROM workspaces WHERE user_id = ? AND is_default = 1 LIMIT 1', [LOCAL_PROFILE_ID])
     const id = generateId(), now = Math.floor(Date.now() / 1000)
-    const firstLine = turns[0].answer.split('\n').find(line => line.trim())?.replace(/^[#>*\s]+/, '').replace(/[*`]/g, '').slice(0, 100)
+    const firstLine = turns[0].title?.trim().slice(0, 100) || turns[0].answer.split('\n').find(line => line.trim())?.replace(/^[#>*\s]+/, '').replace(/[*`]/g, '').slice(0, 100)
     run(`INSERT INTO logs (id, user_id, title, content, log_type, content_format, tags, attachments, workspace_id, is_secret, created_at, updated_at, ocr_status)
       VALUES (?, ?, ?, ?, 'note', 'markdown', '[]', ?, ?, 0, ?, ?, 'idle')`,
     [id, LOCAL_PROFILE_ID, firstLine || captureAnalysisCopy[language].noteTitle, captureNoteMarkdown(turns), JSON.stringify(copies), workspace ? workspace.id : defaultWorkspace?.id ?? null, now, now])

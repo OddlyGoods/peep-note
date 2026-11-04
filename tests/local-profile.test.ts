@@ -270,12 +270,14 @@ test('capture analysis saves a Markdown conversation and independent image copie
   const transient = path.join(root, 'transient-capture.png')
   const screenshots = path.join(root, 'screenshots')
   fs.writeFileSync(transient, Buffer.from('synthetic image fixture'))
-  const turns = [{ question: 'What is this?', answer: '## Explanation\n\nAn example error.', elapsedMs: 1250 },
+  const turns = [{ question: 'What is this?', title: 'Generated note title', answer: '## Explanation\n\nAn example error.', elapsedMs: 1250 },
     { question: 'What next?', answer: 'Try this fix.', elapsedMs: 2500 }]
   const id = saveCaptureAnalysis(turns, [transient], screenshots, 'en', workspace.id)
   fs.unlinkSync(transient)
   const saved = await json(`/api/logs/${id}`)
   assert.equal(saved.workspace_id, workspace.id)
+  assert.equal(saved.title, 'Generated note title')
+  assert.ok(!saved.content.includes('Generated note title'), 'the title is stored separately from the answer body')
   assert.equal(saved.content_format, 'markdown')
   assert.equal(saved.log_type, 'note')
   assert.match(saved.content, /What next/)

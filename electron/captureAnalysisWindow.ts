@@ -6,7 +6,7 @@ import path from 'path'
 import fs from 'fs'
 import { protectAppNavigation } from './appNavigation'
 import { runCodexVision, CodexVisionError, type CodexVisionInput } from './codexVision'
-import { analysisWindowBounds, captureAnalysisCopy, type CaptureAnalysisState, type CaptureLanguage, type CaptureTurn } from '../shared/captureAnalysis'
+import { analysisWindowBounds, captureAnalysisCopy, splitCaptureResponse, type CaptureAnalysisState, type CaptureLanguage, type CaptureTurn } from '../shared/captureAnalysis'
 
 export type AnalysisCapture = { filePath: string; bounds: { x: number; y: number; width: number; height: number } }
 export interface AnalysisWindowOptions {
@@ -82,8 +82,9 @@ export class CaptureAnalysisWindow {
       const elapsedMs = Date.now() - startedAt
       await stream.finish(answer)
       if (controller.signal.aborted || this.disposed) return
+      const response = splitCaptureResponse(answer)
       this.publish({ status: 'ready', draft: '', saved: false,
-        turns: [...this.value.turns, { question, answer, elapsedMs, imageCount: this.images.length, model: this.value.model, provider: this.value.provider }] })
+        turns: [...this.value.turns, { question, answer: response.body, title: response.title, elapsedMs, imageCount: this.images.length, model: this.value.model, provider: this.value.provider }] })
     } catch (error) {
       if (!controller.signal.aborted && !this.disposed) this.publish({ status: 'error', draft: '',
         error: error instanceof CodexVisionError || error instanceof ApiVisionError ? error.code : 'failed' })

@@ -6,7 +6,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import MarkdownLink from './components/MarkdownLink'
 import MarkdownCodeBlock from './components/MarkdownCodeBlock'
-import { captureAnalysisCopy, type CaptureAnalysisState } from '../shared/captureAnalysis'
+import { captureAnalysisCopy, splitCaptureResponse, type CaptureAnalysisState } from '../shared/captureAnalysis'
 import CaptureWorkspaceSelect from './components/CaptureWorkspaceSelect'
 
 export default function CaptureAnalysis() {
@@ -38,6 +38,7 @@ export default function CaptureAnalysis() {
     return () => window.removeEventListener('keydown', close)
   }, [])
   const copy = captureAnalysisCopy[state?.language ?? 'en']
+  const draftBody = splitCaptureResponse(state?.draft ?? '').body
   const busy = !state || state.status === 'running' || state.capturing
   const elapsed = state?.startedAt ? Math.max(0, (now - state.startedAt) / 1000).toFixed(1) : '0.0'
   const ask = () => {
@@ -60,7 +61,7 @@ export default function CaptureAnalysis() {
         <button className="capture-titlebar-button capture-titlebar-close" aria-label={copy.close} title={copy.close} onClick={() => void window.captureAnalysis?.close()}><X size={12} /></button>
       </div>
     </header>
-    <main ref={scroll} className="capture-analysis-body" data-waiting={busy && !state?.turns.length && !state?.draft} aria-busy={busy} onScroll={() => {
+    <main ref={scroll} className="capture-analysis-body" data-waiting={busy && !state?.turns.length && !draftBody} aria-busy={busy} onScroll={() => {
       const el = scroll.current!
       followScroll.current = el.scrollHeight - el.scrollTop - el.clientHeight < 60
     }}>
@@ -70,9 +71,9 @@ export default function CaptureAnalysis() {
         <div className="capture-analysis-time"><Clock3 size={12} />{turn.provider ?? state.provider ?? 'Codex'} · {turn.model ?? state.model} · {(turn.elapsedMs / 1000).toFixed(1)}{copy.seconds}</div>
         <div className="capture-analysis-answer-actions"><CaptureAnswerCopy content={turn.answer} /></div>
       </section>)}
-      {state?.draft && <div className="markdown-content capture-analysis-markdown capture-analysis-draft">{markdown(state.draft)}</div>}
-      {busy && <div className="capture-analysis-waiting" data-streaming={!!state?.draft} role="status" aria-label={copy.waiting}>
-        <ThinkingOrb className="capture-analysis-orb" state={state?.draft ? 'composing' : 'solving'} size={64} style={{ width: 80, height: 80 }} theme="auto" color="#7c3aed" dotSize={1.2} dots={1.2} aria-hidden="true" />
+      {draftBody && <div className="markdown-content capture-analysis-markdown capture-analysis-draft">{markdown(draftBody)}</div>}
+      {busy && <div className="capture-analysis-waiting" data-streaming={!!draftBody} role="status" aria-label={copy.waiting}>
+        <ThinkingOrb className="capture-analysis-orb" state={draftBody ? 'composing' : 'solving'} size={64} style={{ width: 80, height: 80 }} theme="auto" color="#7c3aed" dotSize={1.2} dots={1.2} aria-hidden="true" />
         <div className="capture-analysis-waiting-caption" aria-hidden="true"><span>{copy.waiting}</span><span className="capture-analysis-elapsed">{elapsed}{copy.seconds}</span></div>
       </div>}
       {state?.error && <div role="alert" className="capture-analysis-error">

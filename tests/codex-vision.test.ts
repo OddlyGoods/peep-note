@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { runCodexVision, CodexVisionError } from '../electron/codexVision'
-import { capturePrompt, captureNoteMarkdown, analysisWindowBounds, type CaptureTurn } from '../shared/captureAnalysis'
+import { capturePrompt, captureNoteMarkdown, splitCaptureResponse, analysisWindowBounds, type CaptureTurn } from '../shared/captureAnalysis'
 
 const previous: CaptureTurn[] = [{ question: 'What failed?', answer: 'Capture the full error message.', elapsedMs: 1000 }]
 
@@ -85,4 +85,15 @@ test('Codex capture catalog only offers visible image models and keeps their pri
   for (const value of ['', '--model', 'model with spaces', 'x\n--bad', 'x'.repeat(129)]) assert.equal(isCaptureCodexModel(value), false)
   assert.equal(normalizeCaptureCodexModel(' future-vision-model '), 'future-vision-model')
   assert.equal(normalizeCaptureCodexModel(null), DEFAULT_CAPTURE_CODEX_MODEL)
+})
+
+
+test('Magic Pen keeps the generated title separate from streamed and completed answer Markdown', () => {
+  for (const chunk of ['#', '# ', '# 프로젝트 개', '# 프로젝트 개요\n']) assert.equal(splitCaptureResponse(chunk).body, '')
+  const body = '## 핵심\n\n**내용**과 `code`를 그대로 보존합니다.\n'
+  assert.deepEqual(splitCaptureResponse('\uFEFF\n# **프로젝트 개요**\n\n' + body), { title: '프로젝트 개요', body })
+  for (const text of ['plain answer', '## Body heading\n\nContent', '```python\n# code comment\n```', '#hashtag']) {
+    assert.deepEqual(splitCaptureResponse(text), { body: text })
+  }
+  assert.equal(splitCaptureResponse('# ' + 'x'.repeat(120) + '\n\nBody').title?.length, 100)
 })

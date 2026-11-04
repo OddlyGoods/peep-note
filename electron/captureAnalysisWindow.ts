@@ -1,5 +1,6 @@
 import type { AiResponseLanguage } from '../shared/aiResponseLanguage'
 import { ApiVisionError } from './apiVision'
+import { ProgressiveText } from './progressiveText'
 import { BrowserWindow, screen, shell } from 'electron'
 import path from 'path'
 import fs from 'fs'
@@ -71,18 +72,22 @@ export class CaptureAnalysisWindow {
       this.publish({ error: 'context_limit', status: 'error' }); return
     }
     const controller = this.controller = new AbortController(), startedAt = Date.now()
+    const stream = new ProgressiveText(controller.signal, draft => this.publish({ draft }))
     this.publish({ status: 'running', question, startedAt, error: null, draft: '' })
     try {
       const answer = await (this.options.analyze ?? runCodexVision)({ responseLanguage: this.options.responseLanguage, model: this.value.model, language: this.value.language, turns: this.value.turns,
         question, images: [...this.images], directory: this.options.directory, signal: controller.signal,
-        onText: draft => { if (!controller.signal.aborted) this.publish({ draft }) } })
+        onText: draft => stream.update(draft) })
+      if (controller.signal.aborted || this.disposed) return
+      const elapsedMs = Date.now() - startedAt
+      await stream.finish(answer)
       if (controller.signal.aborted || this.disposed) return
       this.publish({ status: 'ready', draft: '', saved: false,
-        turns: [...this.value.turns, { question, answer, elapsedMs: Date.now() - startedAt, imageCount: this.images.length, model: this.value.model, provider: this.value.provider }] })
+        turns: [...this.value.turns, { question, answer, elapsedMs, imageCount: this.images.length, model: this.value.model, provider: this.value.provider }] })
     } catch (error) {
       if (!controller.signal.aborted && !this.disposed) this.publish({ status: 'error', draft: '',
         error: error instanceof CodexVisionError || error instanceof ApiVisionError ? error.code : 'failed' })
-    } finally { if (this.controller === controller) this.controller = null }
+    } finally { stream.dispose(); if (this.controller === controller) this.controller = null }
   }
   async retry() { if (!this.isBusy && this.value.status === 'error' && this.value.error !== 'context_limit') await this.run(this.value.question) }
   async ask(question: unknown) {

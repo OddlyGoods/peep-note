@@ -3,6 +3,7 @@ import { capturePrompt, type CaptureAnalysisError } from '../shared/captureAnaly
 import { qwenChatEndpoint } from '../shared/aiConnection'
 import type { AiProvider } from '../shared/aiModels'
 import type { CodexVisionInput } from './codexVision'
+import { readVisionStream, VisionStreamError } from './visionStream'
 
 export class ApiVisionError extends Error {
   constructor(readonly code: CaptureAnalysisError) { super(code); this.name = 'ApiVisionError' }
@@ -32,12 +33,12 @@ export async function runApiVision(input: CodexVisionInput, config: ApiVisionCon
     endpoint = 'https://api.anthropic.com/v1/messages'
     headers['x-api-key'] = key
     headers['anthropic-version'] = '2023-06-01'
-    body = { model, max_tokens: 4096, messages: [{ role: 'user', content: [
+    body = { model, stream: true, max_tokens: 4096, messages: [{ role: 'user', content: [
       ...images.map(data => ({ type: 'image', source: { type: 'base64', media_type: 'image/png', data } })),
       { type: 'text', text: prompt },
     ] }] }
   } else if (provider === 'gemini') {
-    endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`
+    endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`
     headers['x-goog-api-key'] = key
     body = { contents: [{ role: 'user', parts: [
       ...images.map(data => ({ inline_data: { mime_type: 'image/png', data } })), { text: prompt },
@@ -47,17 +48,17 @@ export async function runApiVision(input: CodexVisionInput, config: ApiVisionCon
     catch { throw new ApiVisionError('api_endpoint') }
     headers.Authorization = `Bearer ${key}`
     const reasoning = provider === 'openai' && /^(gpt-[56](?:[.-]|$)|o[134](?:-|$))/.test(model)
-    body = { model, messages: [{ role: 'user', content: [
+    body = { model, stream: true, messages: [{ role: 'user', content: [
       ...images.map(data => ({ type: 'image_url', image_url: { url: `data:image/png;base64,${data}` } })),
       { type: 'text', text: prompt },
     ] }], ...(reasoning ? { max_completion_tokens: 8192, reasoning_effort: 'low' } : { max_tokens: 4096 }) }
   }
   const timeout = AbortSignal.timeout(180_000)
   try {
-    const response = await request(endpoint, { method: 'POST', headers, body: JSON.stringify(body), redirect: 'error',
-      signal: AbortSignal.any([input.signal, timeout]) })
-    const data = await response.json().catch(() => null) as any
+    const signal = AbortSignal.any([input.signal, timeout])
+    const response = await request(endpoint, { method: 'POST', headers, body: JSON.stringify(body), redirect: 'error', signal })
     if (!response.ok) {
+      const data = await response.json().catch(() => null) as any
       const message = `${data?.error?.code ?? ''} ${data?.error?.message ?? ''}`.toLowerCase()
       // Never display an upstream error body: it can contain request details or credentials.
       throw new ApiVisionError(response.status === 401 || response.status === 403 ? 'api_auth'
@@ -65,15 +66,23 @@ export async function runApiVision(input: CodexVisionInput, config: ApiVisionCon
         : response.status === 404 || /model|vision|image|multimodal/.test(message) ? 'api_model'
         : 'api_failed')
     }
+    if (response.headers.get('content-type')?.includes('text/event-stream')) {
+      if (!response.body) throw new ApiVisionError('api_failed')
+      return await readVisionStream(response.body, provider, signal, input.onText)
+    }
+    // Some local OpenAI-compatible servers ignore stream:true and return JSON.
+    const data = await response.json().catch(() => null) as any
     const answer = provider === 'anthropic' ? data?.content?.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('')
       : provider === 'gemini' ? data?.candidates?.[0]?.content?.parts?.filter((p: any) => !p.thought && typeof p.text === 'string').map((p: any) => p.text).join('')
       : data?.choices?.[0]?.message?.content
     if (typeof answer !== 'string' || !answer.trim()) throw new ApiVisionError('api_failed')
+    input.onText(answer)
     return answer.trim()
   } catch (error) {
     if (input.signal.aborted) throw input.signal.reason
     if (timeout.aborted) throw new ApiVisionError('timeout')
     if (error instanceof ApiVisionError) throw error
+    if (error instanceof VisionStreamError) throw new ApiVisionError('api_failed')
     throw new ApiVisionError('api_network')
   }
 }

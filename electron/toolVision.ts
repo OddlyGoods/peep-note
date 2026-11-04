@@ -20,7 +20,7 @@ async function toolRequest(tool: Exclude<MagicPenTool, 'codex'>, input: CodexVis
     const content = []
     for (const file of input.images) content.push({ type: 'image', source: { type: 'base64', media_type: 'image/png', data: (await fs.readFile(file)).toString('base64') } })
     content.push({ type: 'text', text: prompt })
-    return { args: ['--print', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose',
+    return { args: ['--print', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose', '--include-partial-messages',
       '--model', input.model, '--no-session-persistence', '--safe-mode', '--tools', '', '--permission-mode', 'dontAsk',
       '--strict-mcp-config', '--mcp-config', '{"mcpServers":{}}', '--disable-slash-commands', '--no-chrome'],
       stdin: JSON.stringify({ type: 'user', session_id: '', parent_tool_use_id: null, message: { role: 'user', content } }) + '\n', env: {} }
@@ -38,7 +38,7 @@ async function toolRequest(tool: Exclude<MagicPenTool, 'codex'>, input: CodexVis
   const stdin = `${refs.join('\n')}\n\n${prompt.replace(/@/g, '\\u0040')}\n`
   if (tool === 'qwen-code') {
     return { args: ['--prompt', 'Analyze the attached content using the instructions from stdin.', '--model', input.model,
-      '--output-format', 'stream-json', '--safe-mode', '--no-chat-recording', '--exclude-tools', '*', '--max-tool-calls', '0'], stdin, env: {} }
+      '--output-format', 'stream-json', '--include-partial-messages', '--safe-mode', '--no-chat-recording', '--exclude-tools', '*', '--max-tool-calls', '0'], stdin, env: {} }
   }
   const settingsFile = path.join(input.directory, 'gemini-settings.json'), policyFile = path.join(input.directory, 'gemini-policy.toml')
   await fs.writeFile(policyFile, '[[rule]]\ntoolName = "*"\ndecision = "deny"\npriority = 999\n')
@@ -89,6 +89,15 @@ export async function runToolVision(tool: MagicPenTool, input: CodexVisionInput,
       // tool call into the host. CLI-side deny policies are the first boundary.
       if (event.type === 'tool_use' || event.type === 'control_request' || event.message?.content?.some?.((part: any) => part.type === 'tool_use')) { failed = true; stop(); return }
       if (event.type === 'error' || event.is_error || event.subtype === 'vision_bridge_failed') { failed = true; diagnostics += JSON.stringify(event).slice(0, 3000) }
+      if (event.type === 'stream_event') {
+        const part = event.event
+        if (part?.type === 'error') { failed = true; diagnostics += JSON.stringify(part).slice(0, 3000) }
+        if (part?.type === 'content_block_start' && part.content_block?.type === 'tool_use') { failed = true; stop(); return }
+        if (part?.type === 'message_start') answer = ''
+        if (part?.type === 'content_block_delta' && part.delta?.type === 'text_delta' && typeof part.delta.text === 'string') {
+          answer = (answer + part.delta.text).slice(0, 100_000); input.onText(answer)
+        }
+      }
       if (event.type === 'assistant') {
         const text = event.message?.content?.filter?.((part: any) => part.type === 'text').map((part: any) => part.text).join('')
         if (typeof text === 'string' && text) { answer = text.slice(0, 100_000); input.onText(answer) }

@@ -38,13 +38,15 @@ for (const provider of ['openai', 'anthropic', 'gemini', 'qwen'] as const) {
       assert.ok(!JSON.stringify(body).includes('fixture-key'))
       const base64 = fs.readFileSync(fixture).toString('base64')
       if (provider === 'gemini') {
-        assert.match(String(url), /fixture-vision-model:generateContent$/)
+        assert.match(String(url), /fixture-vision-model:streamGenerateContent\?alt=sse$/)
         assert.equal(headers['x-goog-api-key'], 'fixture-key')
         assert.deepEqual(body.contents[0].parts.slice(0, 2), [0, 1].map(() => ({ inline_data: { mime_type: 'image/png', data: base64 } })))
       } else if (provider === 'anthropic') {
+        assert.equal(body.stream, true)
         assert.equal(headers['x-api-key'], 'fixture-key')
         assert.deepEqual(body.messages[0].content.slice(0, 2), [0, 1].map(() => ({ type: 'image', source: { type: 'base64', media_type: 'image/png', data: base64 } })))
       } else {
+        assert.equal(body.stream, true)
         assert.equal(headers.Authorization, 'Bearer fixture-key')
         if (provider === 'qwen') assert.equal(String(url), 'http://127.0.0.1:7777/v1/chat/completions')
         else assert.equal(String(url), 'https://api.openai.com/v1/chat/completions')
@@ -56,6 +58,68 @@ for (const provider of ['openai', 'anthropic', 'gemini', 'qwen'] as const) {
     assert.equal(answer, `${provider === 'anthropic' ? 'Claude' : provider === 'gemini' ? 'Gemini' : provider === 'qwen' ? 'Qwen' : 'OpenAI'} answer`)
   })
 }
+
+const sse = (data: unknown) => `data: ${typeof data === 'string' ? data : JSON.stringify(data)}\r\n\r\n`
+for (const provider of ['openai', 'qwen', 'anthropic', 'gemini'] as const) {
+  test(`${provider} streams text before completion, preserves split UTF-8 and hides reasoning`, async () => {
+    const frames = provider === 'anthropic' ? [
+      { type: 'content_block_delta', delta: { type: 'thinking_delta', thinking: 'hidden reasoning' } },
+      { type: 'content_block_delta', delta: { type: 'text_delta', text: '설명 ' } },
+      { type: 'content_block_delta', delta: { type: 'text_delta', text: '🙂' } },
+      { type: 'message_delta', delta: { stop_reason: 'end_turn' } }, { type: 'message_stop' },
+    ] : provider === 'gemini' ? [
+      { candidates: [{ content: { parts: [{ thought: true, text: 'hidden reasoning' }] } }] },
+      { candidates: [{ content: { parts: [{ text: '설명 ' }] } }] },
+      { candidates: [{ content: { parts: [{ text: '🙂' }] }, finishReason: 'STOP' }] },
+    ] : [
+      { choices: [{ index: 0, delta: { reasoning_content: 'hidden reasoning' } }] },
+      { choices: [{ index: 0, delta: { content: '설명 ' } }] },
+      { choices: [{ index: 0, delta: { content: '🙂' }, finish_reason: null }] },
+      { choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] },
+      { choices: [], usage: { total_tokens: 12 } }, '[DONE]',
+    ]
+    let stream!: ReadableStreamDefaultController<Uint8Array>, first!: () => void
+    const firstText = new Promise<void>(resolve => { first = resolve }), updates: string[] = []
+    const body = new ReadableStream<Uint8Array>({ start(controller) { stream = controller } })
+    const write = (frames: unknown[]) => {
+      const bytes = new TextEncoder().encode(': heartbeat\r\n\r\n' + frames.map(sse).join(''))
+      for (let i = 0; i < bytes.length; i += 7) stream.enqueue(bytes.slice(i, i + 7))
+    }
+    const pending = runApiVision({ ...input(), onText: text => { updates.push(text); first() } },
+      { provider, apiKey: 'fixture-key' }, (async () => new Response(body, { headers: { 'Content-Type': 'text/event-stream' } })) as typeof fetch)
+    write(frames.slice(0, 2))
+    await firstText
+    assert.deepEqual(updates, ['설명 '], 'visible draft must arrive while the response is still open')
+    write(frames.slice(2)); stream.close()
+    assert.equal(await pending, '설명 🙂')
+    assert.deepEqual(updates, ['설명 ', '설명 🙂'])
+  })
+}
+
+test('broken, failed and truncated streams cannot become a successful partial answer', async () => {
+  for (const [provider, frames] of [
+    ['openai', [{ choices: [{ delta: { content: 'partial' } }] }]],
+    ['openai', [{ choices: [{ delta: { content: 'partial' }, finish_reason: 'length' }] }, '[DONE]']],
+    ['openai', [{ error: { message: 'private upstream detail' } }]],
+    ['anthropic', [{ type: 'content_block_delta', delta: { type: 'text_delta', text: 'partial' } }, { type: 'message_stop' }]],
+    ['gemini', [{ candidates: [{ content: { parts: [{ text: 'partial' }] }, finishReason: 'MAX_TOKENS' }] }]],
+  ] as const) {
+    await assert.rejects(runApiVision(input(), { provider, apiKey: 'fixture-key' },
+      (async () => new Response(frames.map(sse).join(''), { headers: { 'Content-Type': 'text/event-stream' } })) as typeof fetch), { code: 'api_failed' })
+  }
+})
+
+test('cancelling a streaming response cancels its reader and discards the unfinished answer', async () => {
+  const controller = new AbortController()
+  let cancelled = false
+  const body = new ReadableStream<Uint8Array>({
+    start(stream) { stream.enqueue(new TextEncoder().encode(sse({ choices: [{ delta: { content: 'partial' } }] }))) },
+    cancel() { cancelled = true },
+  })
+  await assert.rejects(runApiVision({ ...input(controller.signal), onText: () => controller.abort() }, { provider: 'openai', apiKey: 'fixture-key' },
+    (async () => new Response(body, { headers: { 'Content-Type': 'text/event-stream' } })) as typeof fetch), { name: 'AbortError' })
+  assert.equal(cancelled, true)
+})
 
 test('Magic Pen API errors are safe, actionable and never fall back to another provider', async () => {
   for (const [status, data, code] of [

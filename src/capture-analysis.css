@@ -30,6 +30,8 @@ html[data-theme] body:has(> #capture-analysis-root) { background: transparent !i
 .capture-analysis-time { display: flex; gap: 5px; align-items: center; color: var(--quick-excerpt); font-size: 11px; margin-top: 12px; }
 .capture-analysis-body[data-waiting='true'] { display: flex; align-items: center; justify-content: center; }
 .capture-analysis-waiting { display: flex; flex-direction: column; align-items: center; gap: 14px; min-height: 160px; justify-content: center; width: 100%; }
+.capture-analysis-waiting[data-streaming='true'] { flex-direction: row; justify-content: flex-start; min-height: 0; gap: 8px; margin-top: 12px; }
+.capture-analysis-waiting[data-streaming='true'] .capture-analysis-orb { width: 22px !important; height: 22px !important; }
 .capture-analysis-orb { flex-shrink: 0; }
 .capture-analysis-waiting-caption { display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--quick-excerpt); font-size: 12px; }
 .capture-analysis-elapsed { font-variant-numeric: tabular-nums; color: var(--quick-excerpt); min-width: 42px; }

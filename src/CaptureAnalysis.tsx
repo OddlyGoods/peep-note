@@ -70,8 +70,8 @@ export default function CaptureAnalysis() {
         <div className="capture-analysis-time"><Clock3 size={12} />{turn.provider ?? state.provider ?? 'Codex'} · {turn.model ?? state.model} · {(turn.elapsedMs / 1000).toFixed(1)}{copy.seconds}</div>
         <div className="capture-analysis-answer-actions"><CaptureAnswerCopy content={turn.answer} /></div>
       </section>)}
-      {state?.draft && <div className="markdown-content capture-analysis-markdown">{markdown(state.draft)}</div>}
-      {busy && <div className="capture-analysis-waiting" role="status" aria-label={copy.waiting}>
+      {state?.draft && <div className="markdown-content capture-analysis-markdown capture-analysis-draft">{markdown(state.draft)}</div>}
+      {busy && <div className="capture-analysis-waiting" data-streaming={!!state?.draft} role="status" aria-label={copy.waiting}>
         <ThinkingOrb className="capture-analysis-orb" state={state?.draft ? 'composing' : 'solving'} size={64} style={{ width: 80, height: 80 }} theme="auto" color="#7c3aed" dotSize={1.2} dots={1.2} aria-hidden="true" />
         <div className="capture-analysis-waiting-caption" aria-hidden="true"><span>{copy.waiting}</span><span className="capture-analysis-elapsed">{elapsed}{copy.seconds}</span></div>
       </div>}

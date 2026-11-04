@@ -35,6 +35,7 @@ for (const tool of ['claude-code', 'gemini-cli', 'qwen-code'] as const) {
       assert.ok(!request.args.includes('--yolo'))
       assert.match(request.input, /may save your answer as a note in PeepNote/)
       if (tool === 'claude-code') {
+        assert.ok(request.args.includes('--include-partial-messages'))
         const content = JSON.parse(request.input).message.content
         assert.equal(content[0].source.data, fs.readFileSync(f.input.images[0]).toString('base64'))
         assert.equal(content[0].source.media_type, 'image/png')
@@ -49,6 +50,7 @@ for (const tool of ['claude-code', 'gemini-cli', 'qwen-code'] as const) {
         assert.match(request.input, /Prior request/)
         assert.deepEqual(fs.readFileSync(path.join(f.directory, 'pen-input-0.png')), fs.readFileSync(f.input.images[0]))
         if (tool === 'qwen-code') {
+          assert.ok(request.args.includes('--include-partial-messages'))
           assert.ok(request.args.includes('--safe-mode'))
           assert.ok(request.args.includes('--no-chat-recording'))
           assert.equal(request.args[request.args.indexOf('--max-tool-calls') + 1], '0')
@@ -60,6 +62,35 @@ for (const tool of ['claude-code', 'gemini-cli', 'qwen-code'] as const) {
           assert.match(fs.readFileSync(config.adminPolicyPaths[0], 'utf8'), /decision = "deny"/)
         }
       }
+    } finally { f.dispose() }
+  })
+}
+
+for (const tool of ['claude-code', 'qwen-code', 'gemini-cli'] as const) {
+  test(`${tool} publishes incremental drafts without duplicating the final message`, async () => {
+    const frames = tool === 'gemini-cli' ? [
+      { type: 'message', role: 'assistant', delta: true, content: '답변 ' },
+      { type: 'message', role: 'assistant', delta: true, content: '🙂' },
+      { type: 'result', status: 'success' },
+    ] : [
+      { type: 'stream_event', event: { type: 'message_start' } },
+      { type: 'stream_event', event: { type: 'content_block_delta', delta: { type: 'thinking_delta', thinking: 'hidden' } } },
+      { type: 'stream_event', event: { type: 'content_block_delta', delta: { type: 'text_delta', text: '답변 ' } } },
+      { type: 'stream_event', event: { type: 'content_block_delta', delta: { type: 'text_delta', text: '🙂' } } },
+      { type: 'assistant', message: { content: [{ type: 'text', text: '답변 🙂' }] } },
+      { type: 'result', subtype: 'success', result: '답변 🙂' },
+    ]
+    const first = tool === 'gemini-cli' ? 1 : 3
+    const f = fixture(`const frames=${JSON.stringify(frames)};for(const e of frames.slice(0,${first}))console.log(JSON.stringify(e));setTimeout(()=>{for(const e of frames.slice(${first}))console.log(JSON.stringify(e))},100);`)
+    const updates: string[] = []
+    let completed = false
+    try {
+      const result = await runToolVision(tool, { ...f.input, onText: text => { assert.equal(completed, false); updates.push(text) } }, { launch: f.launch })
+      completed = true
+      assert.equal(result, '답변 🙂')
+      assert.equal(updates[0], '답변 ')
+      assert.ok(updates.includes('답변 🙂'))
+      assert.ok(updates.every(text => !text.includes('hidden') && !text.includes('🙂답변')))
     } finally { f.dispose() }
   })
 }

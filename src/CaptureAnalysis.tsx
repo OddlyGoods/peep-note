@@ -70,7 +70,7 @@ export default function CaptureAnalysis() {
       </section>)}
       {state?.draft && <div className="markdown-content capture-analysis-markdown">{markdown(state.draft)}</div>}
       {busy && <div className="capture-analysis-waiting" role="status" aria-label={copy.waiting}>
-        <ThinkingOrb className="capture-analysis-orb" state={state?.draft ? 'composing' : 'solving'} size={64} theme="auto" color="#7c3aed" dotSize={1.2} dots={1.2} aria-hidden="true" />
+        <ThinkingOrb className="capture-analysis-orb" state={state?.draft ? 'composing' : 'solving'} size={64} style={{ width: 80, height: 80 }} theme="auto" color="#7c3aed" dotSize={1.2} dots={1.2} aria-hidden="true" />
         <div className="capture-analysis-waiting-caption" aria-hidden="true"><span>{copy.waiting}</span><span className="capture-analysis-elapsed">{elapsed}{copy.seconds}</span></div>
       </div>}
       {state?.error && <div role="alert" className="capture-analysis-error">

@@ -36,7 +36,7 @@ app.whenReady().then(async () => {
   await until(()=>js('!!document.querySelector(".capture-analysis-orb")'))
   const firstOrb = await js('document.querySelector(".capture-analysis-orb").toDataURL()')
   assert.equal(await js('getComputedStyle(document.querySelector(".capture-analysis-body")).display'),'flex')
-  assert.equal(await js('document.querySelector(".capture-analysis-orb").getBoundingClientRect().width'),64)
+  assert.equal(await js('document.querySelector(".capture-analysis-orb").getBoundingClientRect().width'),80)
   await wait(1200)
   assert.notEqual(await js('document.querySelector(".capture-analysis-orb").toDataURL()'),firstOrb,'the thinking orb should animate while waiting')
   assert.notEqual(await js('document.querySelector(".capture-analysis-elapsed").textContent'),elapsed)

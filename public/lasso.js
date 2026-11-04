@@ -35,21 +35,37 @@
     const imageWidth = image.naturalWidth || image.width, imageHeight = image.naturalHeight || image.height
     if (!region || !Number.isFinite(imageWidth) || !Number.isFinite(imageHeight) || imageWidth <= 0 || imageHeight <= 0) return null
     const scaleX = imageWidth / width, scaleY = imageHeight / height
-    const left = Math.floor(region.bounds.x * scaleX), top = Math.floor(region.bounds.y * scaleY)
-    const right = Math.min(imageWidth, Math.ceil((region.bounds.x + region.bounds.width) * scaleX))
-    const bottom = Math.min(imageHeight, Math.ceil((region.bounds.y + region.bounds.height) * scaleY))
+    // Include sixteen screen pixels around the whole outline, including sloped
+    // edges. Scale the margin with the screenshot, not with physical pixels.
+    const margin = 16
+    const left = Math.max(0, Math.floor((region.bounds.x - margin) * scaleX))
+    const top = Math.max(0, Math.floor((region.bounds.y - margin) * scaleY))
+    const right = Math.min(imageWidth, Math.ceil((region.bounds.x + region.bounds.width + margin) * scaleX))
+    const bottom = Math.min(imageHeight, Math.ceil((region.bounds.y + region.bounds.height + margin) * scaleY))
     const output = createCanvas()
     output.width = right - left; output.height = bottom - top
     const context = output.getContext('2d')
-    // Paint the outside of the selection, rather than merely cropping its
-    // bounding box: surrounding screen contents must not survive in the PNG.
+    // Dilate a closed polygon with a round stroke. A separate mask keeps real
+    // screenshot content in that extra margin and leaves the rest white.
     context.fillStyle = '#ffffff'
     context.fillRect(0, 0, output.width, output.height)
-    context.save()
-    trace(context, region.points, scaleX, scaleY, left, top)
-    context.clip('evenodd')
-    context.drawImage(image, -left, -top)
-    context.restore()
+    const mask = createCanvas()
+    mask.width = output.width; mask.height = output.height
+    const maskContext = mask.getContext('2d')
+    maskContext.save()
+    maskContext.scale(scaleX, scaleY)
+    trace(maskContext, region.points, 1, 1, left / scaleX, top / scaleY)
+    maskContext.fillStyle = '#ffffff'
+    maskContext.strokeStyle = '#ffffff'
+    maskContext.lineWidth = margin * 2
+    maskContext.lineCap = 'round'
+    maskContext.lineJoin = 'round'
+    maskContext.fill('evenodd')
+    maskContext.stroke()
+    maskContext.restore()
+    maskContext.globalCompositeOperation = 'source-in'
+    maskContext.drawImage(image, -left, -top)
+    context.drawImage(mask, 0, 0)
     return output
   }
 

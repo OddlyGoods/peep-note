@@ -12,7 +12,7 @@ const triangle = [{ x: 10, y: 10 }, { x: 90, y: 10 }, { x: 10, y: 70 }]
 function canvasFixture() {
   const operations: any[] = []
   const context: any = {}
-  for (const method of ['fillRect', 'save', 'beginPath', 'moveTo', 'lineTo', 'closePath', 'clip', 'drawImage', 'restore', 'clearRect', 'setLineDash', 'stroke', 'strokeRect']) {
+  for (const method of ['fillRect', 'save', 'beginPath', 'moveTo', 'lineTo', 'closePath', 'clip', 'drawImage', 'restore', 'clearRect', 'setLineDash', 'stroke', 'strokeRect', 'scale', 'fill']) {
     context[method] = (...args: any[]) => operations.push([method, ...args])
   }
   const canvas = { width: 200, height: 120, style: {}, getContext: () => context, toDataURL: () => 'data:image/png;base64,cG5n' }
@@ -28,22 +28,32 @@ test('lasso closes an open outline, clamps it to the screen and rejects tiny or 
   }
 })
 
-test('crop uses native screenshot resolution and paints outside the polygon before clipping the original image', () => {
-  const fixture = canvasFixture()
+test('crop includes a scaled screen-pixel margin, clamps it at screen edges and masks everything beyond it', () => {
+  const layers: ReturnType<typeof canvasFixture>[] = []
+  const makeCanvas = () => { const layer = canvasFixture(); layers.push(layer); return layer.canvas }
   const image = { naturalWidth: 400, naturalHeight: 240 }
-  const result = lasso.crop(image, triangle, 200, 120, () => fixture.canvas)
-  assert.equal(result.width, 160)
-  assert.equal(result.height, 120)
-  assert.equal(fixture.context.fillStyle, '#ffffff')
-  assert.deepEqual(fixture.operations[0], ['fillRect', 0, 0, 160, 120])
-  assert.deepEqual(fixture.operations.find(item => item[0] === 'moveTo'), ['moveTo', 0, 0])
-  assert.deepEqual(fixture.operations.filter(item => item[0] === 'lineTo'), [['lineTo', 160, 0], ['lineTo', 0, 120]])
-  const clip = fixture.operations.findIndex(item => item[0] === 'clip')
-  const draw = fixture.operations.findIndex(item => item[0] === 'drawImage')
-  assert.ok(fixture.operations.findIndex(item => item[0] === 'closePath') < clip && clip < draw)
-  assert.deepEqual(fixture.operations[clip], ['clip', 'evenodd'])
-  assert.deepEqual(fixture.operations[draw], ['drawImage', image, -20, -20])
+  const result = lasso.crop(image, triangle, 200, 120, makeCanvas)
+  assert.equal(result.width, 212)
+  assert.equal(result.height, 172)
+  const [output, mask] = layers
+  assert.equal(output.context.fillStyle, '#ffffff')
+  assert.deepEqual(output.operations[0], ['fillRect', 0, 0, 212, 172])
+  assert.deepEqual(mask.operations.find(item => item[0] === 'scale'), ['scale', 2, 2])
+  assert.deepEqual(mask.operations.find(item => item[0] === 'moveTo'), ['moveTo', 10, 10])
+  assert.equal(mask.context.lineWidth, 32)
+  assert.equal(mask.context.lineJoin, 'round')
+  assert.equal(mask.context.globalCompositeOperation, 'source-in')
+  const close = mask.operations.findIndex(item => item[0] === 'closePath')
+  const fill = mask.operations.findIndex(item => item[0] === 'fill')
+  const stroke = mask.operations.findIndex(item => item[0] === 'stroke')
+  const draw = mask.operations.findIndex(item => item[0] === 'drawImage')
+  assert.ok(close < fill && fill < stroke && stroke < draw)
+  assert.deepEqual(mask.operations[fill], ['fill', 'evenodd'])
+  assert.deepEqual(output.operations.at(-1), ['drawImage', mask.canvas, 0, 0])
   assert.equal(lasso.crop(image, [], 200, 120, () => { throw new Error('must not allocate for an invalid path') }), null)
+  const fullScreen = lasso.crop(image, [{ x: 0, y: 0 }, { x: 200, y: 0 }, { x: 0, y: 120 }], 200, 120, makeCanvas)
+  assert.equal(fullScreen.width, image.naturalWidth)
+  assert.equal(fullScreen.height, image.naturalHeight)
 })
 
 function rendererFixture() {
@@ -102,8 +112,8 @@ test('live preview draws an open yellow marker while the resulting capture still
   fixture.pointer('pointerup', 10, 70)
   fixture.ipc['lasso-source']('captured-source')
   assert.equal(fixture.captured.length, 1)
-  const operations = fixture.outputCanvases[0].operations
-  assert.ok(operations.findIndex(item => item[0] === 'closePath') < operations.findIndex(item => item[0] === 'clip'))
+  const operations = fixture.outputCanvases[1].operations
+  assert.ok(operations.findIndex(item => item[0] === 'closePath') < operations.findIndex(item => item[0] === 'fill'))
 })
 
 test('renderer auto-closes a freehand drag, allows retry after a tiny selection, and supports cancel and monitor reset', () => {
@@ -121,7 +131,7 @@ test('renderer auto-closes a freehand drag, allows retry after a tiny selection,
   fixture.pointer('pointerup', 10, 70)
   assert.equal(fixture.captured.length, 1)
   assert.equal(fixture.held.size, 0)
-  assert.equal(fixture.outputCanvases[0].canvas.width, 160)
+  assert.equal(fixture.outputCanvases[0].canvas.width, 212)
   fixture.pointer('pointerdown', 50, 50)
   fixture.events['change-monitor'].click()
   assert.equal(fixture.monitorChanges, 1)
@@ -185,7 +195,7 @@ test('live drawing starts without loading a screenshot and only requests an imag
   fixture.ipc['lasso-source']('fresh-screenshot-after-pointer-release')
   assert.equal(fixture.imageLoads, 1)
   assert.equal(fixture.captured.length, 1)
-  assert.equal(fixture.outputCanvases[0].canvas.width, 160)
+  assert.equal(fixture.outputCanvases[0].canvas.width, 212)
   fixture.ipc['lasso-source']('duplicate-source')
   assert.equal(fixture.captured.length, 1)
 })

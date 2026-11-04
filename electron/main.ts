@@ -1090,6 +1090,7 @@ function setupIPC() {
       case 'retry': return session.retry()
       case 'save': return session.save(value)
       case 'close': return session.close()
+      case 'maximize': return session.maximize()
       default: throw new Error('Unknown analysis action')
     }
   })

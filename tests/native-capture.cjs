@@ -1,5 +1,5 @@
 // Runs only in the isolated Electron/Xvfb fixture prepared by test-native-capture.cjs.
-const {app,BrowserWindow,ipcMain,desktopCapturer,screen}=require('electron');
+const {app,BrowserWindow,ipcMain,desktopCapturer,screen,nativeImage}=require('electron');
 const fs=require('fs'),path=require('path');
 const {createLiveCapture}=require('./liveCapture.cjs'),{parseLassoCapture}=require('./selection.cjs'),{createCaptureAction}=require('./captureAction.cjs');
 app.setPath('userData',path.join(__dirname,'isolated-data'));app.disableHardwareAcceleration();
@@ -17,7 +17,13 @@ app.whenReady().then(async()=>{
    region=new BrowserWindow({x:0,y:0,width,height,frame:false,alwaysOnTop:true,transparent:true,backgroundColor:'#00000000',show:false,webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false}});
    const live=createLiveCapture({hide:()=>{region.hide();stage='hidden';mark(stage)},capture:async()=>{stage='capture';const sources=await desktopCapturer.getSources({types:['screen'],thumbnailSize:display.size});mark(stage,{displayId:display.id,sources:sources.map(s=>s.display_id)});const source=sources.find(s=>s.display_id===String(display.id))??(sources.length===1?sources[0]:undefined);if(!source)throw Error('source missing');return source.thumbnail.toDataURL()},deliver:data=>{stage='source-delivered';mark(stage,{visible:region.isVisible()});region.webContents.send('lasso-source',data)},onError:error=>{mark('ERROR',{message:error.message});app.exit(2)}});
    ipcMain.on('snipping-capture-lasso',(event,selection)=>{stage='selection';const bounds=region.getContentBounds();const valid=!!parseLassoCapture(selection,bounds.width,bounds.height);mark(stage,{valid,requested:[selection.width,selection.height],actual:[bounds.width,bounds.height]});if(valid)void live.start()});
-   ipcMain.on('snipping-done',(event,png)=>{stage='png-received';mark(stage);if(event.sender!==region.webContents||(!region.isVisible()&&!live.pending))return;const file=path.join(__dirname,'cropped.png');fs.writeFileSync(file,Buffer.from(png.split(',')[1],'base64'));live.dispose();region.close();resolve(file)});
+   ipcMain.on('snipping-done',(event,png)=>{stage='png-received';mark(stage);if(event.sender!==region.webContents||(!region.isVisible()&&!live.pending))return;const file=path.join(__dirname,'cropped.png');fs.writeFileSync(file,Buffer.from(png.split(',')[1],'base64'));
+     const cropped=nativeImage.createFromPath(file),size=cropped.getSize(),bitmap=cropped.toBitmap();
+     const pixel=(x,y)=>Array.from(bitmap.subarray((y*size.width+x)*4,(y*size.width+x)*4+3));
+     if(size.width<=400||size.height<=400||pixel(5,50).every(value=>value===255)||!pixel(0,0).every(value=>value===255)){
+       mark('BAD_MARGIN',{size,nearEdge:pixel(5,50),outside:pixel(0,0)});app.exit(6);return;
+     }
+     mark('MARGIN_OK',{size});live.dispose();region.close();resolve(file)});
    ipcMain.on('snipping-cancel',()=>{mark('CANCEL');app.exit(3)});
    region.webContents.once('did-finish-load',()=>{region.webContents.send('snipping-init',{live:true,mode:'lasso',width,height,language:'en'});region.show();region.focus();stage='selector-ready';mark(stage)});
    region.loadFile(path.join(__dirname,'selector.html'),{query:{live:'1'}});

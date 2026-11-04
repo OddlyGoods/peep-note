@@ -1,14 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
-import { Camera, Check, Clock3, Loader2, MessageSquare, RefreshCw, Save, Send, X } from 'lucide-react'
+import { Camera, Check, Clock3, Loader2, Maximize2, Minimize2, RefreshCw, Save, Send, X } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import MarkdownLink from './components/MarkdownLink'
 import MarkdownCodeBlock from './components/MarkdownCodeBlock'
 import { captureAnalysisCopy, type CaptureAnalysisState } from '../shared/captureAnalysis'
-import { useI18n } from './i18n'
+import CaptureWorkspaceSelect from './components/CaptureWorkspaceSelect'
 
 export default function CaptureAnalysis() {
-  const { t } = useI18n()
   const [state, setState] = useState<CaptureAnalysisState | null>(null)
   const [now, setNow] = useState(Date.now()), [question, setQuestion] = useState('')
   const [saveFailed, setSaveFailed] = useState(false)
@@ -32,7 +31,7 @@ export default function CaptureAnalysis() {
     if (scroll.current && followScroll.current) scroll.current.scrollTop = scroll.current.scrollHeight
   }, [state?.turns.length, state?.draft, state?.status])
   useEffect(() => {
-    const close = (event: KeyboardEvent) => { if (event.key === 'Escape') void window.captureAnalysis?.close() }
+    const close = (event: KeyboardEvent) => { if (event.key === 'Escape' && !event.defaultPrevented) void window.captureAnalysis?.close() }
     window.addEventListener('keydown', close)
     return () => window.removeEventListener('keydown', close)
   }, [])
@@ -50,17 +49,19 @@ export default function CaptureAnalysis() {
     img: ({ alt }) => <span>{alt}</span>,
     table: ({ children }) => <div className="overflow-x-auto"><table>{children}</table></div>,
   }}>{text}</ReactMarkdown>
-  return <div className="capture-analysis-shell">
+  return <div className="capture-analysis-shell" data-maximized={!!state?.maximized}>
     <header className="capture-analysis-header">
-      <MessageSquare size={15} className="text-violet-500" /><strong>{copy.title}</strong>
-      {state?.model && <span className="capture-analysis-model" title={state.model}>{state.model}</span>}
-      <button className="capture-icon-button" aria-label={copy.close} title={copy.close} onClick={() => void window.captureAnalysis?.close()}><X size={16} /></button>
+      <img className="capture-analysis-logo" src="/icon.png" alt="" draggable={false} /><strong>{copy.title}</strong>
+      <div className="capture-analysis-window-controls">
+        <button className="capture-titlebar-button" aria-label={state?.maximized ? copy.restore : copy.maximize} title={state?.maximized ? copy.restore : copy.maximize}
+          onClick={() => void window.captureAnalysis?.maximize()}>{state?.maximized ? <Minimize2 size={12} /> : <Maximize2 size={12} />}</button>
+        <button className="capture-titlebar-button capture-titlebar-close" aria-label={copy.close} title={copy.close} onClick={() => void window.captureAnalysis?.close()}><X size={12} /></button>
+      </div>
     </header>
     <main ref={scroll} className="capture-analysis-body" aria-busy={busy} onScroll={() => {
       const el = scroll.current!
       followScroll.current = el.scrollHeight - el.scrollTop - el.clientHeight < 60
     }}>
-      {!!state?.thumbnails.length && <div className="capture-analysis-thumbnails">{state.thumbnails.map((src, index) => <img key={index} src={src} alt={`Capture ${index + 1}`} />)}</div>}
       {state?.turns.map((turn, index) => <section className="capture-analysis-turn" key={index}>
         {index > 0 && <p className="capture-analysis-question">{turn.question}</p>}
         <div className="markdown-content capture-analysis-markdown">{markdown(turn.answer)}</div>
@@ -70,7 +71,7 @@ export default function CaptureAnalysis() {
       {busy && <div className="capture-analysis-waiting" role="status"><Loader2 size={19} className="animate-spin text-violet-500" /><span>{copy.waiting}</span><span className="capture-analysis-elapsed">{elapsed}{copy.seconds}</span></div>}
       {state?.error && <div role="alert" className="capture-analysis-error">
         <p>{copy[state.error]}</p>
-        {state.error !== 'context_limit' && <button className="capture-secondary" onClick={() => void window.captureAnalysis?.retry()}><RefreshCw size={13} />{copy.retry}</button>}
+        {state.error !== 'context_limit' && <button className="capture-secondary overlay-close btn-secondary" onClick={() => void window.captureAnalysis?.retry()}><RefreshCw size={13} />{copy.retry}</button>}
       </div>}
     </main>
     <footer className="capture-analysis-footer">
@@ -80,15 +81,15 @@ export default function CaptureAnalysis() {
         <button type="submit" className="capture-icon-button" disabled={busy || !question.trim() || state?.status !== 'ready'} aria-label={copy.send} title={copy.send}><Send size={16} /></button>
       </form>
       <div className="capture-analysis-actions">
-        <button className="capture-secondary" disabled={busy || state?.status !== 'ready'} title={copy.captureHint} onClick={() => {
+        <CaptureWorkspaceSelect items={state?.workspaces ?? []} value={workspaceId ?? state?.workspaceId ?? null}
+          disabled={busy || !!state?.saving || !!state?.saved} onChange={setWorkspaceId} />
+        <div className="flex-1" />
+        <button className="capture-secondary overlay-close btn-secondary" disabled={busy || state?.status !== 'ready'} title={copy.captureHint} onClick={() => {
           followScroll.current = true
           void window.captureAnalysis?.capture(question)
           setQuestion('')
         }}><Camera size={14} />{copy.followup}</button>
-        <select aria-label={t('workspaces')} value={workspaceId ?? state?.workspaceId ?? ''} disabled={busy || state?.saving || state?.saved} onChange={event => setWorkspaceId(event.target.value)}>
-          {state?.workspaces.map(workspace => <option key={workspace.id} value={workspace.id}>{workspace.isDefault ? t('defaultWorkspace') : workspace.name}</option>)}
-        </select>
-        <button className="capture-primary" disabled={busy || !state?.turns.length || state.saving || state.saved} onClick={() => {
+        <button className="capture-primary overlay-save btn-primary" disabled={busy || !state?.turns.length || state.saving || state.saved} onClick={() => {
           setSaveFailed(false)
           void window.captureAnalysis?.save(workspaceId ?? state?.workspaceId ?? null).then(ok => setSaveFailed(!ok)).catch(() => setSaveFailed(true))
         }}>{state?.saving ? <Loader2 size={14} className="animate-spin" /> : state?.saved ? <Check size={14} /> : <Save size={14} />}{state?.saving ? copy.saving : state?.saved ? copy.saved : copy.save}</button>

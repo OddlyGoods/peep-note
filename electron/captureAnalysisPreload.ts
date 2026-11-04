@@ -4,7 +4,7 @@ const action = (name: string, value?: unknown) => ipcRenderer.invoke('capture-an
 contextBridge.exposeInMainWorld('captureAnalysis', {
   state: () => action('state'), capture: (question: string) => action('capture', question),
   ask: (question: string) => action('ask', question), retry: () => action('retry'),
-  save: (workspace: string | null) => action('save', workspace), close: () => action('close'),
+  save: (workspace: string | null) => action('save', workspace), maximize: () => action('maximize'), close: () => action('close'),
   onState: (callback: (state: CaptureAnalysisState) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, state: CaptureAnalysisState) => callback(state)
     ipcRenderer.on('capture-analysis-state', listener)

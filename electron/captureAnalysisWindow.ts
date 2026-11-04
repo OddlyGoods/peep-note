@@ -1,4 +1,4 @@
-import { BrowserWindow, nativeImage, screen, shell } from 'electron'
+import { BrowserWindow, screen, shell } from 'electron'
 import path from 'path'
 import fs from 'fs'
 import { protectAppNavigation } from './appNavigation'
@@ -29,19 +29,21 @@ export class CaptureAnalysisWindow {
   private busyCapture = false
 
   constructor(private options: AnalysisWindowOptions) {
-    this.value = { status: 'waiting', language: options.language, model: options.model, turns: [], question: '', draft: '', startedAt: null,
-      error: null, capturing: false, saving: false, saved: false, thumbnails: [],
+    this.value = { status: 'waiting', maximized: false, language: options.language, model: options.model, turns: [], question: '', draft: '', startedAt: null,
+      error: null, capturing: false, saving: false, saved: false,
       workspaceId: options.workspaces.find(item => item.isDefault)?.id ?? null, workspaces: options.workspaces }
     const workArea = screen.getDisplayMatching(options.firstCapture.bounds).workArea
     this.window = new BrowserWindow({ ...analysisWindowBounds(options.firstCapture.bounds, workArea),
       minWidth: Math.min(360, workArea.width), minHeight: Math.min(280, workArea.height),
       title: 'PeepNote · Codex', frame: false, alwaysOnTop: true, resizable: true, show: false,
-      backgroundColor: options.theme === 'dark' ? '#101426' : '#ffffff',
+      transparent: true, backgroundColor: '#00000000',
       webPreferences: { preload: path.join(__dirname, 'captureAnalysisPreload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true },
     })
     protectAppNavigation(this.window.webContents, url => shell.openExternal(url))
     this.window.once('ready-to-show', () => { if (!this.disposed) { this.window.show(); this.window.focus() } })
     this.window.once('closed', () => this.dispose())
+    this.window.on('maximize', () => this.publish({ maximized: true }))
+    this.window.on('unmaximize', () => this.publish({ maximized: false }))
     const query = `?language=${options.language}&theme=${options.theme}`
     void this.window.loadURL(options.dev ? `http://localhost:5173/capture-analysis.html${query}` : `app://dist/capture-analysis.html${query}`)
     this.addImage(options.firstCapture.filePath)
@@ -57,8 +59,6 @@ export class CaptureAnalysisWindow {
   }
   private addImage(file: string) {
     this.images.push(file)
-    const thumbnail = nativeImage.createFromPath(file).resize({ width: 160 }).toDataURL()
-    this.publish({ thumbnails: [...this.value.thumbnails, thumbnail] })
   }
   private async run(question: string) {
     if (this.disposed || this.value.status === 'running') return
@@ -123,6 +123,7 @@ export class CaptureAnalysisWindow {
     } catch { return false }
     finally { this.publish({ saving: false }) }
   }
+  maximize() { if (!this.window.isDestroyed()) { if (this.window.isMaximized()) this.window.unmaximize(); else this.window.maximize() } }
   close() { if (!this.window.isDestroyed()) this.window.close(); else this.dispose() }
   private cleanFiles() { try { fs.rmSync(this.options.directory, { recursive: true, force: true }) } catch {} }
   private dispose() {

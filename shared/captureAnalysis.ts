@@ -5,6 +5,7 @@ export interface CaptureAnalysisState {
   status: 'waiting' | 'running' | 'ready' | 'error'
   language: CaptureLanguage
   model: string
+  maximized: boolean
   turns: CaptureTurn[]
   question: string
   draft: string
@@ -13,7 +14,6 @@ export interface CaptureAnalysisState {
   capturing: boolean
   saving: boolean
   saved: boolean
-  thumbnails: string[]
   workspaceId: string | null
   workspaces: { id: string; name: string; isDefault: boolean }[]
 }
@@ -23,12 +23,13 @@ export interface CaptureAnalysisApi {
   ask: (question: string) => Promise<void>
   retry: () => Promise<void>
   save: (workspaceId: string | null) => Promise<boolean>
+  maximize: () => Promise<void>
   close: () => Promise<void>
   onState: (callback: (state: CaptureAnalysisState) => void) => () => void
 }
 export const captureAnalysisCopy = {
   en: {
-    title: 'Ask Codex', waiting: 'Waiting for Codex…', seconds: 's', followup: 'Capture & reply',
+    title: 'Ask Codex', waiting: 'Waiting for Codex…', seconds: 's', followup: 'Reply', maximize: 'Maximize', restore: 'Restore',
     save: 'Save as note', saved: 'Saved', saving: 'Saving…', question: 'Ask a follow-up…', send: 'Send',
     retry: 'Try again', close: 'Close', captureHint: 'Capture more information to continue this conversation.',
     initial: 'Explain what is shown in this image and what I should know or do next.',
@@ -40,7 +41,7 @@ export const captureAnalysisCopy = {
     saveFailed: 'The note could not be saved. Try again.', noteTitle: 'Capture analysis',
   },
   ko: {
-    title: '코덱스에게 질문', waiting: 'AI 응답 대기 중…', seconds: '초', followup: '추가 캡처로 답변',
+    title: '코덱스에게 질문', waiting: 'AI 응답 대기 중…', seconds: '초', followup: '답변', maximize: '최대화', restore: '이전 크기',
     save: '메모로 저장', saved: '저장됨', saving: '저장 중…', question: '추가로 질문하세요…', send: '보내기',
     retry: '다시 시도', close: '닫기', captureHint: '필요한 정보를 다시 캡처해 대화를 이어갑니다.',
     initial: '이 이미지가 무엇인지 설명하고, 알아야 할 내용이나 다음에 할 일을 알려줘.',
@@ -52,7 +53,7 @@ export const captureAnalysisCopy = {
     saveFailed: '메모를 저장하지 못했습니다. 다시 시도해 주세요.', noteTitle: '캡처 분석',
   },
   ja: {
-    title: 'Codexに質問', waiting: 'AIの応答を待っています…', seconds: '秒', followup: '追加キャプチャで返信',
+    title: 'Codexに質問', waiting: 'AIの応答を待っています…', seconds: '秒', followup: '返信', maximize: '最大化', restore: '元に戻す',
     save: 'メモに保存', saved: '保存済み', saving: '保存中…', question: '追加の質問…', send: '送信',
     retry: '再試行', close: '閉じる', captureHint: '追加情報をキャプチャして会話を続けます。',
     initial: '画像の内容と、知っておくべきことや次にすべきことを説明してください。',
@@ -64,7 +65,7 @@ export const captureAnalysisCopy = {
     saveFailed: 'メモを保存できませんでした。再試行してください。', noteTitle: 'キャプチャ分析',
   },
   zh: {
-    title: '询问 Codex', waiting: '正在等待 AI 回复…', seconds: '秒', followup: '补充截图回复',
+    title: '询问 Codex', waiting: '正在等待 AI 回复…', seconds: '秒', followup: '回复', maximize: '最大化', restore: '还原',
     save: '保存为笔记', saved: '已保存', saving: '保存中…', question: '继续提问…', send: '发送',
     retry: '重试', close: '关闭', captureHint: '截取更多信息，继续当前对话。',
     initial: '解释图片中的内容，以及我需要了解的信息或下一步应该做什么。',

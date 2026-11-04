@@ -53,6 +53,7 @@ function rendererFixture() {
   const ipc: Record<string, Function> = {}
   const captured: string[] = [], regions: any[] = [], liveRequests: any[] = []
   const outputCanvases: ReturnType<typeof canvasFixture>[] = []
+  let renderFrame: Function | undefined
   let cancellations = 0, monitorChanges = 0, imageLoads = 0
   for (const id of ['c', 'size-badge', 'hint-text', 'change-monitor']) {
     elements[id] ??= { style: {}, textContent: '' }
@@ -69,7 +70,7 @@ function rendererFixture() {
     document: { documentElement: { lang: '', classList: { toggle() {} } }, getElementById: (id: string) => elements[id], addEventListener: (name: string, listener: Function) => { documentEvents[name] = listener },
       createElement: () => { const output = canvasFixture(); outputCanvases.push(output); return output.canvas } },
     Image: class { naturalWidth = 400; naturalHeight = 240; onload: any; set src(_value: string) { imageLoads++; this.onload() } },
-    requestAnimationFrame: (_callback: Function) => 1 }
+    requestAnimationFrame: (callback: Function) => { renderFrame = callback; return 1 } }
   // The production crop helper uses document only to create the output canvas.
   const nativeCrop = lasso.crop
   context.window.PeepNoteLasso = { ...lasso, crop: (...args: any[]) => nativeCrop(...args, () => context.document.createElement()) }
@@ -78,10 +79,32 @@ function rendererFixture() {
   vm.runInNewContext(script, context)
   const init = (mode = 'lasso', language = 'ko', live = false) => ipc['snipping-init']({ mode, language, live, dataUrl: live ? undefined : 'test-image', width: 200, height: 120 })
   const pointer = (name: string, x: number, y: number) => events.c[name]({ clientX: x, clientY: y, pointerId: 1, button: 0, preventDefault() {} })
-  return { init, pointer, captured, regions, liveRequests, outputCanvases, held, events, ipc, elements, documentEvents,
+  return { init, pointer, captured, regions, liveRequests, outputCanvases, held, events, ipc, elements, documentEvents, frame,
+    render: () => { const callback = renderFrame; renderFrame = undefined; callback?.() },
     get imageLoads() { return imageLoads },
     get cancellations() { return cancellations }, get monitorChanges() { return monitorChanges } }
 }
+
+test('live preview draws an open yellow marker while the resulting capture still closes its clipping area', () => {
+  const fixture = rendererFixture()
+  fixture.init('lasso', 'ko', true)
+  fixture.pointer('pointerdown', 10, 10)
+  fixture.pointer('pointermove', 90, 10)
+  fixture.pointer('pointermove', 10, 70)
+  fixture.frame.operations.length = 0
+  fixture.render()
+  assert.ok(fixture.frame.operations.some(item => item[0] === 'stroke'))
+  assert.equal(fixture.frame.operations.some(item => item[0] === 'closePath'), false)
+  assert.equal(fixture.frame.context.strokeStyle, 'rgba(250, 204, 21, 0.65)')
+  assert.equal(fixture.frame.context.lineWidth, 8)
+  assert.equal(fixture.frame.context.lineCap, 'round')
+  assert.equal(fixture.frame.operations.find(item => item[0] === 'setLineDash')?.[1].length, 0)
+  fixture.pointer('pointerup', 10, 70)
+  fixture.ipc['lasso-source']('captured-source')
+  assert.equal(fixture.captured.length, 1)
+  const operations = fixture.outputCanvases[0].operations
+  assert.ok(operations.findIndex(item => item[0] === 'closePath') < operations.findIndex(item => item[0] === 'clip'))
+})
 
 test('renderer auto-closes a freehand drag, allows retry after a tiny selection, and supports cancel and monitor reset', () => {
   const fixture = rendererFixture()

@@ -180,12 +180,17 @@
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
           ctx.restore()
         }
-        lasso.trace(ctx, points)
-        ctx.strokeStyle = '#a78bfa'
-        ctx.lineWidth = 2
-        ctx.setLineDash([6, 4])
-        ctx.stroke()
+        // Show only the user's marker stroke. The crop closes the polygon
+        // separately after release, without drawing a closing edge here.
+        ctx.save()
+        lasso.trace(ctx, points, 1, 1, 0, 0, false)
+        ctx.strokeStyle = 'rgba(250, 204, 21, 0.65)'
+        ctx.lineWidth = 8
+        ctx.lineCap = 'round'
+        ctx.lineJoin = 'round'
         ctx.setLineDash([])
+        ctx.stroke()
+        ctx.restore()
         const xs = points.map(point => point.x), ys = points.map(point => point.y)
         badge.style.display = 'block'
         badge.textContent = `${Math.round(Math.max(...xs) - Math.min(...xs))} × ${Math.round(Math.max(...ys) - Math.min(...ys))}`

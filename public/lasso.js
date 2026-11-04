@@ -22,12 +22,12 @@
     return { points, bounds: { x: left, y: top, width: right - left, height: bottom - top } }
   }
 
-  function trace(context, points, scaleX = 1, scaleY = 1, offsetX = 0, offsetY = 0) {
+  function trace(context, points, scaleX = 1, scaleY = 1, offsetX = 0, offsetY = 0, closed = true) {
     context.beginPath()
     points.forEach((point, index) => {
       context[index ? 'lineTo' : 'moveTo'](point.x * scaleX - offsetX, point.y * scaleY - offsetY)
     })
-    context.closePath()
+    if (closed) context.closePath()
   }
 
   function crop(image, input, width, height, createCanvas = () => document.createElement('canvas')) {

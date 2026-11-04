@@ -1,3 +1,4 @@
+import { getMagicPenSettings } from '../shared/magicPen'
 import assert from 'node:assert/strict'
 import { test, before, after } from 'node:test'
 import fs from 'node:fs'
@@ -1254,5 +1255,37 @@ test('switching an existing custom model to a preset remembers the legacy custom
     const saved = await json('/api/settings')
     assert.equal(saved.ai_custom_models.qwen, 'legacy-custom-qwen')
     assert.equal(saved.ai_custom_models.openai, undefined, 'unused custom inputs must not remember a preset/default')
+  } finally { run("DELETE FROM settings WHERE user_id = 'local'") }
+})
+
+test('Magic Pen mode and scoped model memories survive reload independently of summary preferences', async () => {
+  run("DELETE FROM settings WHERE user_id = 'local'")
+  try {
+    // An existing installation keeps both its CLI model and last custom entry.
+    await json('/api/settings', 'PUT', { capture_codex_model: 'existing-codex', ai_custom_models: { codex: 'old-custom' }, ai_provider: 'qwen', ai_model: 'summary-qwen' })
+    let saved = await json('/api/settings')
+    assert.equal(saved.magic_pen.mode, 'tool')
+    assert.equal(saved.magic_pen.models.codex, 'existing-codex')
+    assert.equal(saved.magic_pen.customModels.codex, 'old-custom')
+    const config = getMagicPenSettings(saved.magic_pen)
+    config.mode = 'api'
+    config.models.qwen = 'vision-qwen'; config.models.openai = 'vision-openai'; config.models.codex = 'vision-codex'
+    config.customModels.qwen = 'last-custom-qwen'; config.customModels.openai = 'last-custom-openai'
+    saved = await json('/api/settings', 'PUT', { magic_pen: config })
+    assert.equal(saved.ai_model, 'summary-qwen')
+    assert.equal(saved.capture_codex_model, 'vision-codex')
+    // Changing the summary provider or its model must not overwrite Magic Pen's selections.
+    await json('/api/settings', 'PUT', { ai_provider: 'openai', ai_model: 'summary-openai' })
+    getDb().close(); await initDb(root)
+    saved = await json('/api/settings')
+    assert.deepEqual(saved.magic_pen, config)
+    assert.equal(saved.ai_model, 'summary-openai')
+    config.mode = 'tool'
+    await json('/api/settings', 'PUT', { magic_pen: config })
+    assert.deepEqual((await json('/api/settings')).magic_pen, config)
+    for (const bad of [null, [], { ...config, mode: 'mcp' }, { ...config, models: {} }, { ...config, customModels: { token: 'invalid' } }]) {
+      assert.equal((await request('/api/settings', 'PUT', { magic_pen: bad })).status, 400)
+      assert.deepEqual((await json('/api/settings')).magic_pen, config)
+    }
   } finally { run("DELETE FROM settings WHERE user_id = 'local'") }
 })

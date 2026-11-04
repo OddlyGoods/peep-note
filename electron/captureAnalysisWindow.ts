@@ -1,3 +1,4 @@
+import { ApiVisionError } from './apiVision'
 import { BrowserWindow, screen, shell } from 'electron'
 import path from 'path'
 import fs from 'fs'
@@ -11,6 +12,7 @@ export interface AnalysisWindowOptions {
   directory: string
   language: CaptureLanguage
   model: string
+  provider?: string
   theme: 'dark' | 'light'
   dev: boolean
   capture: () => Promise<AnalysisCapture | null>
@@ -29,7 +31,7 @@ export class CaptureAnalysisWindow {
   private busyCapture = false
 
   constructor(private options: AnalysisWindowOptions) {
-    this.value = { status: 'waiting', maximized: false, language: options.language, model: options.model, turns: [], question: '', draft: '', startedAt: null,
+    this.value = { status: 'waiting', maximized: false, language: options.language, model: options.model, provider: options.provider ?? 'Codex', turns: [], question: '', draft: '', startedAt: null,
       error: null, capturing: false, saving: false, saved: false,
       workspaceId: options.workspaces.find(item => item.isDefault)?.id ?? null, workspaces: options.workspaces }
     const workArea = screen.getDisplayMatching(options.firstCapture.bounds).workArea
@@ -74,10 +76,10 @@ export class CaptureAnalysisWindow {
         onText: draft => { if (!controller.signal.aborted) this.publish({ draft }) } })
       if (controller.signal.aborted || this.disposed) return
       this.publish({ status: 'ready', draft: '', saved: false,
-        turns: [...this.value.turns, { question, answer, elapsedMs: Date.now() - startedAt, imageCount: this.images.length, model: this.value.model }] })
+        turns: [...this.value.turns, { question, answer, elapsedMs: Date.now() - startedAt, imageCount: this.images.length, model: this.value.model, provider: this.value.provider }] })
     } catch (error) {
       if (!controller.signal.aborted && !this.disposed) this.publish({ status: 'error', draft: '',
-        error: error instanceof CodexVisionError ? error.code : 'failed' })
+        error: error instanceof CodexVisionError || error instanceof ApiVisionError ? error.code : 'failed' })
     } finally { if (this.controller === controller) this.controller = null }
   }
   async retry() { if (!this.isBusy && this.value.status === 'error' && this.value.error !== 'context_limit') await this.run(this.value.question) }

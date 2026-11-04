@@ -65,7 +65,7 @@ export default function CaptureAnalysis() {
       {state?.turns.map((turn, index) => <section className="capture-analysis-turn" key={index}>
         {index > 0 && <p className="capture-analysis-question">{turn.question}</p>}
         <div className="markdown-content capture-analysis-markdown">{markdown(turn.answer)}</div>
-        <div className="capture-analysis-time"><Clock3 size={12} />Codex · {turn.model ?? state.model} · {(turn.elapsedMs / 1000).toFixed(1)}{copy.seconds}</div>
+        <div className="capture-analysis-time"><Clock3 size={12} />{turn.provider ?? state.provider ?? 'Codex'} · {turn.model ?? state.model} · {(turn.elapsedMs / 1000).toFixed(1)}{copy.seconds}</div>
       </section>)}
       {state?.draft && <div className="markdown-content capture-analysis-markdown">{markdown(state.draft)}</div>}
       {busy && <div className="capture-analysis-waiting" role="status"><Loader2 size={19} className="animate-spin text-violet-500" /><span>{copy.waiting}</span><span className="capture-analysis-elapsed">{elapsed}{copy.seconds}</span></div>}

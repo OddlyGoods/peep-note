@@ -1,10 +1,11 @@
 export type CaptureLanguage = 'en' | 'ko' | 'ja' | 'zh'
-export type CaptureAnalysisError = 'cli_missing' | 'login_required' | 'timeout' | 'failed' | 'context_limit'
-export interface CaptureTurn { question: string; answer: string; elapsedMs: number; imageCount?: number; model?: string }
+export type CaptureAnalysisError = 'cli_missing' | 'login_required' | 'timeout' | 'failed' | 'context_limit' | 'api_missing_key' | 'api_auth' | 'api_limit' | 'api_model' | 'api_endpoint' | 'api_failed' | 'api_network' | 'image_limit'
+export interface CaptureTurn { question: string; answer: string; elapsedMs: number; imageCount?: number; model?: string; provider?: string }
 export interface CaptureAnalysisState {
   status: 'waiting' | 'running' | 'ready' | 'error'
   language: CaptureLanguage
   model: string
+  provider?: string
   maximized: boolean
   turns: CaptureTurn[]
   question: string
@@ -29,14 +30,22 @@ export interface CaptureAnalysisApi {
 }
 export const captureAnalysisCopy = {
   en: {
-    title: 'Magic Pen', waiting: 'Waiting for Codex…', seconds: 's', followup: 'Reply', maximize: 'Maximize', restore: 'Restore',
+    title: 'Magic Pen', waiting: 'Waiting for AI…', seconds: 's', followup: 'Reply', maximize: 'Maximize', restore: 'Restore',
     save: 'Save', saved: 'Saved', saving: 'Saving…', question: 'Ask a follow-up…', send: 'Send',
     retry: 'Try again', close: 'Close', captureHint: 'Capture more information to continue this conversation.',
     initial: 'Explain the selected content directly and tell me what I should know or do next.',
     next: 'Use this newly selected content to answer your previous question or refine your explanation.',
+    api_missing_key: 'Add the provider API key in AI settings.',
+    api_auth: 'Check the provider API key and its permissions.',
+    api_limit: 'The provider usage or rate limit was reached. Try again later.',
+    api_model: 'Check the model ID and whether it supports image input.',
+    api_endpoint: 'Check the API endpoint in AI settings.',
+    api_failed: 'The API could not return an answer. Check the model, endpoint and usage limits.',
+    api_network: 'Could not connect to the AI API. Check your network and endpoint.',
+    image_limit: 'The captures are too large. Start a new conversation with a smaller area.',
     cli_missing: 'Codex CLI was not found. Install Codex CLI and run codex login, then try again.',
     login_required: 'Sign in with codex login in your terminal, then try again.',
-    timeout: 'Codex took too long to respond. Try again.', failed: 'Codex could not complete the analysis. Check your CLI login, connection and usage limits, then try again.',
+    timeout: 'The response timed out. Try again.', failed: 'The analysis could not be completed. Check your settings and connection, then try again.',
     context_limit: 'This conversation has reached its capture or text limit. Close it and start a new capture.',
     saveFailed: 'The note could not be saved. Try again.', noteTitle: 'Capture analysis',
   },
@@ -46,9 +55,17 @@ export const captureAnalysisCopy = {
     retry: '다시 시도', close: '닫기', captureHint: '필요한 정보를 다시 캡처해 대화를 이어갑니다.',
     initial: '선택한 내용의 핵심과 알아야 할 점을 바로 설명하고, 필요한 조치가 있으면 알려줘.',
     next: '새로 선택한 내용을 바탕으로 이전 질문에 답하거나 설명을 보완해줘.',
+    api_missing_key: 'AI 설정에서 해당 공급처의 API 키를 입력해 주세요.',
+    api_auth: 'API 키와 사용 권한을 확인해 주세요.',
+    api_limit: '공급처 사용 한도에 도달했습니다. 잠시 후 다시 시도해 주세요.',
+    api_model: '모델 ID와 이미지 입력 지원 여부를 확인해 주세요.',
+    api_endpoint: 'AI 설정의 API 주소를 확인해 주세요.',
+    api_failed: 'API 응답을 받지 못했습니다. 모델, API 주소와 사용 한도를 확인해 주세요.',
+    api_network: 'AI API에 연결하지 못했습니다. 네트워크와 API 주소를 확인해 주세요.',
+    image_limit: '선택한 영역의 용량이 너무 큽니다. 더 작은 영역으로 새 대화를 시작해 주세요.',
     cli_missing: 'Codex CLI를 찾을 수 없습니다. 설치 후 터미널에서 codex login으로 로그인하고 다시 시도해 주세요.',
     login_required: '터미널에서 codex login으로 로그인한 뒤 다시 시도해 주세요.',
-    timeout: '응답 대기 시간이 초과되었습니다. 다시 시도해 주세요.', failed: '분석을 완료하지 못했습니다. Codex CLI 로그인, 네트워크와 사용 한도를 확인하고 다시 시도해 주세요.',
+    timeout: '응답 대기 시간이 초과되었습니다. 다시 시도해 주세요.', failed: '분석을 완료하지 못했습니다. 설정과 연결 상태를 확인하고 다시 시도해 주세요.',
     context_limit: '이 대화의 캡처 수 또는 텍스트 한도에 도달했습니다. 창을 닫고 새로 캡처해 주세요.',
     saveFailed: '메모를 저장하지 못했습니다. 다시 시도해 주세요.', noteTitle: '캡처 분석',
   },
@@ -58,9 +75,17 @@ export const captureAnalysisCopy = {
     retry: '再試行', close: '閉じる', captureHint: '追加情報をキャプチャして会話を続けます。',
     initial: '選択した内容の要点と、知っておくべきことや次にすべきことを直接説明してください。',
     next: '新しく選択した内容をもとに、前の質問に答えるか説明を補足してください。',
+    api_missing_key: 'AI設定でプロバイダーのAPIキーを入力してください。',
+    api_auth: 'APIキーと権限を確認してください。',
+    api_limit: '利用上限に達しました。しばらくして再試行してください。',
+    api_model: 'モデルIDと画像入力への対応を確認してください。',
+    api_endpoint: 'AI設定のAPIエンドポイントを確認してください。',
+    api_failed: 'APIの応答を取得できませんでした。モデルと接続設定を確認してください。',
+    api_network: 'AI APIに接続できませんでした。ネットワークとエンドポイントを確認してください。',
+    image_limit: '画像が大きすぎます。小さい範囲で新しい会話を開始してください。',
     cli_missing: 'Codex CLIが見つかりません。インストール後、codex loginでログインして再試行してください。',
     login_required: 'ターミナルでcodex loginにログインして再試行してください。',
-    timeout: '応答がタイムアウトしました。再試行してください。', failed: '分析を完了できませんでした。Codex CLIのログイン、接続、利用上限を確認してください。',
+    timeout: '応答がタイムアウトしました。再試行してください。', failed: '分析を完了できませんでした。設定と接続を確認してください。',
     context_limit: 'この会話の画像またはテキスト上限に達しました。新しくキャプチャしてください。',
     saveFailed: 'メモを保存できませんでした。再試行してください。', noteTitle: 'キャプチャ分析',
   },
@@ -70,9 +95,17 @@ export const captureAnalysisCopy = {
     retry: '重试', close: '关闭', captureHint: '截取更多信息，继续当前对话。',
     initial: '直接说明所选内容的要点，以及我需要了解的信息或下一步应该做什么。',
     next: '根据新选择的内容回答之前的问题或补充说明。',
+    api_missing_key: '请在AI设置中输入供应商的API密钥。',
+    api_auth: '请检查API密钥及其权限。',
+    api_limit: '已达到使用上限，请稍后重试。',
+    api_model: '请检查模型ID及其是否支持图像输入。',
+    api_endpoint: '请检查AI设置中的API端点。',
+    api_failed: '未能收到API回复，请检查模型、端点和使用限额。',
+    api_network: '无法连接AI API，请检查网络和端点。',
+    image_limit: '所选区域过大，请选择较小区域开始新对话。',
     cli_missing: '未找到 Codex CLI。安装后在终端运行 codex login 登录，然后重试。',
     login_required: '请在终端运行 codex login 登录后重试。',
-    timeout: '等待回复超时，请重试。', failed: '无法完成分析。请检查 Codex CLI 登录、网络和使用限额后重试。',
+    timeout: '等待回复超时，请重试。', failed: '无法完成分析。请检查设置和连接后重试。',
     context_limit: '当前对话已达到截图或文本上限，请关闭后重新截图。',
     saveFailed: '无法保存笔记，请重试。', noteTitle: '截图分析',
   },

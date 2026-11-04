@@ -1,31 +1,33 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { Check, ChevronDown, Pencil } from 'lucide-react'
 import { CAPTURE_CODEX_MODELS, isCaptureCodexModel, type CaptureCodexModel } from '../../shared/codexModels'
 import { useI18n } from '../i18n'
 import { useScreenActive } from '../lib/screenActivity'
 
 const messages = {
-  en: { title: 'Magic Pen', label: 'Codex model', hint: 'Draw around anything on your screen to get an AI explanation.', requirement: 'Uses your signed-in Codex CLI account.', invalid: 'Enter a valid model ID.' },
-  ko: { title: '매직펜', label: '코덱스 모델', hint: '화면에서 궁금한 부분을 그려 선택하면 AI가 바로 설명해 줍니다.', requirement: 'Codex CLI에 로그인한 계정을 사용합니다.', invalid: '올바른 모델 ID를 입력해 주세요.' },
-  ja: { title: 'マジックペン', label: 'Codexモデル', hint: '画面の気になる部分を囲むと、AIがその内容を説明します。', requirement: 'Codex CLIにログインしたアカウントを使用します。', invalid: '有効なモデルIDを入力してください。' },
-  zh: { title: '魔法笔', label: 'Codex 模型', hint: '圈选屏幕上想了解的内容，AI 即可为你解答。', requirement: '使用已登录的 Codex CLI 账号。', invalid: '请输入有效的模型 ID。' },
+  en: { title: 'Magic Pen', label: 'Model', hint: 'Draw around anything on your screen to get an AI explanation.', requirement: 'Uses your signed-in Codex CLI account.', invalid: 'Enter a valid model ID.' },
+  ko: { title: '매직펜', label: '모델', hint: '화면에서 궁금한 부분을 그려 선택하면 AI가 바로 설명해 줍니다.', requirement: 'Codex CLI에 로그인한 계정을 사용합니다.', invalid: '올바른 모델 ID를 입력해 주세요.' },
+  ja: { title: 'マジックペン', label: 'モデル', hint: '画面の気になる部分を囲むと、AIがその内容を説明します。', requirement: 'Codex CLIにログインしたアカウントを使用します。', invalid: '有効なモデルIDを入力してください。' },
+  zh: { title: '魔法笔', label: '模型', hint: '圈选屏幕上想了解的内容，AI 即可为你解答。', requirement: '使用已登录的 Codex CLI 账号。', invalid: '请输入有效的模型 ID。' },
 }
 
-export default function CaptureCodexSettings({ value, customValue, onChange }: { value: string; customValue?: string; onChange: (value: string, typing: boolean) => void }) {
+export default function CaptureCodexSettings({ value, customValue, onChange, modelOptions, requirement, controls }: { value: string; customValue?: string; onChange: (value: string, typing: boolean) => void; modelOptions?: readonly CaptureCodexModel[]; requirement?: string; controls?: ReactNode }) {
   const { language, t } = useI18n(), copy = messages[language]
   const active = useScreenActive()
   const id = useId()
-  const [models, setModels] = useState<CaptureCodexModel[]>(CAPTURE_CODEX_MODELS)
+  const [catalog, setModels] = useState<CaptureCodexModel[]>(CAPTURE_CODEX_MODELS)
+  const models = modelOptions ?? catalog
   const [open, setOpen] = useState(false), [customOverride, setCustomOverride] = useState<boolean | null>(null)
   const menu = useRef<HTMLDivElement>(null), trigger = useRef<HTMLButtonElement>(null)
   const custom = customOverride ?? !models.some(item => item.value === value)
   useEffect(() => { if (!active) setOpen(false) }, [active])
   useEffect(() => {
+    if (modelOptions) return
     let alive = true
     const request = window.electronAPI?.getCaptureCodexModels?.()
     if (request) void request.then(items => { if (alive && items.length) setModels(items) }).catch(() => {})
     return () => { alive = false }
-  }, [])
+  }, [modelOptions])
   useEffect(() => {
     if (!open || !active) return
     const outside = (event: PointerEvent) => { if (!menu.current?.contains(event.target as Node)) setOpen(false) }
@@ -37,6 +39,7 @@ export default function CaptureCodexSettings({ value, customValue, onChange }: {
   return <section className="card p-5" aria-labelledby={`${id}-title`}>
     <div className="flex items-center gap-2 mb-4"><Pencil className="w-4 h-4 shrink-0 text-violet-400" aria-hidden="true" /><h2 id={`${id}-title`} className="text-sm font-semibold text-white">{copy.title}</h2></div>
     <p className="text-xs text-gray-400 leading-relaxed mb-4">{copy.hint}</p>
+    {controls}
     <label id={`${id}-label`} className="block text-xs font-medium text-gray-400 mb-2">{copy.label}</label>
     <div ref={menu} className="relative">
       <button ref={trigger} type="button" aria-haspopup="listbox" aria-expanded={open} aria-labelledby={`${id}-label ${id}-value`}
@@ -67,6 +70,6 @@ export default function CaptureCodexSettings({ value, customValue, onChange }: {
     {custom && <input type="text" aria-label={t('customAiModelId')} value={value} onChange={event => onChange(event.target.value, true)}
       className="input w-full font-mono text-xs mt-2" placeholder={t('customAiModelId')} autoComplete="off" spellCheck={false} autoFocus
       aria-invalid={!isCaptureCodexModel(value)} onFocus={event => event.currentTarget.select()} />}
-    <p className={`text-xs mt-2 leading-relaxed ${isCaptureCodexModel(value) ? 'text-gray-400' : 'text-red-400'}`}>{isCaptureCodexModel(value) ? copy.requirement : copy.invalid}</p>
+    <p className={`text-xs mt-2 leading-relaxed ${isCaptureCodexModel(value) ? 'text-gray-400' : 'text-red-400'}`}>{isCaptureCodexModel(value) ? (requirement ?? copy.requirement) : copy.invalid}</p>
   </section>
 }

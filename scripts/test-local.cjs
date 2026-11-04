@@ -37,3 +37,4 @@ require('../tests/ai-batching.test.ts')
 
 require('../tests/note-notification.test.ts')
 require('../tests/source-audit.test.ts')
+require('../tests/api-vision.test.ts')

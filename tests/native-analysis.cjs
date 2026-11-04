@@ -17,14 +17,14 @@ app.whenReady().then(async () => {
   const pixels = Buffer.alloc(80 * 40 * 4, 180)
   fs.writeFileSync(image, nativeImage.createFromBitmap(pixels, {width:80,height:40}).toPNG())
   const inputs = [], outputs = [], saves = []
-  const session = new CaptureAnalysisWindow({firstCapture:{filePath:image,bounds:{x:600,y:120,width:120,height:100}},directory,
+  let session = new CaptureAnalysisWindow({firstCapture:{filePath:image,bounds:{x:600,y:120,width:120,height:100}},directory,
     language:'ko',model:'gpt-6.1-sol',theme:'light',dev:false,workspaces:[{id:'general',name:'General',isDefault:true},{id:'project',name:'Project',isDefault:false}],
     analyze: input => { inputs.push(input); return new Promise((resolve,reject) => { outputs.push(resolve); input.signal.addEventListener('abort',()=>reject(new Error('cancelled'))) }) },
     capture:async()=>{const filePath=path.join(directory,'second.png');fs.copyFileSync(image,filePath);return {filePath,bounds:{x:200,y:200,width:80,height:40}}},
     save:(...args)=>{saves.push(args);return 'saved-note'},onClosed:()=>{},
   })
   ipcMain.handle('capture-analysis-action',(event,action,value)=>{assert.equal(event.sender,session.window.webContents);if(action==='state')return session.state;if(action==='save')return session.save(value);if(action==='capture')return session.capture(value);if(action==='ask')return session.ask(value);if(action==='close')return session.close();if(action==='retry')return session.retry();if(action==='maximize')return session.maximize()})
-  const js = code => session.window.webContents.executeJavaScript(code)
+  const js = code => session.window.webContents.executeJavaScript(code).catch(error => { console.error("Response fixture expression:", code); throw error })
   await until(()=>session.window.isVisible())
   await until(()=>js('!!document.querySelector(".capture-analysis-waiting")'))
   assert.equal(session.state.status,'running')
@@ -78,12 +78,25 @@ app.whenReady().then(async () => {
   session.close();await third
   assert.equal(inputs[2].signal.aborted,true)
   assert.ok(session.window.isDestroyed())
+  const apiDir = path.join(__dirname, 'api-captures'); fs.mkdirSync(apiDir)
+  const apiImage = path.join(apiDir, 'first.png');fs.writeFileSync(apiImage,nativeImage.createFromBitmap(pixels,{width:80,height:40}).toPNG())
+  session = new CaptureAnalysisWindow({firstCapture:{filePath:apiImage,bounds:{x:300,y:120,width:80,height:40}},directory:apiDir,
+    language:'ko',model:'qwen3.8-max',provider:'Qwen',theme:'light',dev:false,workspaces:[],capture:async()=>null,
+    analyze:async()=> 'API answer',save:()=> 'api-note',onClosed:()=>{}})
+  await until(()=>session.window.isVisible())
+  await until(()=>js('!!document.querySelector(".capture-analysis-time")'))
+  assert.match(await js('document.querySelector(".capture-analysis-time").textContent'), /Qwen · qwen3.8-max/)
+  assert.equal(session.state.turns[0].provider,'Qwen')
+  assert.equal(await js('document.querySelector(".capture-analysis-header").textContent.includes("Qwen")'),false)
+  assert.ok(!JSON.stringify(session.state).includes('apiKey'))
+  session.close()
   const models = await getCaptureCodexModels()
   assert.ok(models.length && models.every(item => item.value && item.label))
   const settings = new BrowserWindow({width:740,height:600,show:false,webPreferences:{preload:path.join(__dirname,'settingsPreload.js'),contextIsolation:true,nodeIntegration:false}})
   ipcMain.handle('get-capture-codex-models',()=>models)
+  settings.webContents.on('console-message', (_event, level, message) => { if (level >= 2) console.error('Settings renderer:', message) })
   await settings.loadFile(path.join(__dirname,'model-picker.html')); settings.show()
-  const settingsJs = code => settings.webContents.executeJavaScript(code)
+  const settingsJs = code => settings.webContents.executeJavaScript(code).catch(error => { console.error("Settings fixture expression:", code); throw error })
   await until(()=>settingsJs('!!document.querySelector(".settings-select-trigger")'))
   await settingsJs('document.querySelector(".settings-select-trigger").click()')
   await until(()=>settingsJs('!!document.querySelector("[role=listbox]")'))
@@ -114,8 +127,26 @@ app.whenReady().then(async () => {
   await settingsJs('Array.from(document.querySelectorAll("[role=option]")).find(el=>el.textContent.includes("30")).click()')
   await until(()=>settingsJs('window.retentionDays === 30'))
   fs.writeFileSync('/tmp/peepnote-settings-selects.png',(await settings.webContents.capturePage()).toPNG())
+  // The API picker follows the current provider and keeps each custom value separate from Codex.
+  await settingsJs('Array.from(document.querySelectorAll("[aria-pressed]")).find(el=>el.textContent==="AI API").click()')
+  await until(()=>settingsJs('window.magicPen?.mode === "api"'))
+  await settingsJs('document.querySelector(".settings-select-trigger").click()')
+  await until(()=>settingsJs('document.querySelector("[role=listbox]")?.textContent.includes("Qwen")'))
+  await settingsJs('Array.from(document.querySelectorAll("[role=option]")).at(-1).click()')
+  await until(()=>settingsJs('!!document.querySelector("input")'))
+  await settingsJs(`{const input=document.querySelector('input');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'qwen-custom-vision');input.dispatchEvent(new Event('input',{bubbles:true}));}`)
+  await until(()=>settingsJs('window.magicPen?.models.qwen === "qwen-custom-vision"'))
+  await settingsJs('document.getElementById("qa-openai").click()')
+  await until(()=>settingsJs('document.querySelector(".settings-select-trigger").textContent.includes("Luna")'))
+  await settingsJs('document.getElementById("qa-qwen").click()')
+  await until(()=>settingsJs('document.querySelector("input")?.value === "qwen-custom-vision"'))
+  fs.writeFileSync('/tmp/peepnote-magic-api-settings.png',(await settings.webContents.capturePage()).toPNG())
+  await settingsJs('Array.from(document.querySelectorAll("[aria-pressed]")).find(el=>el.textContent.includes("AI 도구")).click()')
+  await until(()=>settingsJs('document.querySelector("input")?.value === "future-vision-model"'))
+  assert.equal(await settingsJs('window.magicPen.models.qwen'),'qwen-custom-vision')
+  assert.equal(await settingsJs('window.magicPen.customModels.codex'),'future-vision-model')
   settings.close()
   clearTimeout(deadline)
-  console.log('ANALYSIS_QA_SUCCESS waiting timer, model labels/catalog/selection/custom input, Markdown, position, dragging, follow-up capture/context, save, close/cancel')
+  console.log('ANALYSIS_QA_SUCCESS waiting timer, provider metadata, API/tool switching, scoped custom models, model catalog/selection, Markdown, position, dragging, follow-up capture/context, save, close/cancel')
   app.exit(0)
 }).catch(error=>{console.error(error);app.exit(1)})

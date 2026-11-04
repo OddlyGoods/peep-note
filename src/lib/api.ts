@@ -239,6 +239,7 @@ export interface Settings {
   theme: string
   ai_provider: 'openai' | 'anthropic' | 'gemini' | 'qwen'
   ai_model: string
+  magic_pen?: import('../../shared/magicPen').MagicPenSettings
   capture_codex_model?: string
   ai_context_length?: number
   ai_custom_models?: import('../../shared/customModelMemory').CustomModelMemory

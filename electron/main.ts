@@ -1,3 +1,6 @@
+import { resolveMagicPen } from '../shared/magicPen'
+import { runApiVision } from './apiVision'
+import type { AiProvider } from '../shared/aiModels'
 import { NoteNotification } from './noteNotification'
 import {
   app,
@@ -39,7 +42,6 @@ import { createCaptureAction } from './captureAction'
 import { createLiveCapture } from './liveCapture'
 import { parseLassoCapture } from '../shared/lassoCapture'
 import { getCaptureCodexModels } from './codexModelCatalog'
-import { normalizeCaptureCodexModel } from '../shared/codexModels'
 import { CaptureAnalysisWindow, type AnalysisCapture } from './captureAnalysisWindow'
 import { saveCaptureAnalysis } from '../server/captureAnalysisNotes'
 import { LOCAL_PROFILE_ID } from '../server/localProfile'
@@ -132,8 +134,12 @@ async function startCaptureAnalysis() {
     const language: CaptureLanguage = ['ko', 'ja', 'zh'].includes(String(settings.language)) ? settings.language as CaptureLanguage : 'en'
     const workspaces = queryAll<{ id: string; name: string; is_default: number }>('SELECT id, name, is_default FROM workspaces WHERE user_id = ? ORDER BY is_default DESC, created_at', [LOCAL_PROFILE_ID])
       .map(item => ({ id: item.id, name: item.name, isDefault: !!item.is_default }))
-    const model = normalizeCaptureCodexModel(queryOne<{ capture_codex_model: string }>('SELECT capture_codex_model FROM settings WHERE user_id = ?', [LOCAL_PROFILE_ID])?.capture_codex_model)
-    const session = new CaptureAnalysisWindow({ model, firstCapture, directory, language, theme: settings.theme === 'dark' ? 'dark' : 'light', dev: isDev,
+    const aiSettings = queryOne<Record<string, any>>('SELECT * FROM settings WHERE user_id = ?', [LOCAL_PROFILE_ID])
+    const selection = resolveMagicPen(aiSettings)
+    const { model } = selection
+    const apiConfig = { provider: selection.provider as AiProvider, apiKey: String(aiSettings?.[`${selection.provider}_api_key`] ?? ''), baseUrl: aiSettings?.qwen_base_url }
+
+    const session = new CaptureAnalysisWindow({ model, provider: selection.label, analyze: selection.mode === 'api' ? input => runApiVision(input, apiConfig) : undefined, firstCapture, directory, language, theme: settings.theme === 'dark' ? 'dark' : 'light', dev: isDev,
       workspaces, capture: () => captureForAnalysis(directory),
       save: (turns, images, workspaceId) => {
         const id = saveCaptureAnalysis(turns, images, screenshotsDir, language, workspaceId)

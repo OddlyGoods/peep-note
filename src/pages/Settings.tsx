@@ -11,8 +11,8 @@ import { dataStorageErrorKey } from '../../shared/dataStorage'
 import DataLocationField from '../components/DataLocationField'
 import RetentionSelect from '../components/RetentionSelect'
 import { getCustomModelMemory, type CustomModelMemory } from '../../shared/customModelMemory'
-import CaptureCodexSettings from '../components/CaptureCodexSettings'
-import { DEFAULT_CAPTURE_CODEX_MODEL, isCaptureCodexModel, normalizeCaptureCodexModel } from '../../shared/codexModels'
+import MagicPenSettings from '../components/MagicPenSettings'
+import { getMagicPenSettings, magicPenDraft } from '../../shared/magicPen'
 import AiConnectionTest from '../components/AiConnectionTest'
 import McpPanel from '../components/McpPanel'
 import RemotePanel from '../components/RemotePanel'
@@ -208,7 +208,7 @@ export default function Settings() {
   const [loadFailed, setLoadFailed] = useState(false)
   const [aiProvider, setAiProvider] = useState<AiProvider>('openai')
   const [customModelMemory, setCustomModelMemory] = useState<CustomModelMemory>({})
-  const [captureCodexModel, setCaptureCodexModel] = useState(DEFAULT_CAPTURE_CODEX_MODEL)
+  const [magicPen, setMagicPen] = useState(() => getMagicPenSettings())
   const [captureModelTyping, setCaptureModelTyping] = useState(false)
   const [aiContextLength, setAiContextLength] = useState(String(DEFAULT_AI_CONTEXT_LENGTH))
   const validAiContextLength = isAiContextLength(Number(aiContextLength))
@@ -271,10 +271,10 @@ export default function Settings() {
     openai_api_key: openaiKey || null, anthropic_api_key: anthropicKey || null,
     gemini_api_key: geminiKey || null, qwen_api_key: qwenKey || null,
     qwen_base_url: qwenBaseUrl.trim() || 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
-    capture_codex_model: isCaptureCodexModel(captureCodexModel) ? captureCodexModel.trim() : undefined,
+    magic_pen: magicPenDraft(magicPen, aiProvider),
     ai_context_length: validAiContextLength ? Number(aiContextLength) : undefined,
   }), [hotkeys, selectedLanguage, autoAdvanceDateRange, fixedStartDate, trashRetentionDays,
-    openaiKey, anthropicKey, geminiKey, qwenKey, qwenBaseUrl, aiContextLength, validAiContextLength, captureCodexModel, customModelMemory])
+    openaiKey, anthropicKey, geminiKey, qwenKey, qwenBaseUrl, aiContextLength, validAiContextLength, magicPen, aiProvider, customModelMemory])
   const aiSelection = useMemo<Partial<SettingsType> | null>(() => aiModel.trim() ? ({
     ai_provider: aiProvider, ai_model: aiModel.trim(), ai_custom_models: customModelMemory,
     ai_models: Object.fromEntries(Object.entries(aiModelChoices).filter(([, choice]) => choice.model.trim()).map(([provider, choice]) => [provider, choice.model.trim()])),
@@ -294,8 +294,8 @@ export default function Settings() {
     }
     for (const key of Object.keys(draft) as (keyof SettingsType)[]) {
       if (JSON.stringify(draft[key]) === JSON.stringify(previousDraft.current[key])) continue
-      if (['ai_context_length', 'capture_codex_model'].includes(key) && draft[key] === undefined) { autosave.cancel([key]); continue }
-      const immediate = ['hotkeys', 'language', 'auto_advance_date_range', 'fixed_start_date', 'trash_retention_days'].includes(key) || (key === 'capture_codex_model' && !captureModelTyping)
+      if (['ai_context_length', 'magic_pen'].includes(key) && draft[key] === undefined) { autosave.cancel([key]); continue }
+      const immediate = ['hotkeys', 'language', 'auto_advance_date_range', 'fixed_start_date', 'trash_retention_days'].includes(key) || (key === 'magic_pen' && !captureModelTyping)
       autosave.schedule({ [key]: draft[key] }, immediate ? 0 : 500)
     }
     previousDraft.current = draft
@@ -324,7 +324,7 @@ export default function Settings() {
       setHotkeys(resolveHotkeys(s.hotkeys))
       const provider = s.ai_provider ?? 'openai'
       setAiProvider(provider)
-      setCaptureCodexModel(normalizeCaptureCodexModel(s.capture_codex_model))
+      setMagicPen(getMagicPenSettings(s.magic_pen, s.capture_codex_model, getCustomModelMemory(s.ai_custom_models).codex))
       setAiContextLength(String(normalizeAiContextLength(s.ai_context_length)))
       const models = getAiModels(s.ai_models, provider, s.ai_model)
       setCustomModelMemory(getCustomModelMemory(s.ai_custom_models, models, s.capture_codex_model))
@@ -828,9 +828,8 @@ export default function Settings() {
                 baseUrl={aiProvider === 'qwen' ? qwenBaseUrl : undefined} />
             </div>
           </section>
-          <CaptureCodexSettings value={captureCodexModel} customValue={customModelMemory.codex} onChange={(value, typing) => {
-            setCaptureCodexModel(value); setCaptureModelTyping(typing)
-            if (typing && isCaptureCodexModel(value)) setCustomModelMemory(previous => ({ ...previous, codex: value.trim() }))
+          <MagicPenSettings value={magicPen} provider={aiProvider} onChange={(value, typing) => {
+            setMagicPen(value); setCaptureModelTyping(typing)
           }} />
           <McpPanel />
         </SettingsPane>

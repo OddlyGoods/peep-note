@@ -91,7 +91,7 @@ export default function CaptureAnalysis() {
           disabled={busy || !!state?.saving || !!state?.saved} onChange={setWorkspaceId} />
         <button className="capture-primary overlay-save btn-primary" disabled={busy || !state?.turns.length || state.saving || state.saved} onClick={() => {
           setSaveFailed(false)
-          void window.captureAnalysis?.save(workspaceId ?? state?.workspaceId ?? null).then(ok => setSaveFailed(!ok)).catch(() => setSaveFailed(true))
+          void window.captureAnalysis?.save(workspaceId ?? state?.workspaceId ?? null).then(ok => { if (ok) void window.captureAnalysis?.close(); else setSaveFailed(true) }).catch(() => setSaveFailed(true))
         }}>{state?.saving ? <Loader2 size={14} className="animate-spin" /> : state?.saved ? <Check size={14} /> : <Save size={14} />}{state?.saving ? copy.saving : state?.saved ? copy.saved : copy.save}</button>
       </div>
       {saveFailed && <p role="alert" className="capture-analysis-error">{copy.saveFailed}</p>}

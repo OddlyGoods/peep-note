@@ -1,5 +1,5 @@
 export type CaptureLanguage = 'en' | 'ko' | 'ja' | 'zh'
-export type CaptureAnalysisError = 'cli_missing' | 'login_required' | 'timeout' | 'failed' | 'context_limit' | 'api_missing_key' | 'api_auth' | 'api_limit' | 'api_model' | 'api_endpoint' | 'api_failed' | 'api_network' | 'image_limit'
+export type CaptureAnalysisError = 'cli_update' | 'cli_missing' | 'login_required' | 'timeout' | 'failed' | 'context_limit' | 'api_missing_key' | 'api_auth' | 'api_limit' | 'api_model' | 'api_endpoint' | 'api_failed' | 'api_network' | 'image_limit'
 export interface CaptureTurn { question: string; answer: string; elapsedMs: number; imageCount?: number; model?: string; provider?: string }
 export interface CaptureAnalysisState {
   status: 'waiting' | 'running' | 'ready' | 'error'
@@ -43,8 +43,9 @@ export const captureAnalysisCopy = {
     api_failed: 'The API could not return an answer. Check the model, endpoint and usage limits.',
     api_network: 'Could not connect to the AI API. Check your network and endpoint.',
     image_limit: 'The captures are too large. Start a new conversation with a smaller area.',
-    cli_missing: 'Codex CLI was not found. Install Codex CLI and run codex login, then try again.',
-    login_required: 'Sign in with codex login in your terminal, then try again.',
+    cli_update: 'Update the selected AI tool CLI and try again.',
+    cli_missing: 'The selected AI tool CLI was not found. Install it and sign in, then try again.',
+    login_required: 'Sign in to the selected AI tool in your terminal, then try again.',
     timeout: 'The response timed out. Try again.', failed: 'The analysis could not be completed. Check your settings and connection, then try again.',
     context_limit: 'This conversation has reached its capture or text limit. Close it and start a new capture.',
     saveFailed: 'The note could not be saved. Try again.', noteTitle: 'Capture analysis',
@@ -63,8 +64,9 @@ export const captureAnalysisCopy = {
     api_failed: 'API 응답을 받지 못했습니다. 모델, API 주소와 사용 한도를 확인해 주세요.',
     api_network: 'AI API에 연결하지 못했습니다. 네트워크와 API 주소를 확인해 주세요.',
     image_limit: '선택한 영역의 용량이 너무 큽니다. 더 작은 영역으로 새 대화를 시작해 주세요.',
-    cli_missing: 'Codex CLI를 찾을 수 없습니다. 설치 후 터미널에서 codex login으로 로그인하고 다시 시도해 주세요.',
-    login_required: '터미널에서 codex login으로 로그인한 뒤 다시 시도해 주세요.',
+    cli_update: '선택한 AI 도구의 CLI를 업데이트한 뒤 다시 시도해 주세요.',
+    cli_missing: '선택한 AI 도구의 CLI를 찾을 수 없습니다. 설치 후 로그인하고 다시 시도해 주세요.',
+    login_required: '터미널에서 선택한 AI 도구에 로그인한 뒤 다시 시도해 주세요.',
     timeout: '응답 대기 시간이 초과되었습니다. 다시 시도해 주세요.', failed: '분석을 완료하지 못했습니다. 설정과 연결 상태를 확인하고 다시 시도해 주세요.',
     context_limit: '이 대화의 캡처 수 또는 텍스트 한도에 도달했습니다. 창을 닫고 새로 캡처해 주세요.',
     saveFailed: '메모를 저장하지 못했습니다. 다시 시도해 주세요.', noteTitle: '캡처 분석',
@@ -83,8 +85,9 @@ export const captureAnalysisCopy = {
     api_failed: 'APIの応答を取得できませんでした。モデルと接続設定を確認してください。',
     api_network: 'AI APIに接続できませんでした。ネットワークとエンドポイントを確認してください。',
     image_limit: '画像が大きすぎます。小さい範囲で新しい会話を開始してください。',
-    cli_missing: 'Codex CLIが見つかりません。インストール後、codex loginでログインして再試行してください。',
-    login_required: 'ターミナルでcodex loginにログインして再試行してください。',
+    cli_update: '選択したAIツールのCLIを更新して再試行してください。',
+    cli_missing: '選択したAIツールのCLIが見つかりません。インストールしてログインしてください。',
+    login_required: 'ターミナルで選択したAIツールにログインして再試行してください。',
     timeout: '応答がタイムアウトしました。再試行してください。', failed: '分析を完了できませんでした。設定と接続を確認してください。',
     context_limit: 'この会話の画像またはテキスト上限に達しました。新しくキャプチャしてください。',
     saveFailed: 'メモを保存できませんでした。再試行してください。', noteTitle: 'キャプチャ分析',
@@ -103,8 +106,9 @@ export const captureAnalysisCopy = {
     api_failed: '未能收到API回复，请检查模型、端点和使用限额。',
     api_network: '无法连接AI API，请检查网络和端点。',
     image_limit: '所选区域过大，请选择较小区域开始新对话。',
-    cli_missing: '未找到 Codex CLI。安装后在终端运行 codex login 登录，然后重试。',
-    login_required: '请在终端运行 codex login 登录后重试。',
+    cli_update: '请更新所选AI工具的CLI后重试。',
+    cli_missing: '未找到所选AI工具的CLI。请安装并登录后重试。',
+    login_required: '请在终端登录所选AI工具后重试。',
     timeout: '等待回复超时，请重试。', failed: '无法完成分析。请检查设置和连接后重试。',
     context_limit: '当前对话已达到截图或文本上限，请关闭后重新截图。',
     saveFailed: '无法保存笔记，请重试。', noteTitle: '截图分析',

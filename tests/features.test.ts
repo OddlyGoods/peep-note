@@ -1289,3 +1289,19 @@ test('Magic Pen mode and scoped model memories survive reload independently of s
     }
   } finally { run("DELETE FROM settings WHERE user_id = 'local'") }
 })
+
+test('Magic Pen remembers the selected tool and each tool model across settings writes and a database restart', async () => {
+  run("DELETE FROM settings WHERE user_id = 'local'")
+  try {
+    const config = getMagicPenSettings()
+    for (const tool of ['codex', 'claude-code', 'gemini-cli', 'qwen-code'] as const) {
+      config.tool = tool; config.models[tool] = `model-${tool}`; config.customModels[tool] = `custom-${tool}`
+      assert.deepEqual((await json('/api/settings', 'PUT', { magic_pen: config })).magic_pen, config)
+    }
+    await json('/api/settings', 'PUT', { ai_provider: 'qwen', ai_model: 'summary-only' })
+    getDb().close(); await initDb(root)
+    assert.deepEqual((await json('/api/settings')).magic_pen, config)
+    assert.equal((await request('/api/settings', 'PUT', { magic_pen: { ...config, tool: 'unknown-cli' } })).status, 400)
+    assert.deepEqual((await json('/api/settings')).magic_pen, config)
+  } finally { run("DELETE FROM settings WHERE user_id = 'local'") }
+})

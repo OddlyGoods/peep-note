@@ -1,3 +1,5 @@
+import { runToolVision } from './toolVision'
+import type { MagicPenTool } from '../shared/magicPenTools'
 import { resolveMagicPen } from '../shared/magicPen'
 import { runApiVision } from './apiVision'
 import type { AiProvider } from '../shared/aiModels'
@@ -139,7 +141,7 @@ async function startCaptureAnalysis() {
     const { model } = selection
     const apiConfig = { provider: selection.provider as AiProvider, apiKey: String(aiSettings?.[`${selection.provider}_api_key`] ?? ''), baseUrl: aiSettings?.qwen_base_url }
 
-    const session = new CaptureAnalysisWindow({ model, provider: selection.label, analyze: selection.mode === 'api' ? input => runApiVision(input, apiConfig) : undefined, firstCapture, directory, language, theme: settings.theme === 'dark' ? 'dark' : 'light', dev: isDev,
+    const session = new CaptureAnalysisWindow({ model, provider: selection.label, analyze: selection.mode === 'api' ? input => runApiVision(input, apiConfig) : input => runToolVision(selection.provider as MagicPenTool, input), firstCapture, directory, language, theme: settings.theme === 'dark' ? 'dark' : 'light', dev: isDev,
       workspaces, capture: () => captureForAnalysis(directory),
       save: (turns, images, workspaceId) => {
         const id = saveCaptureAnalysis(turns, images, screenshotsDir, language, workspaceId)

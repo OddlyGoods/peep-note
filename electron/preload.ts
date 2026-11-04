@@ -88,6 +88,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   selectRecordingRegion: (forceChoose = false) => ipcRenderer.invoke('select-recording-region', forceChoose),
   snippingDone: (dataUrl: string) => ipcRenderer.send('snipping-done', dataUrl),
   requestLassoCapture: (selection: import('../shared/lassoCapture').LassoCaptureSelection) => ipcRenderer.send('snipping-capture-lasso', selection),
+  snippingReady: () => ipcRenderer.send('snipping-ready'),
   snippingCancel: () => ipcRenderer.send('snipping-cancel'),
   changeSnippingMonitor: () => ipcRenderer.send('snipping-change-monitor'),
   recordingRegionDone: (region: { x: number; y: number; width: number; height: number; canvasWidth: number; canvasHeight: number }) => ipcRenderer.send('recording-region-done', region),

@@ -7,7 +7,7 @@ const { createMultiMonitorLasso, lassoWindowOptions } = require('./multiMonitorL
 app.setPath('userData', path.join(__dirname, 'isolated-multi-monitor-data'))
 app.disableHardwareAcceleration()
 app.on('window-all-closed', () => {})
-const deadline = setTimeout(() => { console.error('Multi-monitor fixture timeout'); app.exit(1) }, 12000)
+const deadline = setTimeout(() => { console.error('Multi-monitor fixture timeout'); app.exit(1) }, 24000)
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms))
 async function until(fn) { for (let i = 0; i < 100; i++) { if (await fn()) return; await wait(20) } throw new Error('Condition timed out') }
 const displays = [

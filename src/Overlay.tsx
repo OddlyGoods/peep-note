@@ -1,5 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useRef, useId } from 'react'
-import { X, Maximize2, Minimize2, Camera, Video, FileText, Text as TextIcon, StopCircle, Code2, Globe, Hash, Lock, SlidersHorizontal, ChevronDown, Check, Loader2 } from 'lucide-react'
+import { X, Maximize2, Minimize2, Camera, Video, FileText, Text as TextIcon, StopCircle, Code2, Globe, Hash, Lock, ChevronDown, Check, Loader2 } from 'lucide-react'
 import { api, type Workspace } from './lib/api'
 import { useI18n } from './i18n'
 import { useTheme } from './theme'
@@ -243,8 +243,8 @@ export default function Overlay() {
     return () => document.removeEventListener('pointerdown', handlePointerDown)
   }, [workspaceMenuOpen])
 
-  const handleScreenshot = async (forceChoose = false) => {
-    const path = await window.electronAPI?.startSnipping(forceChoose)
+  const handleScreenshot = async () => {
+    const path = await window.electronAPI?.startSnipping()
     if (path) {
       setFilePath(path)
       const b64 = await window.electronAPI?.readFileAsBase64(path)
@@ -350,8 +350,8 @@ export default function Overlay() {
     } catch (e) { console.error(e) }
   }
 
-  const startRecording = async (forceChoose = false) => {
-    const region = await window.electronAPI?.selectRecordingRegion(forceChoose)
+  const startRecording = async () => {
+    const region = await window.electronAPI?.selectRecordingRegion()
     if (region) await startRecordingFromRegion(region)
   }
 
@@ -555,11 +555,6 @@ export default function Overlay() {
                   <Camera className="w-3.5 h-3.5" />
                   {t('captureScreen')}
                 </button>
-                <button onClick={() => handleScreenshot(true)} title={t('edit')} aria-label={t('edit')}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-blue-400 hover:bg-blue-500/10 hover:text-blue-300 transition-colors"
-                  style={{ border: '1px dashed rgba(96,165,250,0.3)' }}>
-                  <SlidersHorizontal className="w-3.5 h-3.5" />
-                </button>
               </div>
             )}
 
@@ -577,13 +572,6 @@ export default function Overlay() {
                   {recording ? <StopCircle className="w-3.5 h-3.5" /> : <Video className="w-3.5 h-3.5" />}
                   {recording ? `${t('stopRecording')} · ${fmt(recordingTime)}` : t('startRecording')}
                 </button>
-                {!recording && (
-                  <button onClick={() => startRecording(true)} title={t('edit')} aria-label={t('edit')}
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-orange-400 hover:bg-orange-500/10 hover:text-orange-300 transition-colors"
-                    style={{ border: '1px dashed rgba(251,146,60,0.38)' }}>
-                    <SlidersHorizontal className="w-3.5 h-3.5" />
-                  </button>
-                )}
               </div>
             )}
 

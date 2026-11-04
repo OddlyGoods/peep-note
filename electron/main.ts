@@ -43,6 +43,7 @@ import { getActiveHotkeys, resolveHotkeys } from '../shared/hotkeys'
 import { handleFavoritesShortcut } from './favoritesShortcut'
 import { createCaptureAction } from './captureAction'
 import { createMultiMonitorLasso, lassoWindowOptions } from './multiMonitorLasso'
+import { createMultiMonitorRegion, type MonitorRegionResult } from './multiMonitorRegion'
 import { getCaptureCodexModels } from './codexModelCatalog'
 import { CaptureAnalysisWindow, type AnalysisCapture } from './captureAnalysisWindow'
 import { saveCaptureAnalysis } from '../server/captureAnalysisNotes'
@@ -94,8 +95,8 @@ if (!gotLock) {
 
 let mainWindow: BrowserWindow | null = null
 let overlayWindow: BrowserWindow | null = null
-let snippingWindow: BrowserWindow | null = null
 let lassoSession: ReturnType<typeof createMultiMonitorLasso> | null = null
+let regionSession: ReturnType<typeof createMultiMonitorRegion> | null = null
 // Guard asynchronous preparation and the whole multi-monitor Magic Pen session
 // so repeated shortcuts cannot open overlapping selectors.
 let snippingPreparing = false
@@ -119,7 +120,7 @@ async function captureForAnalysis(directory: string): Promise<AnalysisCapture | 
 }
 
 async function startCaptureAnalysis() {
-  if (analysisPreparing || snippingWindow || snippingPreparing) return
+  if (analysisPreparing || snippingPreparing) return
   analysisPreparing = true
   const previous = captureAnalysis
   previous?.window.hide()
@@ -711,59 +712,67 @@ async function captureScreenshot(forceChoose = false): Promise<string | null> {
 }
 
 // ── 스니핑 도구 ────────────────────────────────────────────────────
-function attachSnippingMonitorSwitch(
-  regionWindow: BrowserWindow,
-  mode: 'screenshot' | 'recording-region',
-  onSourceChanged: (sourceId: string) => void = () => {}
-) {
-  let active = true
-  let changing = false
-  const onChange = async (event: Electron.IpcMainEvent) => {
-    if (!active || changing || event.sender !== regionWindow.webContents) return
-    changing = true
-    regionWindow.hide()
-    try {
-      const selection = await chooseCaptureDisplay(true)
-      if (!active || regionWindow.isDestroyed() || !selection) return
-      // Let the picker disappear before capturing the newly selected monitor.
+async function selectAcrossMonitors(mode: 'screenshot' | 'recording-region'): Promise<MonitorRegionResult | null> {
+  if (snippingPreparing) return null
+  snippingPreparing = true
+  const overlayWasVisible = overlayWindow?.isVisible() ?? false
+  try {
+    if (overlayWasVisible) {
+      overlayWindow?.hide()
       await new Promise(resolve => setTimeout(resolve, 150))
-      if (!active || regionWindow.isDestroyed()) return
-      const { display, index } = selection
-      const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: display.size })
-      if (!active || regionWindow.isDestroyed()) return
-      const source = sources.find(item => item.display_id === String(display.id)) ?? sources[index]
-      if (!source) return
-      regionWindow.setBounds(display.bounds)
-      onSourceChanged(source.id)
-      regionWindow.webContents.send('snipping-init', {
-        dataUrl: source.thumbnail.toDataURL(), mode,
-        language: loadSettings().language,
-        width: display.bounds.width, height: display.bounds.height
-      })
-    } catch (error) {
-      console.error('Snipping monitor change error:', error)
-    } finally {
-      changing = false
-      if (active && !regionWindow.isDestroyed()) {
-        regionWindow.show()
-        regionWindow.focus()
+    }
+    const displays = screen.getAllDisplays()
+    if (!displays.length) return null
+    const snapshots = new Map<number, string>()
+    if (mode === 'screenshot') {
+      // Take every monitor's still image in one request, before showing any overlay.
+      const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: {
+        width: Math.max(...displays.map(display => display.size.width)),
+        height: Math.max(...displays.map(display => display.size.height)),
+      } })
+      for (const display of displays) {
+        const source = sources.find(item => item.display_id === String(display.id))
+          ?? (displays.length === 1 && sources.length === 1 ? sources[0] : undefined)
+        if (!source || source.thumbnail.isEmpty()) throw new Error('Display snapshot is unavailable')
+        snapshots.set(display.id, source.thumbnail.toDataURL())
       }
     }
-  }
-  ipcMain.on('snipping-change-monitor', onChange)
-  return () => {
-    active = false
-    ipcMain.removeListener('snipping-change-monitor', onChange)
+    regionSession = createMultiMonitorRegion({ mode, displays, snapshots,
+      preferredDisplayId: screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).id,
+      language: loadSettings().language ?? 'en', ipc: ipcMain, screen,
+      createWindow: display => new BrowserWindow({ ...lassoWindowOptions(display),
+        transparent: mode === 'recording-region', backgroundColor: mode === 'screenshot' ? '#000000' : '#00000000',
+        webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false },
+      }),
+      load: window => window.loadURL((isDev ? 'http://localhost:5173/snipping.html' : 'app://dist/snipping.html')
+        + (mode === 'recording-region' ? '?live=1&mode=recording-region' : '')),
+      onError: error => console.error('Region selector error:', error),
+    })
+    return await regionSession.result
+  } catch (error) {
+    console.error('Region selection error:', error)
+    return null
+  } finally {
+    regionSession?.close()
+    regionSession = null
+    snippingPreparing = false
+    if (overlayWasVisible) overlayWindow?.show()
   }
 }
 
-async function startSnipping(forceChoose = false, shape: 'rectangle' | 'lasso' = 'rectangle', target?: {
+async function startSnipping(_forceChoose = false, shape: 'rectangle' | 'lasso' = 'rectangle', target?: {
   directory: string
   onBounds: (bounds: { x: number; y: number; width: number; height: number }) => void
 }): Promise<string | null> {
-  if (snippingWindow || snippingPreparing) return null
+  if (shape === 'rectangle') {
+    const result = await selectAcrossMonitors('screenshot')
+    if (result?.mode !== 'screenshot') return null
+    const filepath = path.join(screenshotsDir, `screenshot_${Date.now()}.png`)
+    try { fs.writeFileSync(filepath, Buffer.from(result.dataUrl.split(',')[1], 'base64')); return filepath }
+    catch (error) { console.error('Screenshot save error:', error); return null }
+  }
+  if (snippingPreparing) return null
   snippingPreparing = true
-
   // Magic Pen is ready on every monitor at once; no saved monitor or picker.
   // Keep the capture guard for the entire session so rectangle/recording
   // shortcuts cannot open another selector while these windows are active.
@@ -804,72 +813,7 @@ async function startSnipping(forceChoose = false, shape: 'rectangle' | 'lasso' =
     }
   }
 
-  let selection: { display: Electron.Display; index: number } | null
-  try { selection = await chooseCaptureDisplay(forceChoose) }
-  catch (err) {
-    snippingPreparing = false
-    console.error('Capture display selection error:', err)
-    return null
-  }
-  if (!selection) { snippingPreparing = false; return null }
-  const { display, index } = selection
-  const { x, y, width, height } = display.bounds
-  const overlayWasVisible = overlayWindow?.isVisible() ?? false
-  if (overlayWasVisible) overlayWindow?.hide()
-  await new Promise(r => setTimeout(r, 150))
-
-  let dataUrl: string
-  try {
-    const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: display.size })
-    const source = sources.find(item => item.display_id === String(display.id)) ?? sources[index] ?? sources[0]
-    if (!source) throw new Error('No desktop capture source')
-    dataUrl = source.thumbnail.toDataURL()
-  } catch (err) {
-    snippingPreparing = false
-    if (overlayWasVisible) overlayWindow?.show()
-    console.error('Desktop capture source error:', err)
-    return null
-  }
-  const regionWindow = snippingWindow = new BrowserWindow({
-    x, y, width, height, frame: false, alwaysOnTop: true, skipTaskbar: true, resizable: false, movable: false,
-    transparent: false, backgroundColor: '#000000', hasShadow: true,
-    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false },
-  })
-  snippingPreparing = false
-  regionWindow.webContents.once('did-finish-load', () => {
-    if (!regionWindow.isDestroyed()) regionWindow.webContents.send('snipping-init', { dataUrl, width, height, live: false, mode: 'screenshot', language: loadSettings().language })
-  })
-  void regionWindow.loadURL(isDev ? 'http://localhost:5173/snipping.html' : 'app://dist/snipping.html')
-
-  return new Promise(resolve => {
-    const removeMonitorSwitch = attachSnippingMonitorSwitch(regionWindow, 'screenshot')
-    let settled = false
-    const finish = (filepath: string | null) => {
-      if (settled) return
-      settled = true
-      removeMonitorSwitch()
-      ipcMain.removeListener('snipping-done', onDone)
-      ipcMain.removeListener('snipping-cancel', onCancel)
-      regionWindow.removeListener('closed', onClosed)
-      if (!regionWindow.isDestroyed()) regionWindow.close()
-      snippingWindow = null
-      if (overlayWasVisible) overlayWindow?.show()
-      resolve(filepath)
-    }
-    const onDone = (event: Electron.IpcMainEvent, croppedDataUrl: string) => {
-      if (event.sender !== regionWindow.webContents || !regionWindow.isVisible()) return
-      const filepath = path.join(screenshotsDir, `screenshot_${Date.now()}.png`)
-      try {
-        fs.writeFileSync(filepath, Buffer.from(croppedDataUrl.replace(/^data:image\/png;base64,/, ''), 'base64'))
-        finish(filepath)
-      } catch { finish(null) }
-    }
-    const onClosed = () => finish(null)
-    const onCancel = (event: Electron.IpcMainEvent) => { if (event.sender === regionWindow.webContents) finish(null) }
-    ipcMain.on('snipping-done', onDone)
-    ipcMain.on('snipping-cancel', onCancel)
-    regionWindow.once('closed', onClosed)
-  })
+  return null
 }
 
 type RecordingRegion = {
@@ -882,102 +826,18 @@ type RecordingRegion = {
   canvasHeight: number
 }
 
-async function selectRecordingRegion(forceChoose = false): Promise<RecordingRegion | null> {
-  if (snippingWindow || snippingPreparing) return null
+async function selectRecordingRegion(_forceChoose = false): Promise<RecordingRegion | null> {
+  const selection = await selectAcrossMonitors('recording-region')
+  if (selection?.mode !== 'recording-region') return null
   snippingPreparing = true
-
-  let selection: { display: Electron.Display; index: number } | null
   try {
-    selection = await chooseCaptureDisplay(forceChoose)
-  } catch (err) {
-    snippingPreparing = false
-    console.error('Recording display selection error:', err)
-    return null
-  }
-  if (!selection) {
-    snippingPreparing = false
-    return null
-  }
-  const { display, index } = selection
-  const { x, y, width, height } = display.bounds
-  const overlayWasVisible = overlayWindow?.isVisible() ?? false
-  if (overlayWasVisible) overlayWindow?.hide()
-  await new Promise(resolve => setTimeout(resolve, 150))
-
-  let sources: Electron.DesktopCapturerSource[]
-  try {
-    sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: display.size })
-  } catch (err) {
-    snippingPreparing = false
-    if (overlayWasVisible) overlayWindow?.show()
-    console.error('Recording capture source error:', err)
-    return null
-  }
-  const source = sources.find(item => item.display_id === String(display.id)) ?? sources[index] ?? sources[0]
-  if (!source) {
-    snippingPreparing = false
-    if (overlayWasVisible) overlayWindow?.show()
-    return null
-  }
-
-  snippingWindow = new BrowserWindow({
-    x, y, width, height,
-    frame: false,
-    alwaysOnTop: true,
-    skipTaskbar: true,
-    resizable: false,
-    movable: false,
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true,
-      nodeIntegration: false
-    }
-  })
-  snippingPreparing = false
-  if (isDev) snippingWindow.loadURL('http://localhost:5173/snipping.html')
-  else snippingWindow.loadURL('app://dist/snipping.html')
-  snippingWindow.webContents.once('did-finish-load', () => {
-    snippingWindow?.webContents.send('snipping-init', { dataUrl: source.thumbnail.toDataURL(), mode: 'recording-region', width, height, language: loadSettings().language })
-    snippingWindow?.show()
-    snippingWindow?.focus()
-  })
-
-  return new Promise(resolve => {
-    const regionWindow = snippingWindow!
-    let sourceId = source.id
-    let settled = false
-    const removeMonitorSwitch = attachSnippingMonitorSwitch(regionWindow, 'recording-region', id => { sourceId = id })
-    const finish = (region: Omit<RecordingRegion, 'sourceId'> | null) => {
-      if (settled) return
-      settled = true
-      removeMonitorSwitch()
-      ipcMain.removeListener('recording-region-done', onDone)
-      ipcMain.removeListener('snipping-cancel', onCancel)
-      regionWindow?.webContents.removeListener('before-input-event', onBeforeInput)
-      regionWindow.removeListener('closed', onCancel)
-      if (!regionWindow.isDestroyed()) regionWindow.close()
-      snippingWindow = null
-      if (overlayWasVisible) overlayWindow?.show()
-      resolve(region ? { sourceId, ...region } : null)
-    }
-    const onDone = (_event: Electron.IpcMainEvent, region: Omit<RecordingRegion, 'sourceId'>) => {
-      if (_event.sender !== regionWindow.webContents || !regionWindow.isVisible()) return
-      const valid = region && [region.x, region.y, region.width, region.height, region.canvasWidth, region.canvasHeight]
-        .every(value => Number.isFinite(value)) && region.width >= 5 && region.height >= 5
-      finish(valid ? region : null)
-    }
-    const onCancel = () => finish(null)
-    const onBeforeInput = (event: Electron.Event, input: Electron.Input) => {
-      if (input.type === 'keyDown' && input.key === 'Escape') {
-        event.preventDefault()
-        onCancel()
-      }
-    }
-    ipcMain.on('recording-region-done', onDone)
-    ipcMain.once('snipping-cancel', onCancel)
-    regionWindow?.webContents.on('before-input-event', onBeforeInput)
-    regionWindow.once('closed', onCancel)
-  })
+    // Only resolve a stream ID after selection. No still image is requested for recording.
+    const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 0, height: 0 } })
+    const source = sources.find(item => item.display_id === String(selection.displayId))
+      ?? (screen.getAllDisplays().length === 1 && sources.length === 1 ? sources[0] : undefined)
+    return source ? { sourceId: source.id, ...selection.region } : null
+  } catch (error) { console.error('Recording source error:', error); return null }
+  finally { snippingPreparing = false }
 }
 
 // ── 글로벌 단축키 등록 ────────────────────────────────────────────────
@@ -1025,7 +885,7 @@ function registerHotkeys() {
 
         // Do not show and immediately hide the overlay before taking the
         // desktop thumbnail: on some Linux multi-monitor setups that leaves
-        // part of the source black. Pick the region first, then open it.
+        // part of the source black. Select the live region first, then open it.
         const region = await selectRecordingRegion()
         if (!region) return
         overlayWindow?.show()
@@ -1210,7 +1070,7 @@ function setupIPC() {
       mainWindow?.webContents.send('language-changed', language)
       overlayWindow?.webContents.send('language-changed', language)
       quickSwitchWindow?.webContents.send('language-changed', language)
-      snippingWindow?.webContents.send('language-changed', language)
+      regionSession?.setLanguage(language)
       lassoSession?.setLanguage(language)
     }
     const theme = (settings as { theme?: unknown }).theme
@@ -1258,7 +1118,7 @@ function setupIPC() {
 
   ipcMain.handle('change-data-location', async (event, target: unknown): Promise<DataLocationResult> => {
     if (event.sender !== mainWindow?.webContents || typeof target !== 'string') return { status: 'error', error: 'unavailable' }
-    if (changingDataLocation || recordingWindows.size || snippingPreparing || snippingWindow || capturePickerWindow
+    if (changingDataLocation || recordingWindows.size || snippingPreparing || capturePickerWindow
       || updateController.snapshot().status === 'installing') return { status: 'error', error: 'busy' }
     try {
       scheduleDataLocation(profilePath, dataDirectory, target)
@@ -1457,6 +1317,8 @@ function setupAutoUpdater() {
     }
   })
   app.on('before-quit', () => {
+    regionSession?.close()
+    lassoSession?.close()
     captureAnalysis?.close()
     noteNotifications.dismiss()
     if (updateController.snapshot().status !== 'installing') return
@@ -1476,7 +1338,7 @@ function setupAutoUpdater() {
 // After suspend/resume, some Linux GPU/Wayland compositor combinations can
 // retain the last Chromium frame until a repaint is explicitly requested.
 function refreshWindowsAfterResume() {
-  const windows = [mainWindow, overlayWindow, quickSwitchWindow, snippingWindow, ...(lassoSession?.windows ?? [])]
+  const windows = [mainWindow, overlayWindow, quickSwitchWindow, ...(lassoSession?.windows ?? []), ...(regionSession?.windows ?? [])]
   for (const win of windows) {
     if (win && !win.isDestroyed()) requestWindowRepaint(win)
   }

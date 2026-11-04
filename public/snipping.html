@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <script data-live-mode>if (new URLSearchParams(location.search).get("live") === "1") document.documentElement.classList.add("live-lasso")</script>
+  <script data-live-mode>if (new URLSearchParams(location.search).get("live") === "1") { document.documentElement.classList.add("live-selector"); if (new URLSearchParams(location.search).get("mode") !== "recording-region") document.documentElement.classList.add("live-lasso") }</script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { width: 100%; height: 100%; overflow: hidden; background: #000; cursor: crosshair; user-select: none; touch-action: none; }
     /* One alpha step keeps the transparent selector hit-testable on Windows
        while letting the real desktop remain visible and keep updating. */
-    html.live-lasso, html.live-lasso body { background: rgba(0,0,0,0.004); }
+    html.live-selector, html.live-selector body { background: rgba(0,0,0,0.004); }
     /* The hotspot sits on the pen tip, not at the image's top-left corner. */
     html.live-lasso, html.live-lasso body, html.live-lasso canvas {
       cursor: url('./cursors/ai-pen-32.png') 5 27, crosshair;
@@ -33,7 +33,7 @@
       gap: 12px;
       white-space: nowrap;
     }
-    html.live-lasso #hint { top: 48px; }
+    html.live-selector #hint { top: 48px; }
     #change-monitor {
       pointer-events: auto;
       cursor: pointer;
@@ -77,6 +77,7 @@
     let recordingRegionMode = false
     let lassoMode = false
     let liveLassoMode = false
+    let liveMode = false
     let pendingSelection = null
     let points = []
     let pointerId = null
@@ -110,17 +111,19 @@
       ctx.clearRect(0, 0, canvas.width, canvas.height)
       resetDrag()
       lassoMode = typeof payload === 'object' && payload?.mode === 'lasso'
-      liveLassoMode = lassoMode && payload?.live === true
-      document.getElementById('change-monitor').style.display = payload?.canChangeMonitor === false ? 'none' : ''
-      document.getElementById('hint').style.top = Math.max(liveLassoMode ? 48 : 14, Number(payload?.hintTop) || 0) + 'px'
-      document.documentElement.classList.toggle('live-lasso', liveLassoMode)
       recordingRegionMode = typeof payload === 'object' && payload?.mode === 'recording-region'
+      liveMode = (lassoMode || recordingRegionMode) && payload?.live === true
+      liveLassoMode = lassoMode && liveMode
+      document.getElementById('change-monitor').style.display = payload?.canChangeMonitor === false ? 'none' : ''
+      document.getElementById('hint').style.top = Math.max(liveMode ? 48 : 14, Number(payload?.hintTop) || 0) + 'px'
+      document.documentElement.classList.toggle('live-selector', liveMode)
+      document.documentElement.classList.toggle('live-lasso', liveLassoMode)
       applyLanguage(typeof payload === 'object' && payload?.language ? payload.language : language)
-      canvas.width = liveLassoMode ? window.innerWidth : payload?.width || window.innerWidth
-      canvas.height = liveLassoMode ? window.innerHeight : payload?.height || window.innerHeight
+      canvas.width = liveMode ? window.innerWidth : payload?.width || window.innerWidth
+      canvas.height = liveMode ? window.innerHeight : payload?.height || window.innerHeight
       canvas.style.width = canvas.width + 'px'
       canvas.style.height = canvas.height + 'px'
-      if (liveLassoMode) { draw(); return }
+      if (liveMode) { draw(); window.electronAPI.snippingReady?.(); return }
       const image = new Image()
       pendingImage = image
       image.onload = () => {
@@ -131,6 +134,7 @@
         canvas.style.width = canvas.width + 'px'
         canvas.style.height = canvas.height + 'px'
         draw()
+        window.electronAPI.snippingReady?.()
       }
       image.onerror = () => { if (pendingImage === image) window.electronAPI.snippingCancel() }
       image.src = dataUrl
@@ -140,7 +144,7 @@
       pendingImage = null
       pendingSelection = null
       resetDrag()
-      if (liveLassoMode) {
+      if (liveMode) {
         canvas.width = window.innerWidth; canvas.height = window.innerHeight
         canvas.style.width = canvas.width + 'px'; canvas.style.height = canvas.height + 'px'
       }
@@ -171,9 +175,9 @@
     })
 
     function draw() {
-      if (!img && !liveLassoMode) return
+      if (!img && !liveMode) return
       ctx.clearRect(0, 0, canvas.width, canvas.height)
-      if (!liveLassoMode) {
+      if (!liveMode) {
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
         ctx.fillStyle = 'rgba(0,0,0,0.5)'
         ctx.fillRect(0, 0, canvas.width, canvas.height)
@@ -212,7 +216,10 @@
         ctx.globalCompositeOperation = 'destination-out'
         ctx.fillRect(x, y, w, h)
         ctx.restore()
-        if (w > 0 && h > 0) ctx.drawImage(img, x, y, w, h, x, y, w, h)
+        if (!liveMode && w > 0 && h > 0) {
+          const scaleX = img.naturalWidth / canvas.width, scaleY = img.naturalHeight / canvas.height
+          ctx.drawImage(img, x * scaleX, y * scaleY, w * scaleX, h * scaleY, x, y, w, h)
+        }
 
         // border
         ctx.strokeStyle = '#6366f1'
@@ -264,7 +271,7 @@
     }
 
     canvas.addEventListener('pointerdown', event => {
-      if ((!img && !liveLassoMode) || pendingSelection || event.button !== 0 || dragging) return
+      if ((!img && !liveMode) || pendingSelection || event.button !== 0 || dragging) return
       event.preventDefault()
       applyLanguage(language)
       dragging = true
@@ -318,8 +325,9 @@
       }
 
       const off = document.createElement('canvas')
-      off.width = w; off.height = h
-      off.getContext('2d').drawImage(img, x, y, w, h, 0, 0, w, h)
+      const scaleX = img.naturalWidth / canvas.width, scaleY = img.naturalHeight / canvas.height
+      off.width = Math.ceil(w * scaleX); off.height = Math.ceil(h * scaleY)
+      off.getContext('2d').drawImage(img, x * scaleX, y * scaleY, w * scaleX, h * scaleY, 0, 0, off.width, off.height)
       window.electronAPI.snippingDone(off.toDataURL('image/png'))
     })
 
@@ -327,7 +335,7 @@
     canvas.addEventListener('contextmenu', event => event.preventDefault())
 
     window.addEventListener('resize', () => {
-      if (!liveLassoMode || pendingSelection) return
+      if (!liveMode || pendingSelection) return
       resetDrag()
       canvas.width = window.innerWidth; canvas.height = window.innerHeight
       canvas.style.width = canvas.width + 'px'; canvas.style.height = canvas.height + 'px'

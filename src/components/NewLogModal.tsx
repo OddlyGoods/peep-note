@@ -1,6 +1,6 @@
 import { useScreenActive } from '../lib/screenActivity'
 import { useEffect, useState, useRef, useId } from 'react'
-import { X, Camera, Video, FileText, Text as TextIcon, Code2, Globe, StopCircle, Hash, SlidersHorizontal, Lock } from 'lucide-react'
+import { X, Camera, Video, FileText, Text as TextIcon, Code2, Globe, StopCircle, Hash, Lock } from 'lucide-react'
 import { useLogStore } from '../stores/logStore'
 import { useI18n } from '../i18n'
 import { startRegionRecording } from '../lib/regionRecording'
@@ -134,9 +134,9 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
     if (videoPath) void window.electronAPI?.deleteVideo(videoPath)
   }
 
-  const handleScreenshot = async (forceChoose = false) => {
+  const handleScreenshot = async () => {
     // 메인 Add 모달을 유지하되, 전역 Alt+2와 동일한 영역 캡처를 사용한다.
-    const path = await window.electronAPI?.startSnipping(forceChoose)
+    const path = await window.electronAPI?.startSnipping()
     if (!path) return
     setFilePath(path)
     const b64 = await window.electronAPI?.readFileAsBase64(path)
@@ -149,12 +149,12 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
     if (file) void window.electronAPI?.deleteAttachmentFile(file.path)
   }
 
-  const startRecording = async (forceChoose = false) => {
+  const startRecording = async () => {
     if (mediaRecorderRef.current?.state === 'recording') return
     discardRecordedVideoRef.current = false
     savedVideoLogRef.current = false
 
-    const region = await window.electronAPI?.selectRecordingRegion(forceChoose)
+    const region = await window.electronAPI?.selectRecordingRegion()
     if (!region) return
     try {
       const mr = await startRegionRecording(region, async blob => {
@@ -348,9 +348,6 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
                 <button onClick={() => handleScreenshot()} className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-blue-500/40 bg-blue-500/10 px-4 py-2 text-sm font-bold text-blue-500 transition-colors hover:bg-blue-500/20 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300">
                   <Camera className="w-4 h-4" />{t('captureScreen')}
                 </button>
-                <button onClick={() => handleScreenshot(true)} title={t('edit')} aria-label={t('edit')} className="shrink-0 rounded-lg border border-blue-500/40 bg-blue-500/10 p-2.5 text-blue-500 transition-colors hover:bg-blue-500/20 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300">
-                  <SlidersHorizontal className="w-4 h-4" />
-                </button>
               </div>
               {previewUrl && <img src={previewUrl} alt="preview" className="mt-2 rounded-lg border border-gray-700 w-full object-cover max-h-40" />}
             </div>
@@ -363,9 +360,6 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
                 <div className="flex items-center gap-2">
                   <button onClick={() => startRecording()} className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-orange-500/40 bg-orange-500/10 px-4 py-2 text-sm font-bold text-orange-600 transition-colors hover:bg-orange-500/20 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300">
                     <Video className="w-4 h-4" />{t('startRecording')}
-                  </button>
-                  <button onClick={() => startRecording(true)} title={t('edit')} aria-label={t('edit')} className="shrink-0 rounded-lg border border-orange-500/40 bg-orange-500/10 p-2.5 text-orange-600 transition-colors hover:bg-orange-500/20 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300">
-                    <SlidersHorizontal className="w-4 h-4" />
                   </button>
                 </div>
               ) : (

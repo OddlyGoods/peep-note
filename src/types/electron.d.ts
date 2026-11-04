@@ -44,6 +44,7 @@ declare global {
       overlayIsMaximized: () => Promise<boolean>
       notifyLogCreated: (id?: string) => void
       startSnipping: (forceChoose?: boolean) => Promise<string | null>
+      snippingReady: () => void
       selectRecordingRegion: (forceChoose?: boolean) => Promise<{ sourceId: string; x: number; y: number; width: number; height: number; canvasWidth: number; canvasHeight: number } | null>
       snippingDone: (dataUrl: string) => void
       requestLassoCapture: (selection: import('../../shared/lassoCapture').LassoCaptureSelection) => void

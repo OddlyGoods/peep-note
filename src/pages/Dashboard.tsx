@@ -1,5 +1,6 @@
 import { useScreenActive } from '../lib/screenActivity'
 import { useEffect, useState, useRef } from 'react'
+import { useScrollGutter } from '../lib/useScrollGutter'
 import { format } from 'date-fns'
 import { ko, ja, zhCN } from 'date-fns/locale'
 import { Plus, Search, FileText, Layers, X, ArrowUp, Trash2, SquareMousePointer, ChevronsUpDown, ChevronsDownUp } from 'lucide-react'
@@ -206,7 +207,7 @@ export default function Dashboard() {
     refresh()
   }
 
-  const scrollRef = useRef<HTMLDivElement>(null)
+  const { scrollRef, scrollbarWidth } = useScrollGutter()
   useEffect(() => {
     const container = scrollRef.current
     if (!active || !revealLogId || !container || loading) return
@@ -335,7 +336,7 @@ export default function Dashboard() {
 
       {/* 검색 */}
       <div className="px-6 py-3 border-b" style={{ borderColor: 'rgba(99,102,241,0.12)' }}>
-        <div ref={tagMenuRef} className="relative">
+        <div ref={tagMenuRef} className="relative" style={{ marginRight: scrollbarWidth }}>
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
           <input
             ref={searchInputRef}

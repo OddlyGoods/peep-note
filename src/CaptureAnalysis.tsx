@@ -61,7 +61,7 @@ export default function CaptureAnalysis() {
         <button className="capture-titlebar-button capture-titlebar-close" aria-label={copy.close} title={copy.close} onClick={() => void window.captureAnalysis?.close()}><X size={12} /></button>
       </div>
     </header>
-    <main ref={scroll} className="capture-analysis-body" data-waiting={busy && !state?.turns.length && !draftBody} aria-busy={busy} onScroll={() => {
+    <main ref={scroll} className="capture-analysis-body" data-waiting={busy && !state?.turns.length && !draftBody.trim()} aria-busy={busy} onScroll={() => {
       const el = scroll.current!
       followScroll.current = el.scrollHeight - el.scrollTop - el.clientHeight < 60
     }}>
@@ -72,8 +72,8 @@ export default function CaptureAnalysis() {
         <div className="capture-analysis-answer-actions"><CaptureAnswerCopy content={turn.answer} /></div>
       </section>)}
       {draftBody && <div className="markdown-content capture-analysis-markdown capture-analysis-draft">{markdown(draftBody)}</div>}
-      {busy && <div className="capture-analysis-waiting" data-streaming={!!draftBody} role="status" aria-label={copy.waiting}>
-        <ThinkingOrb className="capture-analysis-orb" state={draftBody ? 'composing' : 'solving'} size={64} style={{ width: 80, height: 80 }} theme="auto" color="#7c3aed" dotSize={1.2} dots={1.2} aria-hidden="true" />
+      {busy && !draftBody.trim() && <div className="capture-analysis-waiting" role="status" aria-label={copy.waiting}>
+        <ThinkingOrb className="capture-analysis-orb" state="solving" size={64} style={{ width: 80, height: 80 }} theme="auto" color="#7c3aed" dotSize={1.2} dots={1.2} aria-hidden="true" />
         <div className="capture-analysis-waiting-caption" aria-hidden="true"><span>{copy.waiting}</span><span className="capture-analysis-elapsed">{elapsed}{copy.seconds}</span></div>
       </div>}
       {state?.error && <div role="alert" className="capture-analysis-error">

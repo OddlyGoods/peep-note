@@ -30,7 +30,7 @@ export interface CaptureAnalysisApi {
 export const captureAnalysisCopy = {
   en: {
     title: 'Magic Pen', waiting: 'Waiting for Codex…', seconds: 's', followup: 'Reply', maximize: 'Maximize', restore: 'Restore',
-    save: 'Save as note', saved: 'Saved', saving: 'Saving…', question: 'Ask a follow-up…', send: 'Send',
+    save: 'Save', saved: 'Saved', saving: 'Saving…', question: 'Ask a follow-up…', send: 'Send',
     retry: 'Try again', close: 'Close', captureHint: 'Capture more information to continue this conversation.',
     initial: 'Explain the selected content directly and tell me what I should know or do next.',
     next: 'Use this newly selected content to answer your previous question or refine your explanation.',
@@ -42,7 +42,7 @@ export const captureAnalysisCopy = {
   },
   ko: {
     title: '매직펜', waiting: 'AI 응답 대기 중…', seconds: '초', followup: '답변', maximize: '최대화', restore: '이전 크기',
-    save: '메모로 저장', saved: '저장됨', saving: '저장 중…', question: '추가로 질문하세요…', send: '보내기',
+    save: '저장', saved: '저장됨', saving: '저장 중…', question: '추가로 질문하세요…', send: '보내기',
     retry: '다시 시도', close: '닫기', captureHint: '필요한 정보를 다시 캡처해 대화를 이어갑니다.',
     initial: '선택한 내용의 핵심과 알아야 할 점을 바로 설명하고, 필요한 조치가 있으면 알려줘.',
     next: '새로 선택한 내용을 바탕으로 이전 질문에 답하거나 설명을 보완해줘.',
@@ -54,7 +54,7 @@ export const captureAnalysisCopy = {
   },
   ja: {
     title: 'マジックペン', waiting: 'AIの応答を待っています…', seconds: '秒', followup: '返信', maximize: '最大化', restore: '元に戻す',
-    save: 'メモに保存', saved: '保存済み', saving: '保存中…', question: '追加の質問…', send: '送信',
+    save: '保存', saved: '保存済み', saving: '保存中…', question: '追加の質問…', send: '送信',
     retry: '再試行', close: '閉じる', captureHint: '追加情報をキャプチャして会話を続けます。',
     initial: '選択した内容の要点と、知っておくべきことや次にすべきことを直接説明してください。',
     next: '新しく選択した内容をもとに、前の質問に答えるか説明を補足してください。',
@@ -66,7 +66,7 @@ export const captureAnalysisCopy = {
   },
   zh: {
     title: '魔法笔', waiting: '正在等待 AI 回复…', seconds: '秒', followup: '回复', maximize: '最大化', restore: '还原',
-    save: '保存为笔记', saved: '已保存', saving: '保存中…', question: '继续提问…', send: '发送',
+    save: '保存', saved: '已保存', saving: '保存中…', question: '继续提问…', send: '发送',
     retry: '重试', close: '关闭', captureHint: '截取更多信息，继续当前对话。',
     initial: '直接说明所选内容的要点，以及我需要了解的信息或下一步应该做什么。',
     next: '根据新选择的内容回答之前的问题或补充说明。',

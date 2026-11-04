@@ -131,13 +131,17 @@ test('rectangle capture and rectangular recording selection retain their origina
   assert.equal(fixture.captured.length, 1)
 })
 
-test('Alt+5 is a distinct, backward-compatible and disableable default shortcut', () => {
-  assert.equal(DEFAULT_HOTKEYS.captureFreeform, 'Alt+5')
+test('Alt+S is a distinct, backward-compatible and disableable default shortcut', () => {
+  assert.equal(DEFAULT_HOTKEYS.captureFreeform, 'Alt+S')
   assert.equal(new Set(Object.values(DEFAULT_HOTKEYS)).size, Object.keys(DEFAULT_HOTKEYS).length)
-  assert.equal(resolveHotkeys({ takeScreenshot: 'Ctrl+Alt+2' }).captureFreeform, 'Alt+5')
-  assert.equal(resolveHotkeys({ openOverlay: 'Alt+5' }).captureFreeform, 'Alt+Shift+5')
-  assert.equal(resolveHotkeys({ openOverlay: '5+Alt', takeScreenshot: 'Shift+Alt+5' }).captureFreeform, 'Control+Alt+5')
+  assert.equal(resolveHotkeys({ takeScreenshot: 'Ctrl+Alt+2' }).captureFreeform, 'Alt+S')
+  assert.equal(resolveHotkeys({ openOverlay: 'Alt+S' }).captureFreeform, 'Alt+Shift+S')
+  assert.equal(resolveHotkeys({ openOverlay: 'S+Alt', takeScreenshot: 'Shift+Alt+S' }).captureFreeform, 'Control+Alt+S')
   assert.equal(resolveHotkeys({ captureFreeform: 'Control+Shift+5' }).captureFreeform, 'Control+Shift+5')
+  const migrated = resolveHotkeys({ captureFreeform: 'Alt+5', disabled: { captureFreeform: true } })
+  assert.equal(migrated.captureFreeform, 'Alt+S')
+  assert.equal(migrated.disabled?.captureFreeform, true)
+  assert.equal(resolveHotkeys({ ...migrated, captureFreeform: 'Alt+5' }).captureFreeform, 'Alt+5')
   assert.equal(getActiveHotkeys({ disabled: { captureFreeform: true } }).captureFreeform, '')
   assert.equal(getActiveHotkeys({ disabled: { captureFreeform: true } }).takeScreenshot, 'Alt+2')
 })

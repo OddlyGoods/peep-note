@@ -42,7 +42,7 @@ export default function CaptureCodexSettings({ value, onChange }: { value: strin
       <button ref={trigger} type="button" aria-haspopup="listbox" aria-expanded={open} aria-labelledby={`${id}-label ${id}-value`}
         className="settings-select-trigger input flex items-center justify-between py-2.5 text-left hover:border-violet-400/50"
         onClick={() => setOpen(previous => !previous)} onKeyDown={event => { if (event.key === 'ArrowDown') { event.preventDefault(); setOpen(true) } }}>
-        <span id={`${id}-value`} className="text-sm text-gray-200">{custom ? t('customAiModel') : models.find(item => item.value === value)?.label ?? value}</span>
+        <span id={`${id}-value`} className="text-[13px] text-gray-200">{custom ? t('customAiModel') : models.find(item => item.value === value)?.label ?? value}</span>
         <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && <div role="listbox" aria-labelledby={`${id}-label`} className="absolute z-20 left-0 right-0 mt-1.5 p-1.5 max-h-64 overflow-y-auto rounded-lg border border-gray-700 bg-gray-900 shadow-xl"
@@ -55,12 +55,12 @@ export default function CaptureCodexSettings({ value, onChange }: { value: strin
           options[next]?.focus()
         }}>
         {models.map(model => <button key={model.value} type="button" role="option" aria-selected={!custom && value === model.value}
-          className={`settings-select-option w-full flex items-center justify-between px-3 py-2 rounded-md text-sm text-left transition-colors ${!custom && value === model.value ? 'bg-violet-500/15 text-violet-300' : 'text-gray-300 hover:bg-gray-800 hover:text-gray-100'}`}
+          className={`settings-select-option w-full flex items-center justify-between px-3 py-2 rounded-md text-[13px] text-left transition-colors ${!custom && value === model.value ? 'bg-violet-500/15 text-violet-300' : 'text-gray-300 hover:bg-gray-800 hover:text-gray-100'}`}
           onClick={() => { setCustomOverride(false); onChange(model.value, false); setOpen(false); trigger.current?.focus() }}>
           {model.label}{!custom && value === model.value && <Check className="w-4 h-4" />}
         </button>)}
         <button type="button" role="option" aria-selected={custom}
-          className={`settings-select-option w-full flex items-center justify-between px-3 py-2 rounded-md text-sm text-left transition-colors ${custom ? 'bg-violet-500/15 text-violet-300' : 'text-gray-300 hover:bg-gray-800 hover:text-gray-100'}`}
+          className={`settings-select-option w-full flex items-center justify-between px-3 py-2 rounded-md text-[13px] text-left transition-colors ${custom ? 'bg-violet-500/15 text-violet-300' : 'text-gray-300 hover:bg-gray-800 hover:text-gray-100'}`}
           onClick={() => { setCustomOverride(true); setOpen(false) }}>{t('customAiModel')}{custom && <Check className="w-4 h-4" />}</button>
       </div>}
     </div>

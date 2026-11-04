@@ -483,7 +483,7 @@ export default function Settings() {
                 aria-expanded={languageMenuOpen}
                 className="settings-select-trigger input flex items-center justify-between py-2.5 text-left hover:border-violet-400/50"
               >
-                <span className="text-sm text-gray-200">{{
+                <span className="text-[13px] text-gray-200">{{
                   en: t('english'), ko: t('korean'), ja: t('japanese'), zh: t('chinese')
                 }[selectedLanguage]}</span>
                 <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${languageMenuOpen ? 'rotate-180' : ''}`} />
@@ -507,7 +507,7 @@ export default function Settings() {
                           setSelectedLanguage(value)
                           setLanguageMenuOpen(false)
                         }}
-                        className={`settings-select-option w-full flex items-center justify-between px-3 py-2 rounded-md text-sm text-left transition-colors ${
+                        className={`settings-select-option w-full flex items-center justify-between px-3 py-2 rounded-md text-[13px] text-left transition-colors ${
                           selected
                             ? 'bg-violet-500/15 text-violet-300'
                             : 'text-gray-300 hover:bg-gray-800 hover:text-gray-100'
@@ -687,7 +687,7 @@ export default function Settings() {
                     aria-expanded={modelMenuOpen}
                     className="settings-select-trigger input flex items-center justify-between py-2.5 text-left hover:border-violet-400/50"
                   >
-                    <span id="ai-model-value" className="text-sm text-gray-200">
+                    <span id="ai-model-value" className="text-[13px] text-gray-200">
                       {customAiModel ? t('customAiModel') : AI_MODELS[aiProvider].find(model => model.value === aiModel)?.label}
                     </span>
                     <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${modelMenuOpen ? 'rotate-180' : ''}`} />
@@ -707,7 +707,7 @@ export default function Settings() {
                               setCustomAiModel(false)
                               setModelMenuOpen(false)
                             }}
-                            className={`settings-select-option w-full flex items-center justify-between px-3 py-2 rounded-md text-sm text-left transition-colors ${
+                            className={`settings-select-option w-full flex items-center justify-between px-3 py-2 rounded-md text-[13px] text-left transition-colors ${
                               selected
                                 ? 'bg-violet-500/15 text-violet-300'
                                 : 'text-gray-300 hover:bg-gray-800 hover:text-gray-100'
@@ -727,7 +727,7 @@ export default function Settings() {
                           setModelMenuOpen(false)
                           customModelInputRef.current?.focus()
                         }}
-                        className={`settings-select-option w-full flex items-center justify-between px-3 py-2 rounded-md text-sm text-left transition-colors ${customAiModel ? 'bg-violet-500/15 text-violet-300' : 'text-gray-300 hover:bg-gray-800 hover:text-gray-100'}`}
+                        className={`settings-select-option w-full flex items-center justify-between px-3 py-2 rounded-md text-[13px] text-left transition-colors ${customAiModel ? 'bg-violet-500/15 text-violet-300' : 'text-gray-300 hover:bg-gray-800 hover:text-gray-100'}`}
                       >
                         {t('customAiModel')}
                         {customAiModel && <Check className="w-4 h-4" />}

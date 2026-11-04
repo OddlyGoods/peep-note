@@ -1,3 +1,4 @@
+import CaptureAnswerCopy from './components/CaptureAnswerCopy'
 import { ThinkingOrb } from 'thinking-orbs'
 import { useEffect, useRef, useState } from 'react'
 import { Camera, Check, Clock3, Loader2, Maximize2, Minimize2, RefreshCw, Save, Send, X } from 'lucide-react'
@@ -67,6 +68,7 @@ export default function CaptureAnalysis() {
         {index > 0 && <p className="capture-analysis-question">{turn.question}</p>}
         <div className="markdown-content capture-analysis-markdown">{markdown(turn.answer)}</div>
         <div className="capture-analysis-time"><Clock3 size={12} />{turn.provider ?? state.provider ?? 'Codex'} · {turn.model ?? state.model} · {(turn.elapsedMs / 1000).toFixed(1)}{copy.seconds}</div>
+        <div className="capture-analysis-answer-actions"><CaptureAnswerCopy content={turn.answer} /></div>
       </section>)}
       {state?.draft && <div className="markdown-content capture-analysis-markdown">{markdown(state.draft)}</div>}
       {busy && <div className="capture-analysis-waiting" role="status" aria-label={copy.waiting}>

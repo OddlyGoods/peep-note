@@ -35,6 +35,7 @@ test('vision CLI receives images, prior conversation and explicit stateless, iso
     assert.deepEqual(images, ['/example/first capture.png', '/example/second.png'])
     assert.ok(request.prompt.includes(JSON.stringify(question)))
     assert.ok(request.prompt.includes(previous[0].answer))
+    assert.match(request.prompt, /may save your answer as a note in PeepNote/)
     assert.ok(request.prompt.includes('Reply in Korean'))
     assert.equal(fs.existsSync(path.join(f.directory, 'answer.md')), false)
   } finally { f.dispose() }

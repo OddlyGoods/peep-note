@@ -33,6 +33,7 @@ for (const tool of ['claude-code', 'gemini-cli', 'qwen-code'] as const) {
       const request = JSON.parse(fs.readFileSync(path.join(f.directory, 'request.json'), 'utf8'))
       assert.equal(request.args[request.args.indexOf('--model') + 1], 'vision-test')
       assert.ok(!request.args.includes('--yolo'))
+      assert.match(request.input, /may save your answer as a note in PeepNote/)
       if (tool === 'claude-code') {
         const content = JSON.parse(request.input).message.content
         assert.equal(content[0].source.data, fs.readFileSync(f.input.images[0]).toString('base64'))

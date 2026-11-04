@@ -30,6 +30,7 @@ for (const provider of ['openai', 'anthropic', 'gemini', 'qwen'] as const) {
       assert.equal(body.tools, undefined)
       assert.equal(body.response_format, undefined) // answer is Markdown, not summary JSON
       assert.equal(body.generationConfig?.responseMimeType, undefined)
+      assert.match(JSON.stringify(body), /may save your answer as a note in PeepNote/)
       assert.match(JSON.stringify(body), /First question/)
       assert.match(JSON.stringify(body), /First answer/)
       assert.match(JSON.stringify(body), /Follow-up question/)

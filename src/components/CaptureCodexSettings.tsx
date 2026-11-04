@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import { Camera, Check, ChevronDown } from 'lucide-react'
+import { Check, ChevronDown } from 'lucide-react'
 import { CAPTURE_CODEX_MODELS, isCaptureCodexModel, type CaptureCodexModel } from '../../shared/codexModels'
 import { useI18n } from '../i18n'
 import { useScreenActive } from '../lib/screenActivity'
@@ -35,7 +35,7 @@ export default function CaptureCodexSettings({ value, customValue, onChange }: {
     return () => { document.removeEventListener('pointerdown', outside); document.removeEventListener('keydown', escape, true) }
   }, [open, active])
   return <section className="card p-5" aria-labelledby={`${id}-title`}>
-    <div className="flex items-center gap-2 mb-4"><Camera className="w-4 h-4 text-violet-400" /><h2 id={`${id}-title`} className="text-sm font-semibold text-white">{copy.title}</h2></div>
+    <div className="flex items-center gap-2 mb-4"><img src="/cursors/ai-pen-32.png" alt="" aria-hidden="true" draggable={false} className="w-4 h-4 shrink-0 object-contain" /><h2 id={`${id}-title`} className="text-sm font-semibold text-white">{copy.title}</h2></div>
     <p className="text-xs text-gray-400 leading-relaxed mb-4">{copy.hint}</p>
     <label id={`${id}-label`} className="block text-xs font-medium text-gray-400 mb-2">{copy.label}</label>
     <div ref={menu} className="relative">

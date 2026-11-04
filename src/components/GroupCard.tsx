@@ -140,12 +140,22 @@ export default function GroupCard({ group, onRefresh, startEditing = false, onSt
     } ${deletingVisual ? 'pointer-events-none opacity-45' : ''} ${checked ? 'border-violet-400/70 ring-1 ring-violet-400/25' : 'border-violet-500/30'}`}>
       {/* 그룹 헤더 */}
       <div
+        role={!editing && !showCheckbox ? 'button' : undefined}
+        tabIndex={!editing && !showCheckbox ? 0 : undefined}
+        aria-expanded={!editing && !showCheckbox ? expanded : undefined}
+        onKeyDown={event => {
+          if (event.target !== event.currentTarget || editing || showCheckbox) return
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            setGroupExpanded(group.id, !expanded)
+          }
+        }}
         onClick={event => {
           if (editing || (event.target as Element).closest('button, input, textarea, select, a')) return
           if (showCheckbox) onCheck?.(!checked)
-          else if (!expanded) setGroupExpanded(group.id, true)
+          else setGroupExpanded(group.id, !expanded)
         }}
-        className={`flex items-center gap-2 px-4 py-[0.425rem] bg-violet-500/10 border-b border-violet-500/20 ${!editing && (showCheckbox || !expanded) ? 'cursor-pointer' : ''}`}
+        className={`flex items-center gap-2 px-4 py-[0.425rem] bg-violet-500/10 border-b border-violet-500/20 ${!editing ? 'cursor-pointer' : ''}`}
       >
         {showCheckbox && !editing && (
           <button
@@ -240,15 +250,6 @@ export default function GroupCard({ group, onRefresh, startEditing = false, onSt
                 title={t('deleteGroup')}
               >
                 <Trash2 className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={() => setGroupExpanded(group.id, !expanded)}
-                title={t(expanded ? 'collapseContent' : 'expandContent')}
-                aria-label={t(expanded ? 'collapseContent' : 'expandContent')}
-                aria-expanded={expanded}
-                className="p-1.5 rounded-lg text-violet-400/60 hover:text-violet-300 hover:bg-violet-500/20 transition-colors"
-              >
-                {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
               </button>
             </div>
           </>

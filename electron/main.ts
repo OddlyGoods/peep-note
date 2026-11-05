@@ -45,6 +45,7 @@ import { createCaptureAction } from './captureAction'
 import { handleCaptureAnalysisShortcut } from './captureAnalysisShortcut'
 import { createMultiMonitorLasso, lassoWindowOptions } from './multiMonitorLasso'
 import { createMultiMonitorRegion, type MonitorRegionResult } from './multiMonitorRegion'
+import { createRecordingOutline, recordingOutlinePage, recordingOutlineWindowOptions } from './recordingOutline'
 import { getCaptureCodexModels } from './codexModelCatalog'
 import { CaptureAnalysisWindow, type AnalysisCapture } from './captureAnalysisWindow'
 import { saveCaptureAnalysis } from '../server/captureAnalysisNotes'
@@ -196,6 +197,23 @@ let videosDir = path.join(dataDirectory, 'videos')
 let attachmentsDir = path.join(dataDirectory, 'attachments')
 const recordingWindows = new Set<number>()
 const observedRecordingWindows = new WeakSet<Electron.WebContents>()
+let recordingOutline: ReturnType<typeof createRecordingOutline> | null = null
+function getRecordingOutline() {
+  return recordingOutline ??= createRecordingOutline({
+    createWindow: bounds => new BrowserWindow(recordingOutlineWindowOptions(bounds)),
+    load: window => window.loadURL(recordingOutlinePage), screen,
+    onError: error => console.error('Recording outline error:', error),
+  })
+}
+function observeRecordingOwner(owner: Electron.WebContents) {
+  if (observedRecordingWindows.has(owner)) return
+  observedRecordingWindows.add(owner)
+  const id = owner.id
+  const clear = () => { recordingWindows.delete(id); recordingOutline?.forget(id) }
+  owner.once('destroyed', clear)
+  owner.on('render-process-gone', clear)
+  owner.on('did-start-loading', clear)
+}
 let changingDataLocation = false
 
 const selectedAttachmentLinks = new Set<string>()
@@ -830,7 +848,8 @@ type RecordingRegion = {
   canvasHeight: number
 }
 
-async function selectRecordingRegion(_forceChoose = false): Promise<RecordingRegion | null> {
+async function selectRecordingRegion(owner: Electron.WebContents | undefined, _forceChoose = false): Promise<RecordingRegion | null> {
+  if (!owner || owner.isDestroyed() || recordingWindows.has(owner.id)) return null
   const selection = await selectAcrossMonitors('recording-region')
   if (selection?.mode !== 'recording-region') return null
   snippingPreparing = true
@@ -839,7 +858,11 @@ async function selectRecordingRegion(_forceChoose = false): Promise<RecordingReg
     const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 0, height: 0 } })
     const source = sources.find(item => item.display_id === String(selection.displayId))
       ?? (screen.getAllDisplays().length === 1 && sources.length === 1 ? sources[0] : undefined)
-    return source ? { sourceId: source.id, ...selection.region } : null
+    const display = screen.getAllDisplays().find(item => item.id === selection.displayId)
+    if (!source || !display || owner.isDestroyed()) return null
+    observeRecordingOwner(owner)
+    getRecordingOutline().prepare(owner.id, display.bounds, selection.region)
+    return { sourceId: source.id, ...selection.region }
   } catch (error) { console.error('Recording source error:', error); return null }
   finally { snippingPreparing = false }
 }
@@ -893,7 +916,7 @@ function registerHotkeys() {
         // Do not show and immediately hide the overlay before taking the
         // desktop thumbnail: on some Linux multi-monitor setups that leaves
         // part of the source black. Select the live region first, then open it.
-        const region = await selectRecordingRegion()
+        const region = await selectRecordingRegion(overlayWindow?.webContents)
         if (!region) return
         overlayWindow?.show()
         overlayWindow?.focus()
@@ -1126,14 +1149,13 @@ function setupIPC() {
   ipcMain.handle('get-user-data-path', () => dataDirectory)
   ipcMain.handle('get-data-usage', () => directoryUsage(dataDirectory))
 
-  ipcMain.handle('set-recording-active', (event, active: boolean) => {
+  ipcMain.handle('set-recording-active', async (event, active: boolean) => {
+    if (event.sender !== mainWindow?.webContents && event.sender !== overlayWindow?.webContents) return
     if (active) {
       recordingWindows.add(event.sender.id)
-      if (!observedRecordingWindows.has(event.sender)) {
-        observedRecordingWindows.add(event.sender)
-        event.sender.once('destroyed', () => recordingWindows.delete(event.sender.id))
-      }
-    } else recordingWindows.delete(event.sender.id)
+      observeRecordingOwner(event.sender)
+      await recordingOutline?.start(event.sender.id)
+    } else { recordingWindows.delete(event.sender.id); recordingOutline?.stop(event.sender.id) }
   })
 
   ipcMain.handle('choose-data-location', async (event, mode: unknown = 'copy') => {
@@ -1252,7 +1274,10 @@ function setupIPC() {
   })
 
   ipcMain.handle('start-snipping', async (_event, forceChoose = false) => await startSnipping(forceChoose === true))
-  ipcMain.handle('select-recording-region', async (_event, forceChoose = false) => await selectRecordingRegion(forceChoose === true))
+  ipcMain.handle('select-recording-region', async (event, forceChoose = false) => {
+    if (event.sender !== mainWindow?.webContents && event.sender !== overlayWindow?.webContents) return null
+    return await selectRecordingRegion(event.sender, forceChoose === true)
+  })
 
   ipcMain.on('notify-log-created', (_event, id?: string) => {
     mainWindow?.webContents.send('log-created', id)
@@ -1348,6 +1373,7 @@ function setupAutoUpdater() {
     }
   })
   app.on('before-quit', () => {
+    recordingOutline?.dispose()
     regionSession?.close()
     lassoSession?.close()
     captureAnalysis?.close()

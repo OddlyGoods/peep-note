@@ -18,6 +18,7 @@ try {
     ['electron/captureAction.ts', 'captureAction.cjs'], ['shared/lassoCapture.ts', 'selection.cjs'],
     ['electron/multiMonitorLasso.ts', 'multiMonitorLasso.cjs'],
     ['electron/multiMonitorRegion.ts', 'multiMonitorRegion.cjs'],
+    ['electron/recordingOutline.ts', 'recordingOutline.cjs'],
   ]) buildSync({ entryPoints: [path.join(root, source)], bundle: true, format: 'cjs', platform: 'node', external: ['electron'], outfile: path.join(fixture, output) })
   const html = fs.readFileSync(path.join(root, 'public/snipping.html'), 'utf8')
   const gesture = `<script>window.electronAPI.on('snipping-init',payload=>{if(!payload.live)return;setTimeout(()=>{const c=document.getElementById('c');c.setPointerCapture=()=>{};c.hasPointerCapture=()=>false;for(const [type,x,y] of [['pointerdown',100,100],['pointermove',500,100],['pointerup',100,500]])c.dispatchEvent(new PointerEvent(type,{clientX:x,clientY:y,pointerId:3,button:0,bubbles:true}));},100)});</script>`
@@ -29,9 +30,10 @@ try {
   fs.copyFileSync(path.join(root, 'tests/native-capture.cjs'), path.join(fixture, 'main.cjs'))
   fs.copyFileSync(path.join(root, 'tests/native-multi-monitor-capture.cjs'), path.join(fixture, 'multi-monitor.cjs'))
   fs.copyFileSync(path.join(root, 'tests/native-multi-monitor-region.cjs'), path.join(fixture, 'multi-monitor-region.cjs'))
+  fs.copyFileSync(path.join(root, 'tests/native-recording-outline.cjs'), path.join(fixture, 'recording-outline.cjs'))
   const env = { ...process.env }
   delete env.ELECTRON_RUN_AS_NODE
-  for (const entry of ['main.cjs', 'multi-monitor.cjs', 'multi-monitor-region.cjs']) {
+  for (const entry of ['main.cjs', 'multi-monitor.cjs', 'multi-monitor-region.cjs', 'recording-outline.cjs']) {
     const result = spawnSync('xvfb-run', ['-a', '-s', '-screen 0 1024x768x24', require('electron'), '--no-sandbox', path.join(fixture, entry)], {
       env, encoding: 'utf8', timeout: 30000, maxBuffer: 4 * 1024 * 1024,
     })

@@ -326,7 +326,7 @@ export default function Overlay() {
     savedVideoLogRef.current = false
     try {
       const mr = await startRegionRecording(region, async blob => {
-        if (mediaRecorderRef.current === mr) mediaRecorderRef.current = null
+        if (mediaRecorderRef.current === mr) { stopRecording(); mediaRecorderRef.current = null }
         const buf = await blob.arrayBuffer()
         const saved = await window.electronAPI?.saveVideo(buf, `video_${Date.now()}.webm`)
         if (!saved) return

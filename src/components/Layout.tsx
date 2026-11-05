@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Search, Star, Trash2, Settings, ChevronLeft, ChevronRight, Power, Network } from 'lucide-react'
+import { LayoutDashboard, Search, Star, Trash2, Settings, ChevronLeft, ChevronRight, Power, Waypoints } from 'lucide-react'
 import TitleBar from './TitleBar'
 import { useI18n } from '../i18n'
 import UpdatePanel from './UpdatePanel'
@@ -53,7 +53,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { to: '/', icon: LayoutDashboard, label: t('dashboard') },
     { to: '/search', icon: Search, label: t('search') },
     { to: '/favorites', icon: Star, label: t('favorites'), count: favoriteCount },
-    { to: '/map', icon: Network, label: t('knowledgeMap') },
+    { to: '/map', icon: Waypoints, label: t('knowledgeMap') },
     { to: '/trash', icon: Trash2, label: t('trash'), count: trashCount },
     { to: '/settings', icon: Settings, label: t('settings') }
   ]

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, ArrowUpRight, Check, ChevronDown, FileText, FolderOpen, Layers, Network, RefreshCw, Search, Tag, X } from 'lucide-react'
+import { ArrowLeft, ArrowUpRight, Check, ChevronDown, FileText, FolderOpen, Layers, Waypoints, RefreshCw, Search, Tag, X } from 'lucide-react'
 import { buildKnowledgeGraph, type MapNode, type MapSnapshot } from '../../shared/knowledgeMap'
 import { api, type Log } from '../lib/api'
 import ReactMarkdown from 'react-markdown'
@@ -96,7 +96,7 @@ export default function KnowledgeMap() {
 
   return <section className="knowledge-map" aria-label={t('knowledgeMap')}>
     <header className="knowledge-header">
-      <div><h1><Network size={21} />{t('knowledgeMap')}</h1><p>{t('mapDescription')}</p></div>
+      <div><h1><Waypoints size={21} />{t('knowledgeMap')}</h1><p>{t('mapDescription')}</p></div>
       <button type="button" className="knowledge-icon-button" disabled={loading} onClick={() => setRefresh(value => value + 1)} title={t('mapRefresh')} aria-label={t('mapRefresh')}><RefreshCw size={16} className={loading ? 'animate-spin' : ''} /></button>
     </header>
     <div className="knowledge-toolbar">
@@ -121,7 +121,7 @@ export default function KnowledgeMap() {
         <div className="knowledge-stats"><span><i className="knowledge-note-dot" />{t('mapNotes')} <b>{snapshot.notes.length}</b></span><span><i className="knowledge-group-dot" />{t('mapGroups')} <b>{graph.nodes.filter(node => node.kind === 'group').length}</b></span><span><i className="knowledge-tag-dot" />{t('mapTags')} <b>{graph.nodes.filter(node => node.kind === 'tag').length}</b></span></div>
         <KnowledgeMapCanvas graph={graph} selected={selected} onSelect={select} />
         {loading && <div className="knowledge-loading" role="status" aria-label={t('loading')}><RefreshCw size={20} className="animate-spin" /></div>}
-        {!loading && (!snapshot.notes.length || error) && <div className="knowledge-empty" role="status"><Network size={36} /><h2>{error ? t('mapError') : t('mapEmpty')}</h2><p>{error ? '' : t('mapEmptyHint')}</p>{error && <button className="knowledge-action" onClick={() => setRefresh(value => value + 1)}>{t('mapRefresh')}</button>}</div>}
+        {!loading && (!snapshot.notes.length || error) && <div className="knowledge-empty" role="status"><Waypoints size={36} /><h2>{error ? t('mapError') : t('mapEmpty')}</h2><p>{error ? '' : t('mapEmptyHint')}</p>{error && <button className="knowledge-action" onClick={() => setRefresh(value => value + 1)}>{t('mapRefresh')}</button>}</div>}
         {snapshot.total > snapshot.notes.length && <div className="knowledge-map-caption">{t('mapLimit', { shown: snapshot.notes.length, total: snapshot.total })}</div>}
       </div>
       <aside className="knowledge-inspector" data-screen-scroll="knowledge-inspector">
@@ -147,7 +147,7 @@ export default function KnowledgeMap() {
             {!connections.length && <p className="knowledge-muted">{t('mapNoConnections')}</p>}
             <div className="knowledge-node-list">{connections.map(node => <button key={node.id} onClick={() => readNote(node.id)}><FileText size={14} /><span>{name(node)}<small>{workspaceName(node.note!)}</small></span></button>)}</div>
           </>}
-        </> : <div className="knowledge-intro"><Network size={30} /><h2>{t('mapSelect')}</h2><p>{t('mapSelectHint')}</p></div>}
+        </> : <div className="knowledge-intro"><Waypoints size={30} /><h2>{t('mapSelect')}</h2><p>{t('mapSelectHint')}</p></div>}
       </aside>
     </div>
   </section>

@@ -81,9 +81,9 @@ export class CaptureAnalysisWindow {
         question, images: [...this.images], directory: this.options.directory, signal: controller.signal,
         onText: draft => stream.update(draft) })
       if (controller.signal.aborted || this.disposed) return
-      const elapsedMs = Date.now() - startedAt
       await stream.finish(answer)
       if (controller.signal.aborted || this.disposed) return
+      const elapsedMs = Date.now() - startedAt
       const response = splitCaptureResponse(answer)
       this.publish({ status: 'ready', draft: '', saved: false,
         turns: [...this.value.turns, { question, answer: response.body, title: response.title, elapsedMs, imageCount: this.images.length, model: this.value.model, provider: this.value.provider }] })

@@ -16,7 +16,7 @@ html[data-theme] body:has(> #capture-analysis-root) { background: transparent !i
 .capture-icon-button { border: 0; border-radius: 7px; padding: 6px; background: transparent; color: var(--title-text); }
 .capture-icon-button:hover:not(:disabled) { background: #8b5cf620; color: #a78bfa; }
 .capture-analysis-body { flex: 1; min-height: 0; overflow-y: auto; padding: 18px; }
-.capture-analysis-turn + .capture-analysis-turn { border-top: 1px solid var(--soft-border); padding-top: 16px; margin-top: 18px; }
+.capture-analysis-turn + .capture-analysis-turn, .capture-analysis-turn + .capture-analysis-active { border-top: 1px solid var(--soft-border); padding-top: 16px; margin-top: 18px; }
 .capture-analysis-question { padding: 8px 10px; border-radius: 8px; background: #8b5cf61a; margin-bottom: 12px; white-space: pre-wrap; }
 .capture-analysis-markdown { line-height: 1.75; word-break: normal; }
 .capture-analysis-markdown p + p, .capture-analysis-markdown ul, .capture-analysis-markdown ol { margin-top: 10px; }
@@ -28,11 +28,12 @@ html[data-theme] body:has(> #capture-analysis-root) { background: transparent !i
 .capture-analysis-markdown th, .capture-analysis-markdown td { padding: 5px 8px; border: 1px solid var(--soft-border); text-align: left; }
 .capture-analysis-markdown blockquote { padding-left: 10px; border-left: 2px solid #8b5cf6; }
 .capture-analysis-model { display: flex; gap: 5px; align-items: center; min-width: 0; flex: 1; color: var(--quick-excerpt); font-size: 11px; }
-.capture-analysis-body[data-waiting='true'] { display: flex; align-items: center; justify-content: center; }
+.capture-analysis-body[data-waiting='true'] { display: flex; flex-direction: column; align-items: stretch; }
+.capture-analysis-body[data-waiting='true'] .capture-analysis-active { display: flex; flex: 1; flex-direction: column; }
+.capture-analysis-body[data-waiting='true'] .capture-analysis-waiting { flex: 1; }
 .capture-analysis-waiting { display: flex; flex-direction: column; align-items: center; gap: 14px; min-height: 160px; justify-content: center; width: 100%; }
 .capture-analysis-orb { flex-shrink: 0; }
 .capture-analysis-waiting-caption { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: var(--quick-excerpt); font-size: 12px; }
-.capture-analysis-elapsed { font-variant-numeric: tabular-nums; color: var(--quick-excerpt); min-width: 42px; }
 .capture-analysis-error { color: #fb7185; line-height: 1.65; padding: 8px 0; }
 .capture-analysis-error button { margin-top: 10px; }
 .capture-analysis-footer { padding: 12px; border-top: 1px solid var(--soft-border); }

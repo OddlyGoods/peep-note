@@ -567,8 +567,8 @@ function createTray() {
     { type: 'separator' },
     { label: text.quick, click: () => toggleOverlay() },
     { label: text.screenshot, click: () => { void captureToOverlay() } },
-    { label: text.freeform, click: () => { void startCaptureAnalysis() } },
     { label: text.video, click: () => startRecordingFromTray() },
+    { label: text.freeform, click: () => { void startCaptureAnalysis() } },
     { type: 'separator' },
     { label: text.about, click: () => showAboutWindow() },
     { label: text.quit, click: () => { app.exit(0) } }

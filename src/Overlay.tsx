@@ -1,5 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useRef, useId } from 'react'
-import { X, Maximize2, Minimize2, Camera, Video, FileText, Text as TextIcon, StopCircle, Code2, Globe, Hash, Lock, ChevronDown, Check, Loader2 } from 'lucide-react'
+import { X, Maximize2, Minimize2, Pencil, Camera, Video, FileText, Text as TextIcon, StopCircle, Code2, Globe, Hash, Lock, ChevronDown, Check, Loader2 } from 'lucide-react'
 import { api, type Workspace } from './lib/api'
 import { useI18n } from './i18n'
 import { useTheme } from './theme'
@@ -450,13 +450,9 @@ export default function Overlay() {
           } as React.CSSProperties}
         >
           <div className="flex items-center gap-1.5">
-            <div style={{ width: 16, height: 16, flexShrink: 0 }}>
-              <img src="/icon.png" alt="logo"
-                style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
-                draggable={false} />
-            </div>
+            <Pencil className="h-4 w-4 shrink-0" style={{ color: 'var(--workspace-badge-text)' }} aria-hidden="true" />
             <span className="text-[11px] font-bold tracking-wider translate-y-px" style={{ color: 'var(--title-text)' }}>
-              PeepNote
+              {t('quickNoteTitle')}
             </span>
           </div>
           <div className="flex items-center gap-1" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>

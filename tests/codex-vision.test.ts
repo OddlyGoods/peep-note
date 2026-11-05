@@ -76,6 +76,17 @@ test('conversation export preserves follow-up questions and answers, and respons
   assert.deepEqual(analysisWindowBounds({ x: 500, y: -50 }, { x: 0, y: 0, width: 320, height: 240 }), { x: 0, y: 0, width: 320, height: 240 })
 })
 
+test('Magic Pen restores saved dimensions within the current display and ignores invalid saved sizes', () => {
+  const area = { x: -1024, y: 0, width: 1024, height: 768 }
+  const anchor = { x: -20, y: 700 }
+  assert.deepEqual(analysisWindowBounds(anchor, area, { width: 600, height: 720 }), { x: -600, y: 48, width: 600, height: 720 })
+  assert.deepEqual(analysisWindowBounds(anchor, area, { width: 1800, height: 1200 }), { ...area })
+  assert.deepEqual(analysisWindowBounds(anchor, area, { width: 1, height: 1 }), { x: -360, y: 488, width: 360, height: 280 })
+  for (const saved of [null, {}, 'invalid', { width: NaN, height: Infinity }, { width: -10, height: '600' }]) {
+    assert.deepEqual(analysisWindowBounds(anchor, area, saved), analysisWindowBounds(anchor, area))
+  }
+})
+
 test('Codex capture catalog only offers visible image models and keeps their priority and stable IDs', async () => {
   const { parseCodexModelCatalog, normalizeCaptureCodexModel, isCaptureCodexModel, DEFAULT_CAPTURE_CODEX_MODEL } = await import('../shared/codexModels')
   const model = (slug: string, priority: number, extra = {}) => ({ slug, display_name: slug.toUpperCase(), visibility: 'list', input_modalities: ['text', 'image'], priority, ...extra })

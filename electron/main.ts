@@ -146,6 +146,8 @@ async function startCaptureAnalysis() {
 
     const session = new CaptureAnalysisWindow({ model, responseLanguage: resolveAiResponseLanguage(aiSettings?.ai_response_language, language), provider: selection.label, analyze: selection.mode === 'api' ? input => runApiVision(input, apiConfig) : input => runToolVision(selection.provider as MagicPenTool, input), firstCapture, directory, language, theme: settings.theme === 'dark' ? 'dark' : 'light', dev: isDev,
       workspaces, capture: () => captureForAnalysis(directory),
+      windowSize: settings.magicPenWindowSize,
+      onWindowResize: size => saveSettings({ ...loadSettings(), magicPenWindowSize: size }),
       save: (turns, workspaceId) => {
         const id = saveCaptureAnalysis(turns, language, workspaceId)
         for (const win of [mainWindow, overlayWindow, quickSwitchWindow]) {
@@ -1087,7 +1089,8 @@ function setupIPC() {
   ipcMain.handle('get-settings', () => loadSettings())
 
   ipcMain.handle('save-settings', (_e, settings) => {
-    saveSettings(settings)
+    // Window geometry belongs to Main; a renderer may hold an older settings snapshot.
+    saveSettings({ ...settings, magicPenWindowSize: loadSettings().magicPenWindowSize })
     registerHotkeys()
     tray?.destroy()
     tray = null

@@ -18,7 +18,9 @@ app.whenReady().then(async () => {
   const pixels = Buffer.alloc(80 * 40 * 4, 180)
   fs.writeFileSync(image, nativeImage.createFromBitmap(pixels, {width:80,height:40}).toPNG())
   const inputs = [], outputs = [], saves = []
+  const sizeFile = path.join(__dirname, 'window-size.json')
   let session = new CaptureAnalysisWindow({firstCapture:{filePath:image,bounds:{x:600,y:120,width:120,height:100}},directory,
+    onWindowResize:size=>fs.writeFileSync(sizeFile,JSON.stringify(size)),
     language:'ko',responseLanguage:'fr',model:'gpt-6.1-sol',theme:'light',dev:false,workspaces:[{id:'general',name:'General',isDefault:true},{id:'project',name:'Project',isDefault:false}],
     analyze: input => { inputs.push(input); return new Promise((resolve,reject) => { outputs.push(resolve); input.signal.addEventListener('abort',()=>reject(new Error('cancelled'))) }) },
     capture:async()=>{const filePath=path.join(directory,'second.png');fs.copyFileSync(image,filePath);return {filePath,bounds:{x:200,y:200,width:80,height:40}}},
@@ -178,8 +180,13 @@ app.whenReady().then(async () => {
   await until(()=>js('!!document.querySelector(".capture-analysis-actions [role=listbox]")'))
   await js('Array.from(document.querySelectorAll(".capture-analysis-actions [role=option]")).find(el=>el.textContent.includes("Project")).click()')
   await until(()=>js('document.querySelector(".capture-workspace-trigger").textContent.includes("Project")'))
+  session.window.setSize(450,600)
+  await until(()=>fs.existsSync(sizeFile))
+  assert.deepEqual(JSON.parse(fs.readFileSync(sizeFile,'utf8')),{width:450,height:600},'resizing persists dimensions while the response remains open')
+  session.window.setSize(462,590)
   await js('document.querySelector(".capture-primary").click()')
   await until(()=>session.window.isDestroyed())
+  assert.deepEqual(JSON.parse(fs.readFileSync(sizeFile,'utf8')),{width:462,height:590},'closing flushes the last resize even before the debounce completes')
   assert.equal(session.state.saved,true)
   assert.equal(saves.length,1)
   assert.equal(saves[0][0].length,3)
@@ -193,10 +200,12 @@ app.whenReady().then(async () => {
   const stopImage = path.join(stopDir, 'first.png');fs.writeFileSync(stopImage,nativeImage.createFromBitmap(pixels,{width:80,height:40}).toPNG())
   const stopInputs = [], stopResults = [], stopSaves = []
   session = new CaptureAnalysisWindow({firstCapture:{filePath:stopImage,bounds:{x:300,y:120,width:80,height:40}},directory:stopDir,
+    windowSize:JSON.parse(fs.readFileSync(sizeFile,'utf8')),
     language:'ko',model:'vision-test',provider:'Fixture',theme:'light',dev:false,workspaces:[],capture:async()=>null,
     analyze:input=>{stopInputs.push(input);return new Promise((resolve,reject)=>stopResults.push({resolve,reject}))},
     save:(...args)=>{stopSaves.push(args);return 'stopped-note'},onClosed:()=>{}})
   await until(()=>session.window.isVisible())
+  assert.deepEqual(session.window.getSize(),[462,590],'a new Magic Pen conversation restores the persisted size')
   await until(()=>js('!!document.querySelector(".capture-analysis-stop")'))
   await js('document.querySelector(".capture-analysis-stop").click()')
   await until(()=>session.state.status==='stopping')

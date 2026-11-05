@@ -6,7 +6,7 @@ import path from 'path'
 import fs from 'fs'
 import { protectAppNavigation } from './appNavigation'
 import { runCodexVision, CodexVisionError, type CodexVisionInput } from './codexVision'
-import { analysisWindowBounds, captureAnalysisCopy, splitCaptureResponse, type CaptureAnalysisState, type CaptureLanguage, type CaptureTurn } from '../shared/captureAnalysis'
+import { analysisWindowBounds, captureAnalysisCopy, splitCaptureResponse, type AnalysisWindowSize, type CaptureAnalysisState, type CaptureLanguage, type CaptureTurn } from '../shared/captureAnalysis'
 
 export type AnalysisCapture = { filePath: string; bounds: { x: number; y: number; width: number; height: number } }
 export interface AnalysisWindowOptions {
@@ -18,6 +18,8 @@ export interface AnalysisWindowOptions {
   provider?: string
   theme: 'dark' | 'light'
   dev: boolean
+  windowSize?: unknown
+  onWindowResize?: (size: AnalysisWindowSize) => void
   capture: () => Promise<AnalysisCapture | null>
   workspaces: CaptureAnalysisState['workspaces']
   save: (turns: CaptureTurn[], workspaceId: string | null) => string
@@ -33,13 +35,17 @@ export class CaptureAnalysisWindow {
   private disposed = false
   private busyCapture = false
   private interruptedTurn: CaptureTurn | null = null
+  private resizeTimer: ReturnType<typeof setTimeout> | undefined
+  private lastWindowSize: AnalysisWindowSize
 
   constructor(private options: AnalysisWindowOptions) {
     this.value = { status: 'waiting', maximized: false, language: options.language, model: options.model, provider: options.provider ?? 'Codex', turns: [], question: '', draft: '', startedAt: null,
       error: null, capturing: false, saving: false, saved: false,
       workspaceId: options.workspaces.find(item => item.isDefault)?.id ?? null, workspaces: options.workspaces }
     const workArea = screen.getDisplayMatching(options.firstCapture.bounds).workArea
-    this.window = new BrowserWindow({ ...analysisWindowBounds(options.firstCapture.bounds, workArea),
+    const bounds = analysisWindowBounds(options.firstCapture.bounds, workArea, options.windowSize)
+    this.lastWindowSize = { width: bounds.width, height: bounds.height }
+    this.window = new BrowserWindow({ ...bounds,
       minWidth: Math.min(360, workArea.width), minHeight: Math.min(280, workArea.height),
       title: `PeepNote · ${captureAnalysisCopy[options.language].title}`, frame: false, alwaysOnTop: false, resizable: true, show: false,
       transparent: true, backgroundColor: '#00000000',
@@ -48,6 +54,11 @@ export class CaptureAnalysisWindow {
     protectAppNavigation(this.window.webContents, url => shell.openExternal(url))
     this.window.once('ready-to-show', () => { if (!this.disposed) { this.window.show(); this.window.focus() } })
     this.window.once('closed', () => this.dispose())
+    this.window.on('resize', () => {
+      clearTimeout(this.resizeTimer)
+      this.resizeTimer = setTimeout(() => this.rememberWindowSize(), 250)
+    })
+    this.window.on('close', () => this.rememberWindowSize())
     this.window.on('maximize', () => this.publish({ maximized: true }))
     this.window.on('unmaximize', () => this.publish({ maximized: false }))
     const query = `?language=${options.language}&theme=${options.theme}`
@@ -57,6 +68,16 @@ export class CaptureAnalysisWindow {
   }
 
   get state(): CaptureAnalysisState { return this.value }
+  private rememberWindowSize() {
+    clearTimeout(this.resizeTimer)
+    if (this.disposed || this.window.isDestroyed()) return
+    // Maximizing/minimizing must not replace the user's regular window size.
+    const { width, height } = this.window.getNormalBounds()
+    if (width === this.lastWindowSize.width && height === this.lastWindowSize.height) return
+    this.lastWindowSize = { width, height }
+    try { this.options.onWindowResize?.(this.lastWindowSize) }
+    catch { console.error('Could not save Magic Pen window size') }
+  }
   get isBusy() { return this.value.status === 'running' || this.value.status === 'stopping' || this.busyCapture }
   private publish(patch: Partial<CaptureAnalysisState>) {
     if (this.disposed) return
@@ -160,6 +181,7 @@ export class CaptureAnalysisWindow {
   private cleanFiles() { try { fs.rmSync(this.options.directory, { recursive: true, force: true }) } catch {} }
   private dispose() {
     if (this.disposed) return
+    clearTimeout(this.resizeTimer)
     this.disposed = true
     const pending = this.controller
     pending?.abort()

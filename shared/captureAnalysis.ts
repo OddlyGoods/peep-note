@@ -149,8 +149,13 @@ export function captureNoteMarkdown(turns: CaptureTurn[], language: CaptureLangu
   return turns.map(turn => `> ${turn.question.replace(/\n/g, '\n> ')}\n\n${turn.answer}${turn.interrupted ? `\n\n*${captureAnalysisCopy[language].stopped}*` : ''}`).join('\n\n---\n\n')
 }
 
-export function analysisWindowBounds(anchor: { x: number; y: number }, area: { x: number; y: number; width: number; height: number }) {
-  const width = Math.min(480, area.width), height = Math.min(640, area.height)
+export type AnalysisWindowSize = { width: number; height: number }
+
+export function analysisWindowBounds(anchor: { x: number; y: number }, area: { x: number; y: number; width: number; height: number }, savedSize?: unknown) {
+  const saved = savedSize as Partial<AnalysisWindowSize> | null | undefined
+  const dimension = (value: unknown, fallback: number, minimum: number, available: number) =>
+    Math.min(typeof value === 'number' && Number.isFinite(value) && value > 0 ? Math.max(minimum, Math.round(value)) : fallback, available)
+  const width = dimension(saved?.width, 480, 360, area.width), height = dimension(saved?.height, 640, 280, area.height)
   return { width, height,
     x: Math.round(Math.max(area.x, Math.min(anchor.x, area.x + area.width - width))),
     y: Math.round(Math.max(area.y, Math.min(anchor.y, area.y + area.height - height))),

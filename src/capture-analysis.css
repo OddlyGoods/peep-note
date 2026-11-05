@@ -34,6 +34,7 @@ html[data-theme] body:has(> #capture-analysis-root) { background: transparent !i
 .capture-analysis-waiting { display: flex; flex-direction: column; align-items: center; gap: 14px; min-height: 160px; justify-content: center; width: 100%; }
 .capture-analysis-orb { flex-shrink: 0; }
 .capture-analysis-waiting-caption { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: var(--quick-excerpt); font-size: 12px; }
+.capture-analysis-elapsed { font-size: 11px; font-variant-numeric: tabular-nums; }
 .capture-analysis-error { color: #fb7185; line-height: 1.65; padding: 8px 0; }
 .capture-analysis-error button { margin-top: 10px; }
 .capture-analysis-footer { padding: 12px; border-top: 1px solid var(--soft-border); }

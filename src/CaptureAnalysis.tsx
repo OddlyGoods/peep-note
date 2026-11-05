@@ -90,11 +90,13 @@ export default function CaptureAnalysis() {
       </section>)}
       {state?.status === 'running' && <section className="capture-analysis-active">
         {state.turns.length > 0 && <p className="capture-analysis-question">{state.question}</p>}
-        <div className="capture-analysis-response-time"><Clock3 size={12} />{elapsed}{copy.seconds}</div>
         {draftBody.trim() ? <div className="markdown-content capture-analysis-markdown capture-analysis-draft">{markdown(draftBody)}</div>
           : <div className="capture-analysis-waiting" role="status" aria-label={copy.waiting}>
             <ThinkingOrb className="capture-analysis-orb" state="solving" size={64} style={{ width: 80, height: 80 }} theme="auto" color="#7c3aed" dotSize={1.2} dots={1.2} aria-hidden="true" />
-            <div className="capture-analysis-waiting-caption" aria-hidden="true">{copy.waiting}</div>
+            <div className="capture-analysis-waiting-caption" aria-hidden="true">
+              <span>{copy.waiting}</span>
+              <span className="capture-analysis-elapsed">{elapsed}{copy.seconds}</span>
+            </div>
           </div>}
       </section>}
       {state?.status === 'stopped' && <div className="capture-analysis-stopped" role="status">

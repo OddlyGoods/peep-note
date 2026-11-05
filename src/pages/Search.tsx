@@ -261,7 +261,7 @@ export default function Search({ sidebarOnly }: { sidebarOnly?: boolean }) {
 
         {/* 결과 */}
         <div className="search-results-scroll-area flex-1 overflow-y-auto px-6 pt-6 pb-40" data-screen-scroll="main" data-screen-scroll-key={JSON.stringify([query, typeFilter, workspaceFilter, dateFrom, dateTo])} aria-busy={loading}>
-          <p className="text-xs text-gray-400 mb-4">{t('ocrHint')}{ocrPending > 0 && <span className="block mt-1" role="status">{t('ocrWorking')} ({ocrPending})</span>}</p>
+          {ocrPending > 0 && <p className="text-xs text-gray-400 mb-4" role="status">{t('ocrWorking')} ({ocrPending})</p>}
           {error && <p role="alert" className="text-sm text-red-400 mb-3">{t('operationFailed')} <button className="underline" onClick={() => doSearch()}>{t('retry')}</button></p>}
           {loading && !results.length ? (
             <div className="flex items-center justify-center h-48">

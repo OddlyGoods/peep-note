@@ -27,7 +27,7 @@ html[data-theme] body:has(> #capture-analysis-root) { background: transparent !i
 .capture-analysis-markdown table { width: 100%; border-collapse: collapse; margin: 10px 0; }
 .capture-analysis-markdown th, .capture-analysis-markdown td { padding: 5px 8px; border: 1px solid var(--soft-border); text-align: left; }
 .capture-analysis-markdown blockquote { padding-left: 10px; border-left: 2px solid #8b5cf6; }
-.capture-analysis-time { display: flex; gap: 5px; align-items: center; min-width: 0; flex: 1; color: var(--quick-excerpt); font-size: 11px; }
+.capture-analysis-model { display: flex; gap: 5px; align-items: center; min-width: 0; flex: 1; color: var(--quick-excerpt); font-size: 11px; }
 .capture-analysis-body[data-waiting='true'] { display: flex; align-items: center; justify-content: center; }
 .capture-analysis-waiting { display: flex; flex-direction: column; align-items: center; gap: 14px; min-height: 160px; justify-content: center; width: 100%; }
 .capture-analysis-orb { flex-shrink: 0; }
@@ -42,7 +42,7 @@ html[data-theme] body:has(> #capture-analysis-root) { background: transparent !i
 .capture-analysis-actions { display: flex; align-items: center; gap: 8px; }
 .capture-analysis-shell .capture-secondary, .capture-analysis-shell .capture-primary { height: 28px; padding: 0 12px; font-size: 12px; line-height: 1; }
 .capture-workspace-trigger { flex-shrink: 1; min-width: 0; }
-.capture-analysis-time { flex-wrap: wrap; overflow-wrap: anywhere; }
+.capture-analysis-model { flex-wrap: wrap; overflow-wrap: anywhere; }
 html[data-theme='light'] .capture-analysis-composer { background: #fff; border-color: #b9c6d8; }
 html[data-theme='light'] .capture-analysis-error { color: #e11d48; }
 
@@ -65,3 +65,5 @@ html[data-theme='dark'] .capture-answer-copy[data-state='error'] { color: #fb718
 
 .capture-analysis-stopped { display: flex; align-items: center; gap: 12px; margin-top: 12px; color: var(--quick-excerpt); font-size: 12px; }
 .capture-analysis-stop { color: var(--workspace-badge-text); }
+
+.capture-analysis-response-time { display: flex; align-items: center; gap: 5px; margin-bottom: 12px; color: var(--quick-excerpt); font-size: 11px; font-variant-numeric: tabular-nums; }

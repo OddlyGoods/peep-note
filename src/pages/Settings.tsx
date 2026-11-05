@@ -582,6 +582,12 @@ export default function Settings() {
                   <span className={`absolute top-0.5 w-5 h-5 rounded-full shadow-sm transition-[left] ${fixedStartDate ? 'left-6 bg-white' : 'left-0.5 bg-gray-300'}`} />
                 </button>
               </div>
+              <div className="border-t border-gray-800 pt-4 text-sm">
+                <DataLocationField directory={dataPath} usage={dataUsage} usageError={dataUsageError}
+                  changing={changingDataPath} disabled={!window.electronAPI?.chooseDataLocation || saveStatus === 'saving'} onChoose={chooseDataPath} />
+                <p className="mt-2 text-xs text-gray-400 leading-relaxed">{t('dataLocationHint')}</p>
+                {dataPathError && <p role="alert" className="mt-2 text-xs text-red-400">{t(dataPathError)}</p>}
+              </div>
             </div>
           </section>
         </SettingsPane>
@@ -870,12 +876,6 @@ export default function Settings() {
               <div className="flex justify-between py-1.5 border-b border-gray-800">
                 <span className="text-gray-400">{t('version')}</span>
                 <span className="text-gray-300">{appVersion || '–'}</span>
-              </div>
-              <div className="py-2 border-b border-gray-800">
-                <DataLocationField directory={dataPath} usage={dataUsage} usageError={dataUsageError}
-                  changing={changingDataPath} disabled={!window.electronAPI?.chooseDataLocation || saveStatus === 'saving'} onChoose={chooseDataPath} />
-                <p className="mt-2 text-xs text-gray-400 leading-relaxed">{t('dataLocationHint')}</p>
-                {dataPathError && <p role="alert" className="mt-2 text-xs text-red-400">{t(dataPathError)}</p>}
               </div>
             </div>
             <UpdatePanel />

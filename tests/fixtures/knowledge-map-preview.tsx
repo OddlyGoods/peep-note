@@ -50,7 +50,8 @@ function Harness() {
   useEffect(() => { qa.ready = true }, [])
   return <Layout><ScreenCache screens={[
     { key: 'knowledge-map', path: '/map', element: <KnowledgeMap /> },
-    { key: 'map-detail', path: '/map/log/:id', element: <LogDetail /> },
+    { key: 'explore-detail', path: '/log/:id', element: <LogDetail /> },
+    { key: 'explore-list', path: '/', element: <div>Fixture Explore list</div> },
     { key: 'settings', path: '/settings', element: <div>Fixture settings</div> },
   ]} /></Layout>
 }

@@ -1,17 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, ArrowUpRight, Check, ChevronDown, FileText, FolderOpen, Layers, Waypoints, RefreshCw, Search, Tag, X } from 'lucide-react'
+import { Check, ChevronDown, FileText, FolderOpen, Layers, Waypoints, RefreshCw, Search, Tag, X } from 'lucide-react'
 import { buildKnowledgeGraph, type MapNode, type MapSnapshot } from '../../shared/knowledgeMap'
-import { api, type Log } from '../lib/api'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
-import MarkdownLink from '../components/MarkdownLink'
-import MarkdownCodeBlock from '../components/MarkdownCodeBlock'
+import { api } from '../lib/api'
 import { useScreenActive } from '../lib/screenActivity'
 import { useWorkspaceStore } from '../stores/workspaceStore'
 import { useLogStore } from '../stores/logStore'
 import { useI18n } from '../i18n'
 import { useOpenLog } from '../components/LogNavigationProvider'
-import { getAiSummaryContent } from '../lib/aiSummary'
 import KnowledgeMapCanvas from '../components/KnowledgeMapCanvas'
 import './KnowledgeMap.css'
 
@@ -24,9 +19,6 @@ export default function KnowledgeMap() {
   const [query, setQuery] = useState(''), [search, setSearch] = useState(''), [workspace, setWorkspace] = useState('')
   const [groups, setGroups] = useState(true), [tags, setTags] = useState(true)
   const [selected, setSelected] = useState<string | null>(null)
-  const [previewId, setPreviewId] = useState<string | null>(null)
-  const [previewContent, setPreviewContent] = useState<Log | null>(null)
-  const [previewLoading, setPreviewLoading] = useState(false), [previewError, setPreviewError] = useState(false)
   const [loading, setLoading] = useState(true), [error, setError] = useState(false), [refresh, setRefresh] = useState(0)
   const [menuOpen, setMenuOpen] = useState(false)
   const menu = useRef<HTMLDivElement>(null), trigger = useRef<HTMLButtonElement>(null)
@@ -62,25 +54,7 @@ export default function KnowledgeMap() {
   const graph = useMemo(() => buildKnowledgeGraph(snapshot.notes, groups, tags), [snapshot.notes, groups, tags])
   const nodeById = useMemo(() => new Map(graph.nodes.map(node => [node.id, node])), [graph])
   const current = selected ? nodeById.get(selected) : undefined
-  const preview = previewId ? nodeById.get(previewId) : undefined
-  useEffect(() => {
-    if (selected && !nodeById.has(selected)) { setSelected(null); setPreviewId(null) }
-    if (previewId && !nodeById.has(previewId)) setPreviewId(null)
-  }, [selected, previewId, nodeById])
-  useEffect(() => {
-    if (!active || !previewId) return
-    const note = nodeById.get(previewId)?.note
-    if (!note) return
-    let cancelled = false
-    setPreviewContent(null); setPreviewLoading(true); setPreviewError(false)
-    void api.logs.get(note.id).then(result => {
-      if (cancelled) return
-      if (result.is_secret) { setRefresh(value => value + 1); throw new Error('Unavailable note') }
-      setPreviewContent(result)
-    }).catch(() => { if (!cancelled) setPreviewError(true) })
-      .finally(() => { if (!cancelled) setPreviewLoading(false) })
-    return () => { cancelled = true }
-  }, [active, previewId, logs, nodeById])
+  useEffect(() => { if (selected && !nodeById.has(selected)) setSelected(null) }, [selected, nodeById])
   const connections = useMemo(() => {
     if (!current) return []
     if (current.kind !== 'note') return current.members.map(id => nodeById.get(id)!).filter(Boolean)
@@ -90,8 +64,12 @@ export default function KnowledgeMap() {
   const workspaceName = (note: NonNullable<MapNode['note']>) => note.workspaceDefault ? t('defaultWorkspace') : note.workspaceName || t('defaultWorkspace')
   const name = (node: MapNode) => `${node.kind === 'tag' ? '#' : ''}${node.label || t('mapUntitled')}`
   const Icon = ({ node }: { node: MapNode }) => node.kind === 'group' ? <Layers size={14} /> : node.kind === 'tag' ? <Tag size={14} /> : <FileText size={14} />
-  const select = (id: string | null) => { setSelected(id); setPreviewId(null) }
-  const readNote = (id: string) => { setPreviewId(id); setPreviewContent(null); setPreviewLoading(true); setPreviewError(false) }
+  const select = (id: string | null) => setSelected(id)
+  const readNote = (node: MapNode) => {
+    if (!node.note) return
+    useWorkspaceStore.getState().setSelectedId(node.note.workspaceId || workspaces.find(item => item.is_default)?.id || null)
+    openLog(node.note.id)
+  }
   const options = [{ id: '', label: t('mapAllWorkspaces') }, ...workspaces.map(item => ({ id: item.id, label: item.is_default ? t('defaultWorkspace') : item.name }))]
 
   return <section className="knowledge-map" aria-label={t('knowledgeMap')}>
@@ -124,29 +102,16 @@ export default function KnowledgeMap() {
         {!loading && (!snapshot.notes.length || error) && <div className="knowledge-empty" role="status"><Waypoints size={36} /><h2>{error ? t('mapError') : t('mapEmpty')}</h2><p>{error ? '' : t('mapEmptyHint')}</p>{error && <button className="knowledge-action" onClick={() => setRefresh(value => value + 1)}>{t('mapRefresh')}</button>}</div>}
         {snapshot.total > snapshot.notes.length && <div className="knowledge-map-caption">{t('mapLimit', { shown: snapshot.notes.length, total: snapshot.total })}</div>}
       </div>
-      <aside className="knowledge-inspector" data-screen-scroll="knowledge-inspector">
+      <aside className={`knowledge-inspector${current ? '' : ' knowledge-inspector-empty'}`} data-screen-scroll="knowledge-inspector">
         {current ? <>
           <div className="knowledge-inspector-heading">
-            {preview ? <button className="knowledge-back" onClick={() => setPreviewId(null)}><ArrowLeft size={14} />{t('mapConnectedNotes')}</button> : <span className={`knowledge-kind knowledge-kind-${current.kind}`}><Icon node={current} />{t(current.kind === 'note' ? 'mapNotes' : current.kind === 'group' ? 'mapGroups' : 'mapTags')}</span>}
+            <span className={`knowledge-kind knowledge-kind-${current.kind}`}><Icon node={current} />{t(current.kind === 'note' ? 'mapNotes' : current.kind === 'group' ? 'mapGroups' : 'mapTags')}</span>
             <button className="knowledge-icon-button" onClick={() => select(null)} aria-label={t('close')}><X size={15} /></button>
           </div>
-          {preview?.note ? <>
-            <h2>{name(preview)}</h2>
-            <p className="knowledge-workspace-label"><FolderOpen size={13} />{workspaceName(preview.note)}</p>
-            <div className="knowledge-preview" aria-busy={previewLoading}>
-              {previewLoading ? <RefreshCw size={16} className="animate-spin" aria-label={t('loading')} /> : previewError ? <p role="alert">{t('mapNoteUnavailable')}</p> : previewContent?.id === preview.note.id ? (
-                previewContent.content_format === 'markdown' || previewContent.log_type === 'summary'
-                  ? <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: MarkdownLink, pre: MarkdownCodeBlock }}>{(previewContent.log_type === 'summary' ? getAiSummaryContent(previewContent.content) : previewContent.content) || t('mapNoPreview')}</ReactMarkdown>
-                  : <div className={`knowledge-plain${previewContent.content_format === 'code' || previewContent.content_format === 'html' ? ' font-mono' : ''}`}>{previewContent.content || t('mapNoPreview')}</div>
-              ) : null}
-            </div>
-            {!previewError && <button className="knowledge-action" onClick={() => openLog(preview.note!.id, '/map/log')}>{t('mapOpen')}<ArrowUpRight size={14} /></button>}
-          </> : <>
             <h2>{name(current)}</h2>
             <h3>{t('mapConnectedNotes')} <span>{connections.length}</span></h3>
             {!connections.length && <p className="knowledge-muted">{t('mapNoConnections')}</p>}
-            <div className="knowledge-node-list">{connections.map(node => <button key={node.id} onClick={() => readNote(node.id)}><FileText size={14} /><span>{name(node)}<small>{workspaceName(node.note!)}</small></span></button>)}</div>
-          </>}
+            <div className="knowledge-node-list">{connections.map(node => <button key={node.id} onClick={() => readNote(node)}><FileText size={14} /><span>{name(node)}<small>{workspaceName(node.note!)}</small></span></button>)}</div>
         </> : <div className="knowledge-intro"><Waypoints size={30} /><h2>{t('mapSelect')}</h2><p>{t('mapSelectHint')}</p></div>}
       </aside>
     </div>

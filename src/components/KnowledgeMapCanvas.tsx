@@ -169,7 +169,6 @@ export default function KnowledgeMapCanvas({ graph, selected, onSelect }: {
         else setCamera(value => ({ ...value, yaw: value.yaw + (event.key === 'ArrowLeft' ? -0.12 : event.key === 'ArrowRight' ? 0.12 : 0), pitch: Math.max(-1.4, Math.min(1.4, value.pitch + (event.key === 'ArrowUp' ? -0.12 : event.key === 'ArrowDown' ? 0.12 : 0))) }))
       }} />
     <div className="knowledge-view-controls">
-      <span className="knowledge-dimension">3D</span>
       <button type="button" onClick={() => zoom(1.2)} title={t('mapZoomIn')} aria-label={t('mapZoomIn')}><Plus size={15} /></button>
       <button type="button" onClick={() => zoom(1 / 1.2)} title={t('mapZoomOut')} aria-label={t('mapZoomOut')}><Minus size={15} /></button>
       <button type="button" onClick={reset} title={t('mapReset')} aria-label={t('mapReset')}><RotateCcw size={14} /></button>

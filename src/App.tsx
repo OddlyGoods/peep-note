@@ -134,7 +134,6 @@ export default function App() {
           { key: 'favorites-list', path: '/favorites', element: <Favorites /> },
           { key: 'favorites-detail', path: '/favorites/log/:id', element: <LogDetail /> },
           { key: 'knowledge-map', path: '/map', element: <KnowledgeMap /> },
-          { key: 'map-detail', path: '/map/log/:id', element: <LogDetail /> },
           { key: 'trash', path: '/trash', element: <Trash /> },
           { key: 'settings', path: '/settings', element: <Settings /> },
         ]} />

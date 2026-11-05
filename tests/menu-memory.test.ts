@@ -10,12 +10,12 @@ test('each list and detail belongs to its own menu; invalid routes are not cache
     ['/search/', '/search', 'search-list'], ['/search/log/a', '/search', 'search-detail'],
     ['/favorites', '/favorites', 'favorites-list'], ['/favorites/log/a', '/favorites', 'favorites-detail'],
     ['/trash', '/trash', 'trash'], ['/settings', '/settings', 'settings'],
-    ['/map', '/map', 'knowledge-map'], ['/map/log/a', '/map', 'map-detail'],
+    ['/map', '/map', 'knowledge-map'],
   ]) {
     assert.equal(menuForPath(path), menu)
     assert.equal(screenForPath(path), screen)
   }
-  for (const path of ['/bad', '/log/', '/log/a/extra', '/searching', '/favorites/fake']) {
+  for (const path of ['/bad', '/log/', '/log/a/extra', '/searching', '/favorites/fake', '/map/log/a']) {
     assert.equal(menuForPath(path), null)
     assert.equal(screenForPath(path), null)
   }

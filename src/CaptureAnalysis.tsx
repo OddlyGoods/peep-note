@@ -27,11 +27,11 @@ export default function CaptureAnalysis() {
     return () => { alive = false; off() }
   }, [])
   useEffect(() => {
-    if (state?.status !== 'running') return
+    if (state?.status !== 'running' || state.responseStartedAt != null) return
     setNow(Date.now())
     const timer = setInterval(() => setNow(Date.now()), 100)
     return () => clearInterval(timer)
-  }, [state?.status, state?.startedAt])
+  }, [state?.status, state?.startedAt, state?.responseStartedAt])
   useEffect(() => {
     if (scroll.current && followScroll.current) scroll.current.scrollTop = scroll.current.scrollHeight
   }, [state?.turns.length, state?.draft, state?.status])
@@ -44,7 +44,7 @@ export default function CaptureAnalysis() {
   const draftBody = splitCaptureResponse(state?.draft ?? '').body
   const busy = !state || state.status === 'running' || state.status === 'stopping' || state.capturing
   const canReply = state?.status === 'ready' || state?.status === 'stopped'
-  const elapsed = state?.startedAt ? Math.max(0, (now - state.startedAt) / 1000).toFixed(1) : '0.0'
+  const elapsed = state?.startedAt ? Math.max(0, ((state.responseStartedAt ?? now) - state.startedAt) / 1000).toFixed(1) : '0.0'
   useEffect(() => { if (composerOpen && !busy) composer.current?.focus() }, [composerOpen, busy])
   const reply = (mode: CaptureReplyMode, source: 'button' | 'menu') => {
     if (busy || !canReply) return

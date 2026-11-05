@@ -12,6 +12,7 @@ export interface CaptureAnalysisState {
   question: string
   draft: string
   startedAt: number | null
+  responseStartedAt: number | null
   error: CaptureAnalysisError | null
   capturing: boolean
   saving: boolean

@@ -39,7 +39,7 @@ export class CaptureAnalysisWindow {
   private lastWindowSize: AnalysisWindowSize
 
   constructor(private options: AnalysisWindowOptions) {
-    this.value = { status: 'waiting', maximized: false, language: options.language, model: options.model, provider: options.provider ?? 'Codex', turns: [], question: '', draft: '', startedAt: null,
+    this.value = { status: 'waiting', maximized: false, language: options.language, model: options.model, provider: options.provider ?? 'Codex', turns: [], question: '', draft: '', startedAt: null, responseStartedAt: null,
       error: null, capturing: false, saving: false, saved: false,
       workspaceId: options.workspaces.find(item => item.isDefault)?.id ?? null, workspaces: options.workspaces }
     const workArea = screen.getDisplayMatching(options.firstCapture.bounds).workArea
@@ -95,8 +95,11 @@ export class CaptureAnalysisWindow {
     }
     this.interruptedTurn = null
     const controller = this.controller = new AbortController(), startedAt = Date.now()
-    const stream = new ProgressiveText(controller.signal, draft => this.publish({ draft }))
-    this.publish({ status: 'running', question, startedAt, error: null, draft: '' })
+    const stream = new ProgressiveText(controller.signal, draft => this.publish({ draft,
+      // Hidden title metadata is not the start of the visible answer.
+      responseStartedAt: this.value.responseStartedAt ?? (splitCaptureResponse(draft).body.trim() ? Date.now() : null),
+    }))
+    this.publish({ status: 'running', question, startedAt, responseStartedAt: null, error: null, draft: '' })
     try {
       const answer = await (this.options.analyze ?? runCodexVision)({ responseLanguage: this.options.responseLanguage, model: this.value.model, language: this.value.language, turns: this.value.turns,
         question, images: [...this.images], directory: this.options.directory, signal: controller.signal,
@@ -104,7 +107,7 @@ export class CaptureAnalysisWindow {
       if (controller.signal.aborted || this.disposed) return
       await stream.finish(answer)
       if (controller.signal.aborted || this.disposed) return
-      const elapsedMs = Date.now() - startedAt
+      const elapsedMs = Math.max(0, (this.value.responseStartedAt ?? Date.now()) - startedAt)
       const response = splitCaptureResponse(answer)
       this.publish({ status: 'ready', draft: '', saved: false,
         turns: [...this.value.turns, { question, answer: response.body, title: response.title, elapsedMs, imageCount: this.images.length, model: this.value.model, provider: this.value.provider }] })
@@ -123,7 +126,7 @@ export class CaptureAnalysisWindow {
     if (this.disposed || this.value.status !== 'running' || !this.controller) return
     const response = splitCaptureResponse(this.value.draft)
     this.interruptedTurn = response.body.trim() ? { question: this.value.question, answer: response.body, title: response.title,
-      interrupted: true, elapsedMs: Math.max(0, Date.now() - (this.value.startedAt ?? Date.now())), imageCount: this.images.length,
+      interrupted: true, elapsedMs: Math.max(0, (this.value.responseStartedAt ?? Date.now()) - (this.value.startedAt ?? Date.now())), imageCount: this.images.length,
       model: this.value.model, provider: this.value.provider } : null
     this.publish({ status: 'stopping', draft: '', error: null, saved: false,
       turns: this.interruptedTurn ? [...this.value.turns, this.interruptedTurn] : this.value.turns })

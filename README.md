@@ -45,6 +45,12 @@ Enable **Secret** when creating a note to hide its content in list previews. Ope
 
 ![Create a note with Secret enabled, then open it to see the PIN prompt](docs/images/secret-note.gif)
 
+### 6. Explore screen content with Magic Pen
+
+Press `Alt+S` and draw around text, a diagram, or anything you want to understand on your screen. Magic Pen explains the selected content in a movable response window. Ask follow-up questions by typing or selecting another area, then save the conversation as a Markdown note in your chosen workspace. Choose your AI API or an installed, signed-in AI tool in **Settings → AI settings → Magic Pen**.
+
+![Select content with Magic Pen, ask a follow-up question, and save the conversation as a note](docs/images/magic-pen.gif)
+
 ## Configuration
 
 PeepNote opens directly to the main screen. There are no app accounts, login forms, Google sign-in, session tokens or authentication server. All windows use one local data space for notes, workspaces, settings and optional AI keys. OS user accounts still have their own application data directories.

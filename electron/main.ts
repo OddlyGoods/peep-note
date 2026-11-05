@@ -38,7 +38,7 @@ import { queryAll, queryOne } from '../server/db'
 import { cleanupUnreferencedMedia } from '../server/media'
 import { DataStorageError, prepareDataLocation, scheduleDataLocation } from './dataStorage'
 import { restartAfterDataLocationChange } from './restart'
-import { dataStorageCopy, dataStorageErrorKey, type DataLocationResult } from '../shared/dataStorage'
+import { dataStorageCopy, dataStorageErrorKey, isDataLocationMode, type DataLocationResult } from '../shared/dataStorage'
 import { getActiveHotkeys, resolveHotkeys } from '../shared/hotkeys'
 import { handleFavoritesShortcut } from './favoritesShortcut'
 import { createCaptureAction } from './captureAction'
@@ -1136,25 +1136,26 @@ function setupIPC() {
     } else recordingWindows.delete(event.sender.id)
   })
 
-  ipcMain.handle('choose-data-location', async event => {
-    if (event.sender !== mainWindow?.webContents || changingDataLocation || !mainWindow) return null
+  ipcMain.handle('choose-data-location', async (event, mode: unknown = 'copy') => {
+    if (event.sender !== mainWindow?.webContents || changingDataLocation || !mainWindow || !isDataLocationMode(mode)) return null
+    const copy = dataStorageCopy(loadSettings().language)
     const result = await dialog.showOpenDialog(mainWindow, {
-      title: dataStorageCopy(loadSettings().language).changeDataLocation,
-      properties: ['openDirectory', 'createDirectory'],
+      title: copy[mode === 'copy' ? 'dataLocationCopy' : mode === 'open' ? 'dataLocationOpen' : 'dataLocationNew'],
+      properties: mode === 'open' ? ['openDirectory'] : ['openDirectory', 'createDirectory'],
       defaultPath: path.dirname(dataDirectory)
     })
     return result.canceled ? null : result.filePaths[0] ?? null
   })
 
-  ipcMain.handle('change-data-location', async (event, target: unknown): Promise<DataLocationResult> => {
-    if (event.sender !== mainWindow?.webContents || typeof target !== 'string') return { status: 'error', error: 'unavailable' }
+  ipcMain.handle('change-data-location', async (event, target: unknown, mode: unknown = 'copy'): Promise<DataLocationResult> => {
+    if (event.sender !== mainWindow?.webContents || typeof target !== 'string' || !isDataLocationMode(mode)) return { status: 'error', error: 'unavailable' }
     if (changingDataLocation || recordingWindows.size || snippingPreparing || capturePickerWindow
       || updateController.snapshot().status === 'installing') return { status: 'error', error: 'busy' }
     try {
-      scheduleDataLocation(profilePath, dataDirectory, target)
       changingDataLocation = true
+      await scheduleDataLocation(profilePath, dataDirectory, target, mode)
       // Normal window close handlers hide to tray. A storage change must exit
-      // the process so the next launch can copy data before opening the DB.
+      // the process so the next launch can prepare the selected data before opening the DB.
       await restartAfterDataLocationChange({
         relaunch: options => app.relaunch(options),
         exit: code => { setImmediate(() => app.exit(code)) },

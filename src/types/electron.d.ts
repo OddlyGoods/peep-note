@@ -1,5 +1,5 @@
 import type { UpdateState } from '../../shared/updates'
-import type { DataLocationResult } from '../../shared/dataStorage'
+import type { DataLocationMode, DataLocationResult } from '../../shared/dataStorage'
 export {}
 
 declare global {
@@ -22,8 +22,8 @@ declare global {
       getVideosDir: () => Promise<string>
       getUserDataPath: () => Promise<string>
       getDataUsage: () => Promise<{ bytes: number; partial: boolean }>
-      chooseDataLocation: () => Promise<string | null>
-      changeDataLocation: (directory: string) => Promise<DataLocationResult>
+      chooseDataLocation: (mode?: DataLocationMode) => Promise<string | null>
+      changeDataLocation: (directory: string, mode?: DataLocationMode) => Promise<DataLocationResult>
       setRecordingActive: (active: boolean) => Promise<void>
       getCaptureCodexModels?: () => Promise<import('../../shared/codexModels').CaptureCodexModel[]>
       getSettings: () => Promise<Record<string, unknown>>

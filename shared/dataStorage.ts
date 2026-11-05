@@ -1,10 +1,20 @@
-export type DataStorageErrorCode = 'same' | 'nested' | 'notEmpty' | 'unavailable' | 'failed' | 'busy'
+export type DataLocationMode = 'copy' | 'open' | 'new'
+export function isDataLocationMode(value: unknown): value is DataLocationMode { return value === 'copy' || value === 'open' || value === 'new' }
+export type DataStorageErrorCode = 'same' | 'nested' | 'notEmpty' | 'invalidData' | 'unavailable' | 'failed' | 'busy'
 export type DataLocationResult = { status: 'cancelled' | 'restarting' | 'error'; error?: DataStorageErrorCode }
 
 export const dataStorageMessages = {
   en: {
     changeDataLocation: 'Change folder',
-    dataLocationHint: 'Choose an empty folder. Notes, attachments, and settings will be copied there when PeepNote restarts. The original files will be kept as a backup.',
+    dataLocationHint: 'Move your data, open an existing data folder, or start fresh. PeepNote restarts when you switch folders. Your previous folder is kept.',
+    dataLocationCopy: 'Move data', dataLocationOpen: 'Open existing data', dataLocationNew: 'Start fresh',
+    dataLocationCopyHint: 'Copy notes, files, and settings to an empty folder.',
+    dataLocationOpenHint: 'Use a folder that already contains PeepNote data.',
+    dataLocationNewHint: 'Start with no notes or saved settings in an empty folder.',
+    dataLocationOpenConfirm: 'Open this data folder and restart PeepNote? Save any unfinished notes and settings first. Your current data will stay in its folder.\n\n{path}',
+    dataLocationNewConfirm: 'Start fresh in this folder and restart PeepNote? Save any unfinished notes and settings first. Your current data will stay in its folder.\n\n{path}',
+    dataLocationOpenRestart: 'Open and restart', dataLocationNewRestart: 'Create and restart',
+    dataLocationInvalidData: 'This folder does not contain a valid PeepNote database. Choose the data folder itself.',
     dataLocationConfirmTitle: 'Change data location',
     dataLocationConfirm: 'Copy your data to this folder and restart PeepNote? Save any unfinished notes and settings first.\n\n{path}',
     dataLocationRestart: 'Copy and restart', dataLocationRestarting: 'Restarting…',
@@ -19,7 +29,15 @@ export const dataStorageMessages = {
   },
   ko: {
     changeDataLocation: '폴더 변경',
-    dataLocationHint: '빈 폴더를 선택하세요. 재시작할 때 메모·첨부파일·설정을 복사합니다. 기존 파일은 백업으로 남겨둡니다.',
+    dataLocationHint: '데이터를 옮기거나 기존 폴더를 열고, 빈 폴더에서 새로 시작할 수 있습니다. 폴더를 전환하면 앱이 재시작되며 기존 폴더는 그대로 남습니다.',
+    dataLocationCopy: '데이터 옮기기', dataLocationOpen: '기존 데이터 열기', dataLocationNew: '새로 시작하기',
+    dataLocationCopyHint: '빈 폴더에 메모·첨부파일·설정을 복사합니다.',
+    dataLocationOpenHint: '피프노트 데이터가 있는 폴더로 전환합니다.',
+    dataLocationNewHint: '빈 폴더에서 메모와 설정 없이 새로 시작합니다.',
+    dataLocationOpenConfirm: '아래 데이터 폴더를 열고 PeepNote를 재시작할까요? 작성 중인 메모와 설정을 먼저 저장하세요. 현재 데이터는 기존 폴더에 그대로 남습니다.\n\n{path}',
+    dataLocationNewConfirm: '아래 폴더에서 새로 시작하고 PeepNote를 재시작할까요? 작성 중인 메모와 설정을 먼저 저장하세요. 현재 데이터는 기존 폴더에 그대로 남습니다.\n\n{path}',
+    dataLocationOpenRestart: '열고 재시작', dataLocationNewRestart: '생성 후 재시작',
+    dataLocationInvalidData: '유효한 피프노트 데이터가 없는 폴더입니다. 데이터 파일이 들어 있는 폴더를 선택하세요.',
     dataLocationConfirmTitle: '데이터 저장 위치 변경',
     dataLocationConfirm: '아래 폴더로 데이터를 복사하고 PeepNote를 재시작할까요? 작성 중인 메모와 설정을 먼저 저장하세요.\n\n{path}',
     dataLocationRestart: '복사 후 재시작', dataLocationRestarting: '재시작 중…',
@@ -34,7 +52,15 @@ export const dataStorageMessages = {
   },
   ja: {
     changeDataLocation: 'フォルダーを変更',
-    dataLocationHint: '空のフォルダーを選択してください。再起動時にノート・添付ファイル・設定をコピーします。元のファイルはバックアップとして残ります。',
+    dataLocationHint: 'データの移動、既存フォルダーの切り替え、新規作成ができます。切り替えると再起動します。元のフォルダーは残ります。',
+    dataLocationCopy: 'データを移動', dataLocationOpen: '既存のデータを開く', dataLocationNew: '新しく始める',
+    dataLocationCopyHint: '空のフォルダーにノート・ファイル・設定をコピーします。',
+    dataLocationOpenHint: 'PeepNote のデータがあるフォルダーに切り替えます。',
+    dataLocationNewHint: '空のフォルダーでノートと設定を新規作成します。',
+    dataLocationOpenConfirm: 'このデータフォルダーを開いて PeepNote を再起動しますか？作成中のノートと設定を先に保存してください。現在のデータは元のフォルダーに残ります。\n\n{path}',
+    dataLocationNewConfirm: 'このフォルダーで新しく始めて PeepNote を再起動しますか？作成中のノートと設定を先に保存してください。現在のデータは元のフォルダーに残ります。\n\n{path}',
+    dataLocationOpenRestart: '開いて再起動', dataLocationNewRestart: '作成して再起動',
+    dataLocationInvalidData: '有効な PeepNote データベースがありません。データファイルがあるフォルダーを選択してください。',
     dataLocationConfirmTitle: 'データの保存先を変更',
     dataLocationConfirm: 'このフォルダーにデータをコピーして PeepNote を再起動しますか？作成中のノートと設定を先に保存してください。\n\n{path}',
     dataLocationRestart: 'コピーして再起動', dataLocationRestarting: '再起動中…',
@@ -49,7 +75,15 @@ export const dataStorageMessages = {
   },
   zh: {
     changeDataLocation: '更改文件夹',
-    dataLocationHint: '请选择空文件夹。重启时将复制笔记、附件和设置。原始文件将保留为备份。',
+    dataLocationHint: '可迁移数据、打开已有数据文件夹，或在空文件夹中重新开始。切换后将重启，原文件夹会保留。',
+    dataLocationCopy: '迁移数据', dataLocationOpen: '打开已有数据', dataLocationNew: '重新开始',
+    dataLocationCopyHint: '将笔记、文件和设置复制到空文件夹。',
+    dataLocationOpenHint: '切换到已有 PeepNote 数据的文件夹。',
+    dataLocationNewHint: '在空文件夹中创建全新的笔记和设置。',
+    dataLocationOpenConfirm: '打开此数据文件夹并重启 PeepNote？请先保存未完成的笔记和设置。当前数据将保留在原文件夹中。\n\n{path}',
+    dataLocationNewConfirm: '在此文件夹中重新开始并重启 PeepNote？请先保存未完成的笔记和设置。当前数据将保留在原文件夹中。\n\n{path}',
+    dataLocationOpenRestart: '打开并重启', dataLocationNewRestart: '创建并重启',
+    dataLocationInvalidData: '此文件夹中没有有效的 PeepNote 数据库。请选择包含数据文件的文件夹。',
     dataLocationConfirmTitle: '更改数据位置',
     dataLocationConfirm: '将数据复制到以下文件夹并重启 PeepNote？请先保存未完成的笔记和设置。\n\n{path}',
     dataLocationRestart: '复制并重启', dataLocationRestarting: '正在重启…',
@@ -69,5 +103,5 @@ export function dataStorageCopy(language: unknown) {
 }
 
 export function dataStorageErrorKey(code?: DataStorageErrorCode) {
-  return ({ same: 'dataLocationSame', nested: 'dataLocationNested', notEmpty: 'dataLocationNotEmpty', unavailable: 'dataLocationUnavailable', failed: 'dataLocationFailed', busy: 'dataLocationBusy' } as const)[code ?? 'failed']
+  return ({ same: 'dataLocationSame', nested: 'dataLocationNested', notEmpty: 'dataLocationNotEmpty', invalidData: 'dataLocationInvalidData', unavailable: 'dataLocationUnavailable', failed: 'dataLocationFailed', busy: 'dataLocationBusy' } as const)[code ?? 'failed']
 }

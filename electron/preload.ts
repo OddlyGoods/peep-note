@@ -50,8 +50,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getVideosDir: () => ipcRenderer.invoke('get-videos-dir'),
   getUserDataPath: () => ipcRenderer.invoke('get-user-data-path'),
   getDataUsage: () => ipcRenderer.invoke('get-data-usage'),
-  chooseDataLocation: () => ipcRenderer.invoke('choose-data-location'),
-  changeDataLocation: (directory: string) => ipcRenderer.invoke('change-data-location', directory),
+  chooseDataLocation: (mode?: import('../shared/dataStorage').DataLocationMode) => ipcRenderer.invoke('choose-data-location', mode),
+  changeDataLocation: (directory: string, mode?: import('../shared/dataStorage').DataLocationMode) => ipcRenderer.invoke('change-data-location', directory, mode),
   setRecordingActive: (active: boolean) => ipcRenderer.invoke('set-recording-active', active),
 
   // 설정

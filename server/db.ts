@@ -40,6 +40,22 @@ export async function initDb(appDataPath: string) {
     db = new SQL.Database()
   }
 
+  initializeSchema(db)
+  persist()
+  return db
+}
+
+// Initialize new data folders without replacing the running process's database.
+export async function createEmptyDataFile(directory: string) {
+  const SQL = await initSqlJs()
+  const empty = new SQL.Database()
+  try {
+    initializeSchema(empty)
+    fs.writeFileSync(path.join(directory, 'open-peep-note.db'), Buffer.from(empty.export()), { flag: 'wx', mode: 0o600 })
+  } finally { empty.close() }
+}
+
+function initializeSchema(db: Database) {
   db.run(`
     CREATE TABLE IF NOT EXISTS logs (
       id         TEXT PRIMARY KEY,
@@ -134,9 +150,6 @@ export async function initDb(appDataPath: string) {
           AND (logs.workspace_id IS NULL OR logs.workspace_id != workspace_id)
       )`)
   db.run('CREATE INDEX IF NOT EXISTS logs_user_deleted_date ON logs(user_id, deleted_at, created_at)')
-
-  persist()
-  return db
 }
 
 export function queryOne<T>(sql: string, params: unknown[] = []): T | null {

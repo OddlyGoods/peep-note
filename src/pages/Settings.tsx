@@ -10,7 +10,7 @@ import { useLogStore } from '../stores/logStore'
 import SecretPasswordModal from '../components/SecretPasswordModal'
 import UpdatePanel from '../components/UpdatePanel'
 import ConfirmModal from '../components/ConfirmModal'
-import { dataStorageErrorKey } from '../../shared/dataStorage'
+import { dataStorageErrorKey, type DataLocationMode } from '../../shared/dataStorage'
 import DataLocationField from '../components/DataLocationField'
 import RetentionSelect from '../components/RetentionSelect'
 import { getCustomModelMemory, type CustomModelMemory } from '../../shared/customModelMemory'
@@ -237,7 +237,7 @@ export default function Settings() {
   const [dataPath, setDataPath] = useState('')
   const [dataUsage, setDataUsage] = useState<{ bytes: number; partial: boolean } | null>(null)
   const [dataUsageError, setDataUsageError] = useState(false)
-  const [pendingDataPath, setPendingDataPath] = useState<string | null>(null)
+  const [pendingDataPath, setPendingDataPath] = useState<{ directory: string; mode: DataLocationMode } | null>(null)
   const [changingDataPath, setChangingDataPath] = useState(false)
   const [dataPathError, setDataPathError] = useState<ReturnType<typeof dataStorageErrorKey> | ''>('')
   const [selectedLanguage, setSelectedLanguage] = useState<Language>(language)
@@ -409,22 +409,22 @@ export default function Settings() {
 
   const resetHotkeys = () => setHotkeys(resolveHotkeys())
 
-  const chooseDataPath = async () => {
+  const chooseDataPath = async (mode: DataLocationMode) => {
     setDataPathError('')
     try {
-      const directory = await window.electronAPI?.chooseDataLocation()
-      if (directory) setPendingDataPath(directory)
+      const directory = await window.electronAPI?.chooseDataLocation(mode)
+      if (directory) setPendingDataPath({ directory, mode })
     } catch { setDataPathError('dataLocationUnavailable') }
   }
 
   const changeDataPath = async () => {
     if (!pendingDataPath || changingDataPath) return
-    const directory = pendingDataPath
+    const { directory, mode } = pendingDataPath
     setPendingDataPath(null)
     setChangingDataPath(true)
     try {
       if (!await autosave.flush()) { setChangingDataPath(false); return }
-      const result = await window.electronAPI?.changeDataLocation(directory)
+      const result = await window.electronAPI?.changeDataLocation(directory, mode)
       if (result?.status === 'restarting') return
       setDataPathError(dataStorageErrorKey(result?.error))
     } catch { setDataPathError('dataLocationFailed') }
@@ -920,8 +920,10 @@ export default function Settings() {
           onCancel={() => setShowSecretPasswordModal(false)}
         />
       )}
-      {pendingDataPath && <ConfirmModal title={t('dataLocationConfirmTitle')} message={t('dataLocationConfirm').replace('{path}', pendingDataPath)}
-        confirmLabel={t('dataLocationRestart')} danger={false} onConfirm={changeDataPath} onCancel={() => setPendingDataPath(null)} />}
+      {pendingDataPath && <ConfirmModal title={t(pendingDataPath.mode === 'copy' ? 'dataLocationCopy' : pendingDataPath.mode === 'open' ? 'dataLocationOpen' : 'dataLocationNew')}
+        message={t(pendingDataPath.mode === 'copy' ? 'dataLocationConfirm' : pendingDataPath.mode === 'open' ? 'dataLocationOpenConfirm' : 'dataLocationNewConfirm').replace('{path}', pendingDataPath.directory)}
+        confirmLabel={t(pendingDataPath.mode === 'copy' ? 'dataLocationRestart' : pendingDataPath.mode === 'open' ? 'dataLocationOpenRestart' : 'dataLocationNewRestart')}
+        danger={false} onConfirm={changeDataPath} onCancel={() => setPendingDataPath(null)} />}
     </div>
   )
 }

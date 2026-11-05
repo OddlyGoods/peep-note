@@ -18,6 +18,7 @@ const qa = (window as any).qa = {
     auto_advance_date_range: false, fixed_start_date: true, trash_retention_days: 10 },
   mcp: { enabled: false, notificationsEnabled: true, endpoint: 'http://127.0.0.1:9999/mcp' },
   writes: [] as any[], failNext: false,
+  folderSelections: [] as string[], storageChanges: [] as any[], nextFolder: '/fixture/demo',
 }
 window.fetch = (async (url: any, options: any = {}) => {
   const path = new URL(String(url)).pathname, method = options.method ?? 'GET'
@@ -40,6 +41,8 @@ window.fetch = (async (url: any, options: any = {}) => {
   getSettings: async () => ({ hotkeys: resolveHotkeys(), language: 'ko' }), saveSettings: async () => {},
   getAppVersion: async () => 'fixture', getUserDataPath: async () => '/fixture', getDataUsage: async () => ({ bytes: 0, partial: false }),
   getCaptureCodexModels: async () => [],
+  chooseDataLocation: async (mode: string) => { qa.folderSelections.push(mode); return qa.nextFolder },
+  changeDataLocation: async (directory: string, mode: string) => { qa.storageChanges.push({ directory, mode }); return { status: 'error', error: 'invalidData' } },
 }
 let root = createRoot(document.getElementById('root')!)
 qa.unmount = () => root.unmount()

@@ -1,4 +1,5 @@
 import { invalidateExploreCache } from './exploreCache'
+import type { MapSnapshot } from '../../shared/knowledgeMap'
 import type { McpClient } from '../../shared/mcpClients'
 import type { TrashRetentionDays } from '../../shared/trashRetention'
 import type { Hotkeys } from '../../shared/hotkeys'
@@ -25,6 +26,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
+  knowledgeMap: (workspace: string, search: string, signal?: AbortSignal) => request<MapSnapshot>(`/api/knowledge-map?${new URLSearchParams({ workspace, search })}`, { signal }),
   mcp: {
     status: () => request<McpStatus>('/api/mcp'),
     savePreferences: (preferences: { enabled: boolean; notificationsEnabled: boolean }) => request<McpStatus>('/api/mcp', { method: 'PUT', body: JSON.stringify(preferences) }),

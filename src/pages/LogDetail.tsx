@@ -960,7 +960,7 @@ export default function LogDetail() {
                   return (
                     <div
                       key={l.id}
-                      onClick={() => openLog(l.id)}
+                      onClick={() => openLog(l.id, location.pathname.startsWith('/map/') ? '/map/log' : '/log')}
                       className="flex items-center gap-3 px-3 py-2 rounded-lg border border-gray-800 bg-gray-800/30 hover:bg-gray-800/60 cursor-pointer transition-colors"
                     >
                       <div className={`shrink-0 w-6 h-6 rounded-md border flex items-center justify-center ${

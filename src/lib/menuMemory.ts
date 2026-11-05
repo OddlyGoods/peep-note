@@ -1,5 +1,5 @@
-export type MenuPath = '/' | '/search' | '/favorites' | '/trash' | '/settings'
-export type ScreenKey = 'explore-list' | 'explore-detail' | 'search-list' | 'search-detail' | 'favorites-list' | 'favorites-detail' | 'trash' | 'settings'
+export type MenuPath = '/' | '/search' | '/favorites' | '/trash' | '/settings' | '/map'
+export type ScreenKey = 'explore-list' | 'explore-detail' | 'search-list' | 'search-detail' | 'favorites-list' | 'favorites-detail' | 'trash' | 'settings' | 'knowledge-map' | 'map-detail'
 
 export function screenForPath(pathname: string): ScreenKey | null {
   pathname = pathname.length > 1 ? pathname.replace(/\/$/, '') : pathname
@@ -11,6 +11,8 @@ export function screenForPath(pathname: string): ScreenKey | null {
   if (/^\/favorites\/log\/[^/]+\/?$/.test(pathname)) return 'favorites-detail'
   if (pathname === '/trash') return 'trash'
   if (pathname === '/settings') return 'settings'
+  if (pathname === '/map') return 'knowledge-map'
+  if (/^\/map\/log\/[^/]+\/?$/.test(pathname)) return 'map-detail'
   return null
 }
 
@@ -20,5 +22,6 @@ export function menuForPath(pathname: string): MenuPath | null {
   if (screen.startsWith('explore-')) return '/'
   if (screen.startsWith('search-')) return '/search'
   if (screen.startsWith('favorites-')) return '/favorites'
+  if (screen === 'knowledge-map' || screen === 'map-detail') return '/map'
   return screen === 'trash' ? '/trash' : '/settings'
 }

@@ -9,6 +9,7 @@ import workspaces from './routes/workspaces'
 import groups from './routes/groups'
 import ai from './routes/ai'
 import trash from './routes/trash'
+import knowledgeMap from './routes/knowledgeMap'
 import { purgeExpiredTrash } from './trash'
 import { createMcpAccess } from './mcpAccess'
 import { mcpControl, mcpEndpoint } from './mcp'
@@ -44,6 +45,7 @@ export function createApiApp(port: number, access = createMcpAccess(), onMcpChan
   app.route('/api/groups', groups)
   app.route('/api/ai', ai)
   app.route('/api/trash', trash)
+  app.route('/api/knowledge-map', knowledgeMap)
   app.route('/api/mcp', mcpControl(access, port, onMcpChanged))
 
   app.get('/health', (c) => c.json({ status: 'ok', port }))

@@ -6,6 +6,7 @@ import Favorites from './pages/Favorites'
 import LogDetail from './pages/LogDetail'
 import Settings from './pages/Settings'
 import Search from './pages/Search'
+import KnowledgeMap from './pages/KnowledgeMap'
 import Layout from './components/Layout'
 import ScreenCache from './components/ScreenCache'
 import DashboardSidebar from './components/DashboardSidebar'
@@ -132,6 +133,8 @@ export default function App() {
           { key: 'search-detail', path: '/search/log/:id', element: <div className="flex h-full"><Search sidebarOnly /><LogDetail /></div> },
           { key: 'favorites-list', path: '/favorites', element: <Favorites /> },
           { key: 'favorites-detail', path: '/favorites/log/:id', element: <LogDetail /> },
+          { key: 'knowledge-map', path: '/map', element: <KnowledgeMap /> },
+          { key: 'map-detail', path: '/map/log/:id', element: <LogDetail /> },
           { key: 'trash', path: '/trash', element: <Trash /> },
           { key: 'settings', path: '/settings', element: <Settings /> },
         ]} />

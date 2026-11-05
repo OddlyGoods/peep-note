@@ -26,7 +26,8 @@
     "typecheck": "tsc --noEmit",
     "test:privacy": "node scripts/audit-source.cjs",
     "test:mcp": "node scripts/test-mcp.cjs",
-    "test:settings-native": "node scripts/test-settings-native.cjs"
+    "test:settings-native": "node scripts/test-settings-native.cjs",
+    "test:map-native": "node scripts/test-knowledge-map-native.cjs"
   },
   "dependencies": {
     "@hono/node-server": "^1.12.0",

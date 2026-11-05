@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { createApiApp } from '../server/index'
-import { initDb, getDb, queryOne } from '../server/db'
+import { initDb, getDb, queryOne, run, transaction } from '../server/db'
 import { LOCAL_PROFILE_ID } from '../server/localProfile'
 import { api } from '../src/lib/api'
 import { saveCaptureAnalysis } from '../server/captureAnalysisNotes'
@@ -24,6 +24,7 @@ async function json(route: string, method = 'GET', body?: unknown, headers?: Rec
 }
 before(async () => { await initDb(root) })
 after(() => { getDb().close(); fs.rmSync(root, { recursive: true, force: true }) })
+
 
 test('notes, workspaces, comments and settings work immediately without a login', async () => {
   const defaults = await json('/api/settings')
@@ -332,4 +333,40 @@ test('capture Codex model persists independently of summary providers and surviv
     for (const value of [null, '', 42, 'x\n--model', 'x'.repeat(129)]) assert.equal((await call('/api/settings', 'PUT', { capture_codex_model: value })).status, 400)
     assert.equal((await json('/api/settings')).capture_codex_model, 'future-codex-vision')
   } finally { await json('/api/settings', 'PUT', { capture_codex_model: initial.capture_codex_model, ai_provider: initial.ai_provider, ai_model: initial.ai_model }) }
+})
+
+test('knowledge map excludes secret/trash/other profiles at the API and filters before limiting', async () => {
+  const workspace = await json('/api/workspaces', 'POST', { name: 'Map workspace' })
+  const visible = await json('/api/logs', 'POST', { title: 'Map public', content: 'Visible excerpt', tags: ['RAG', '#rag'], workspace_id: workspace.id })
+  const secret = await json('/api/logs', 'POST', { title: 'Hidden map title', content: 'hidden-map-content', tags: ['hidden-map-tag'], is_secret: true, workspace_id: workspace.id })
+  const deleted = await json('/api/logs', 'POST', { title: 'Deleted map note', tags: ['deleted-map-tag'], workspace_id: workspace.id })
+  await json(`/api/logs/${deleted.id}`, 'DELETE')
+  const group = { id: 'map-visible-group' }
+  run('INSERT INTO log_groups (id, user_id, name, workspace_id) VALUES (?, ?, ?, ?)', ['map-hidden-group', LOCAL_PROFILE_ID, 'Hidden map group', workspace.id])
+  run('INSERT INTO log_groups (id, user_id, name, workspace_id) VALUES (?, ?, ?, ?)', [group.id, LOCAL_PROFILE_ID, 'Visible map group', workspace.id])
+  run('UPDATE logs SET group_id = ? WHERE id = ?', ['map-hidden-group', secret.id])
+  run('UPDATE logs SET group_id = ? WHERE id = ?', [group.id, visible.id])
+  run('INSERT INTO logs (id, user_id, title, content, workspace_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)', ['map-other-profile', 'another-profile', 'Other map title', 'other-profile-content', workspace.id, 1, 1])
+  const route = `/api/knowledge-map?workspace=${workspace.id}`
+  const result = await json(route)
+  assert.equal(result.total, 1)
+  assert.deepEqual(result.notes.map((note: any) => note.id), [visible.id])
+  assert.deepEqual(result.notes[0].tags, ['rag'])
+  assert.equal(result.notes[0].groupId, group.id)
+  assert.equal(result.notes[0].workspaceName, 'Map workspace')
+  for (const value of ['hidden-map-content', 'hidden-map-tag', 'Hidden map title', 'Hidden map group', 'deleted-map-tag', 'other-profile-content']) assert.equal(JSON.stringify(result).includes(value), false)
+  assert.equal(result.notes[0].attachments, undefined)
+  assert.equal(result.notes[0].file_path, undefined)
+  assert.equal((await json(`${route}&search=hidden-map`)).total, 0)
+  assert.equal((await json(`${route}&search=Visible%20map%20group`)).total, 1)
+  assert.equal((await json(`${route}&search=%25`)).total, 0, 'search wildcard is treated literally')
+  transaction(() => {
+    for (let index = 0; index < 405; index++) run('INSERT INTO logs (id, user_id, title, content, workspace_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)', [`map-bounded-${index}`, LOCAL_PROFILE_ID, `Map bulk ${index}`, '', workspace.id, index + 1, index + 1])
+  })
+  const bounded = await json(route)
+  assert.equal(bounded.total, 406); assert.equal(bounded.notes.length, 400)
+  assert.equal((await json(`${route}&search=Map%20bulk%20404`)).notes.length, 1, 'search includes notes outside the current visible subset')
+  await json(`/api/logs/${visible.id}`, 'PUT', { is_secret: true })
+  assert.equal((await json(`${route}&search=Map%20public`)).total, 0, 'changing a note to secret removes it on refresh')
+  assert.equal((await call('/api/knowledge-map', 'GET', undefined, { Origin: 'https://example.test' })).status, 403)
 })

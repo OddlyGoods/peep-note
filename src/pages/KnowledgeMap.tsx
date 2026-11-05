@@ -1,12 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowUpRight, Check, ChevronDown, FileText, FolderOpen, Layers, Network, RefreshCw, Search, Tag, X } from 'lucide-react'
+import { ArrowLeft, ArrowUpRight, Check, ChevronDown, FileText, FolderOpen, Layers, Network, RefreshCw, Search, Tag, X } from 'lucide-react'
 import { buildKnowledgeGraph, type MapNode, type MapSnapshot } from '../../shared/knowledgeMap'
-import { api } from '../lib/api'
+import { api, type Log } from '../lib/api'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import MarkdownLink from '../components/MarkdownLink'
+import MarkdownCodeBlock from '../components/MarkdownCodeBlock'
 import { useScreenActive } from '../lib/screenActivity'
 import { useWorkspaceStore } from '../stores/workspaceStore'
 import { useLogStore } from '../stores/logStore'
 import { useI18n } from '../i18n'
 import { useOpenLog } from '../components/LogNavigationProvider'
+import { getAiSummaryContent } from '../lib/aiSummary'
 import KnowledgeMapCanvas from '../components/KnowledgeMapCanvas'
 import './KnowledgeMap.css'
 
@@ -19,10 +24,11 @@ export default function KnowledgeMap() {
   const [query, setQuery] = useState(''), [search, setSearch] = useState(''), [workspace, setWorkspace] = useState('')
   const [groups, setGroups] = useState(true), [tags, setTags] = useState(true)
   const [selected, setSelected] = useState<string | null>(null)
+  const [previewId, setPreviewId] = useState<string | null>(null)
+  const [previewContent, setPreviewContent] = useState<Log | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false), [previewError, setPreviewError] = useState(false)
   const [loading, setLoading] = useState(true), [error, setError] = useState(false), [refresh, setRefresh] = useState(0)
-  const [menuOpen, setMenuOpen] = useState(false), [pointQuery, setPointQuery] = useState('')
-  const [pointLimit, setPointLimit] = useState(100)
-  useEffect(() => setPointLimit(100), [pointQuery, workspace, search, groups, tags])
+  const [menuOpen, setMenuOpen] = useState(false)
   const menu = useRef<HTMLDivElement>(null), trigger = useRef<HTMLButtonElement>(null)
   useEffect(() => { const timer = setTimeout(() => setSearch(query.trim()), 200); return () => clearTimeout(timer) }, [query])
   useEffect(() => {
@@ -56,18 +62,36 @@ export default function KnowledgeMap() {
   const graph = useMemo(() => buildKnowledgeGraph(snapshot.notes, groups, tags), [snapshot.notes, groups, tags])
   const nodeById = useMemo(() => new Map(graph.nodes.map(node => [node.id, node])), [graph])
   const current = selected ? nodeById.get(selected) : undefined
-  useEffect(() => { if (selected && !nodeById.has(selected)) setSelected(null) }, [selected, nodeById])
+  const preview = previewId ? nodeById.get(previewId) : undefined
+  useEffect(() => {
+    if (selected && !nodeById.has(selected)) { setSelected(null); setPreviewId(null) }
+    if (previewId && !nodeById.has(previewId)) setPreviewId(null)
+  }, [selected, previewId, nodeById])
+  useEffect(() => {
+    if (!active || !previewId) return
+    const note = nodeById.get(previewId)?.note
+    if (!note) return
+    let cancelled = false
+    setPreviewContent(null); setPreviewLoading(true); setPreviewError(false)
+    void api.logs.get(note.id).then(result => {
+      if (cancelled) return
+      if (result.is_secret) { setRefresh(value => value + 1); throw new Error('Unavailable note') }
+      setPreviewContent(result)
+    }).catch(() => { if (!cancelled) setPreviewError(true) })
+      .finally(() => { if (!cancelled) setPreviewLoading(false) })
+    return () => { cancelled = true }
+  }, [active, previewId, logs, nodeById])
   const connections = useMemo(() => {
     if (!current) return []
     if (current.kind !== 'note') return current.members.map(id => nodeById.get(id)!).filter(Boolean)
     const hubs = new Set(graph.edges.filter(edge => edge.source === current.id).map(edge => edge.target))
     return graph.nodes.filter(node => node.kind === 'note' && node.id !== current.id && graph.edges.some(edge => edge.source === node.id && hubs.has(edge.target)))
   }, [current, graph, nodeById])
-  const pointList = graph.nodes.filter(node => `${node.kind === 'tag' ? '#' : ''}${node.label || t('mapUntitled')}`.toLocaleLowerCase().includes(pointQuery.toLocaleLowerCase()))
   const workspaceName = (note: NonNullable<MapNode['note']>) => note.workspaceDefault ? t('defaultWorkspace') : note.workspaceName || t('defaultWorkspace')
   const name = (node: MapNode) => `${node.kind === 'tag' ? '#' : ''}${node.label || t('mapUntitled')}`
   const Icon = ({ node }: { node: MapNode }) => node.kind === 'group' ? <Layers size={14} /> : node.kind === 'tag' ? <Tag size={14} /> : <FileText size={14} />
-  const select = (id: string | null) => { setSelected(id); setPointQuery('') }
+  const select = (id: string | null) => { setSelected(id); setPreviewId(null) }
+  const readNote = (id: string) => { setPreviewId(id); setPreviewContent(null); setPreviewLoading(true); setPreviewError(false) }
   const options = [{ id: '', label: t('mapAllWorkspaces') }, ...workspaces.map(item => ({ id: item.id, label: item.is_default ? t('defaultWorkspace') : item.name }))]
 
   return <section className="knowledge-map" aria-label={t('knowledgeMap')}>
@@ -93,28 +117,37 @@ export default function KnowledgeMap() {
       <label className="knowledge-filter"><input type="checkbox" checked={tags} onChange={event => setTags(event.target.checked)} /><Tag size={14} />{t('mapTags')}</label>
     </div>
     <div className="knowledge-body">
-      <div className="knowledge-stage" aria-busy={loading}>
+      <div className={`knowledge-stage${snapshot.total > snapshot.notes.length ? ' knowledge-stage-limited' : ''}`} aria-busy={loading}>
         <div className="knowledge-stats"><span><i className="knowledge-note-dot" />{t('mapNotes')} <b>{snapshot.notes.length}</b></span><span><i className="knowledge-group-dot" />{t('mapGroups')} <b>{graph.nodes.filter(node => node.kind === 'group').length}</b></span><span><i className="knowledge-tag-dot" />{t('mapTags')} <b>{graph.nodes.filter(node => node.kind === 'tag').length}</b></span></div>
         <KnowledgeMapCanvas graph={graph} selected={selected} onSelect={select} />
         {loading && <div className="knowledge-loading" role="status" aria-label={t('loading')}><RefreshCw size={20} className="animate-spin" /></div>}
         {!loading && (!snapshot.notes.length || error) && <div className="knowledge-empty" role="status"><Network size={36} /><h2>{error ? t('mapError') : t('mapEmpty')}</h2><p>{error ? '' : t('mapEmptyHint')}</p>{error && <button className="knowledge-action" onClick={() => setRefresh(value => value + 1)}>{t('mapRefresh')}</button>}</div>}
-        <div className="knowledge-map-caption">{t('mapPrivacy')}{snapshot.total > snapshot.notes.length && <span>{t('mapLimit', { shown: snapshot.notes.length, total: snapshot.total })}</span>}</div>
+        {snapshot.total > snapshot.notes.length && <div className="knowledge-map-caption">{t('mapLimit', { shown: snapshot.notes.length, total: snapshot.total })}</div>}
       </div>
       <aside className="knowledge-inspector" data-screen-scroll="knowledge-inspector">
         {current ? <>
-          <div className="knowledge-inspector-heading"><span className={`knowledge-kind knowledge-kind-${current.kind}`}><Icon node={current} />{t(current.kind === 'note' ? 'mapNotes' : current.kind === 'group' ? 'mapGroups' : 'mapTags')}</span><button className="knowledge-icon-button" onClick={() => select(null)} aria-label={t('close')}><X size={15} /></button></div>
-          <h2>{name(current)}</h2>
-          {current.note && <><p className="knowledge-workspace-label"><FolderOpen size={13} />{workspaceName(current.note)}</p><div className="knowledge-preview">{current.note.excerpt || t('mapNoPreview')}</div><button className="knowledge-action" onClick={() => openLog(current.note!.id, '/map/log')}>{t('mapOpen')}<ArrowUpRight size={14} /></button>
-            <div className="knowledge-related-hubs">{graph.edges.filter(edge => edge.source === current.id).map(edge => <button key={edge.target} onClick={() => select(edge.target)}><Icon node={nodeById.get(edge.target)!} />{name(nodeById.get(edge.target)!)}</button>)}</div></>}
-          <h3>{t('mapConnectedNotes')} <span>{connections.length}</span></h3>
-          {!connections.length && <p className="knowledge-muted">{t('mapNoConnections')}</p>}
-          <div className="knowledge-node-list">{connections.map(node => <button key={node.id} onClick={() => select(node.id)}><FileText size={14} /><span>{name(node)}<small>{workspaceName(node.note!)}</small></span></button>)}</div>
+          <div className="knowledge-inspector-heading">
+            {preview ? <button className="knowledge-back" onClick={() => setPreviewId(null)}><ArrowLeft size={14} />{t('mapConnectedNotes')}</button> : <span className={`knowledge-kind knowledge-kind-${current.kind}`}><Icon node={current} />{t(current.kind === 'note' ? 'mapNotes' : current.kind === 'group' ? 'mapGroups' : 'mapTags')}</span>}
+            <button className="knowledge-icon-button" onClick={() => select(null)} aria-label={t('close')}><X size={15} /></button>
+          </div>
+          {preview?.note ? <>
+            <h2>{name(preview)}</h2>
+            <p className="knowledge-workspace-label"><FolderOpen size={13} />{workspaceName(preview.note)}</p>
+            <div className="knowledge-preview" aria-busy={previewLoading}>
+              {previewLoading ? <RefreshCw size={16} className="animate-spin" aria-label={t('loading')} /> : previewError ? <p role="alert">{t('mapNoteUnavailable')}</p> : previewContent?.id === preview.note.id ? (
+                previewContent.content_format === 'markdown' || previewContent.log_type === 'summary'
+                  ? <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: MarkdownLink, pre: MarkdownCodeBlock }}>{(previewContent.log_type === 'summary' ? getAiSummaryContent(previewContent.content) : previewContent.content) || t('mapNoPreview')}</ReactMarkdown>
+                  : <div className={`knowledge-plain${previewContent.content_format === 'code' || previewContent.content_format === 'html' ? ' font-mono' : ''}`}>{previewContent.content || t('mapNoPreview')}</div>
+              ) : null}
+            </div>
+            {!previewError && <button className="knowledge-action" onClick={() => openLog(preview.note!.id, '/map/log')}>{t('mapOpen')}<ArrowUpRight size={14} /></button>}
+          </> : <>
+            <h2>{name(current)}</h2>
+            <h3>{t('mapConnectedNotes')} <span>{connections.length}</span></h3>
+            {!connections.length && <p className="knowledge-muted">{t('mapNoConnections')}</p>}
+            <div className="knowledge-node-list">{connections.map(node => <button key={node.id} onClick={() => readNote(node.id)}><FileText size={14} /><span>{name(node)}<small>{workspaceName(node.note!)}</small></span></button>)}</div>
+          </>}
         </> : <div className="knowledge-intro"><Network size={30} /><h2>{t('mapSelect')}</h2><p>{t('mapSelectHint')}</p></div>}
-        <div className="knowledge-point-browser"><h3>{t('mapPointList')} <span>{graph.nodes.length}</span></h3>
-          <label className="knowledge-search"><Search size={13} /><input aria-label={t('mapFindPoint')} placeholder={t('mapFindPoint')} value={pointQuery} onChange={event => setPointQuery(event.target.value)} /></label>
-          <div className="knowledge-node-list">{pointList.slice(0, pointLimit).map(node => <button key={node.id} onClick={() => select(node.id)} aria-pressed={selected === node.id}><Icon node={node} /><span>{name(node)}{node.kind !== 'note' && <small>{t('mapNotes')} · {node.members.length}</small>}</span></button>)}</div>
-          {pointList.length > pointLimit && <button className="knowledge-action" onClick={() => setPointLimit(value => value + 100)}>{t('mapMorePoints')}</button>}
-        </div>
       </aside>
     </div>
   </section>

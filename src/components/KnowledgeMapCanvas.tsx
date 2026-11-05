@@ -77,17 +77,25 @@ export default function KnowledgeMapCanvas({ graph, selected, onSelect }: {
       const focused = node.id === selected || node.id === hovered
       const related = highlighted.has(node.id)
       const color = mapNodeColor(node, dark)
-      const radius = (node.kind === 'note' ? 4.5 : 8) * Math.min(1.5, depth) + (focused ? 2 : 0)
+      const radius = (node.kind === 'note' ? 6 : node.kind === 'group' ? 7 : 4) * Math.min(1.5, depth) + (focused ? 2 : 0)
       ctx.globalAlpha = highlighted.size && !related ? 0.35 : Math.max(0.5, Math.min(1, depth))
       if (focused) { ctx.beginPath(); ctx.arc(x, y, radius + 6, 0, Math.PI * 2); ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.stroke() }
       ctx.beginPath()
       if (node.kind === 'group') { ctx.moveTo(x, y - radius); ctx.lineTo(x + radius, y); ctx.lineTo(x, y + radius); ctx.lineTo(x - radius, y); ctx.closePath() }
       else ctx.arc(x, y, radius, 0, Math.PI * 2)
       ctx.fillStyle = color; ctx.fill()
-      if (node.kind !== 'note') {
-        ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = dark ? '#11152b' : '#ffffff'; ctx.fillText(node.kind === 'tag' ? '#' : '◇', x, y + 0.5)
+      if (node.kind === 'group') {
+        ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = dark ? '#11152b' : '#ffffff'; ctx.fillText('◇', x, y + 0.5)
       }
-      if (!focused && (labels.length >= 60 || (node.kind === 'note' && !(related && highlighted.size < 15)))) continue
+    }
+    // Titles belong to notes first; group and tag labels provide context.
+    const labelPriority = (node: MapNode) => node.id === selected || node.id === hovered ? 0 : node.kind === 'note' ? 1 : node.kind === 'group' ? 2 : 3
+    for (const { node, x, y, depth } of [...projected].sort((a, b) => labelPriority(a.node) - labelPriority(b.node))) {
+      if (x < -40 || y < -40 || x > width + 40 || y > height + 40) continue
+      const focused = node.id === selected || node.id === hovered, related = highlighted.has(node.id)
+      const color = mapNodeColor(node, dark)
+      const radius = (node.kind === 'note' ? 6 : node.kind === 'group' ? 7 : 4) * Math.min(1.5, depth) + (focused ? 2 : 0)
+      if (!focused && (labels.length >= 60 || (node.kind === 'tag' && !related))) continue
       const raw = node.label || t('mapUntitled')
       const label = (node.kind === 'tag' ? '#' : '') + (raw.length > 28 ? raw.slice(0, 27) + '…' : raw)
       ctx.font = `${focused ? 600 : 400} 12px sans-serif`

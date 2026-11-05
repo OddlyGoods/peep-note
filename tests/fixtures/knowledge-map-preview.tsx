@@ -22,7 +22,7 @@ window.fetch = (async (input: any) => {
     if (qa.fail) return Response.json({ error: 'Fixture failure' }, { status: 503 })
     const workspace = url.searchParams.get('workspace'), search = (url.searchParams.get('search') || '').toLowerCase()
     const notes = qa.empty ? [] : qa.notes.filter((note: any) => (!workspace || note.workspaceId === workspace) && JSON.stringify(note).toLowerCase().includes(search))
-    return Response.json({ notes, total: notes.length, limit: 400 })
+    return Response.json({ notes: notes.map(({ excerpt, ...note }: any) => note), total: notes.length, limit: 400 })
   }
   if (route === '/api/workspaces') return Response.json([{ id: 'general', name: 'General', is_default: true }, { id: 'engineering', name: 'Engineering', is_default: false }])
   if (route.endsWith('/count')) return Response.json({ count: 0 })
@@ -30,7 +30,7 @@ window.fetch = (async (input: any) => {
   if (route.endsWith('/comments')) return Response.json([])
   if (route.startsWith('/api/logs/')) {
     const note = qa.notes.find((item: any) => item.id === route.split('/').pop())
-    return Response.json({ ...note, content: note?.excerpt ?? '', log_type: 'note', content_format: 'markdown', attachments: [], pinned: false, favorite: false, is_secret: false, created_at: 1700000000, updated_at: 1700000000, workspace_id: note?.workspaceId, group_id: null })
+    return Response.json({ ...note, content: (note?.excerpt ?? '') + '\n\n' + 'Full body detail. '.repeat(70) + 'End of full note', log_type: 'note', content_format: 'markdown', attachments: [], pinned: false, favorite: false, is_secret: false, created_at: 1700000000, updated_at: 1700000000, workspace_id: note?.workspaceId, group_id: null })
   }
   if (route === '/api/logs' || route === '/api/groups') return Response.json([])
   throw new Error('Unexpected map fixture request: ' + route)

@@ -1,6 +1,6 @@
 export const KNOWLEDGE_MAP_LIMIT = 400
 export type MapNote = {
-  id: string; title: string; excerpt: string; tags: string[]
+  id: string; title: string; tags: string[]
   groupId: string | null; groupName: string | null
   workspaceId: string; workspaceName: string; workspaceDefault: boolean
   type: string; createdAt: number
@@ -53,7 +53,11 @@ export function buildKnowledgeGraph(input: MapNote[], showGroups = true, showTag
   const targets = new Map<string, MapNode[]>()
   for (const edge of edges) targets.set(edge.source, [...(targets.get(edge.source) ?? []), hubs.get(edge.target)!])
   nodes.forEach((node, index) => {
-    const connected = targets.get(node.id) ?? []
+    const related = targets.get(node.id) ?? []
+    // Explicit groups anchor notes. Tags supplement ungrouped notes instead
+    // of pulling every grouped note toward the most common tags.
+    const groups = related.filter(hub => hub.kind === 'group')
+    const connected = groups.length ? groups : related
     const base = connected.length ? connected.reduce((sum, hub) => ({ x: sum.x + hub.x / connected.length, y: sum.y + hub.y / connected.length, z: sum.z + hub.z / connected.length }), { x: 0, y: 0, z: 0 }) : sphere(index, nodes.length, radius)
     const seed = hash(node.id)
     const offset = sphere(seed % 997, 997, 35 + seed % 40)

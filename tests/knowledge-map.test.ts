@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { buildKnowledgeGraph, INITIAL_MAP_CAMERA, KNOWLEDGE_MAP_LIMIT, normalizedMapTags, projectMapNode, type MapNote } from '../shared/knowledgeMap'
 
-const note = (id: string, overrides: Partial<MapNote> = {}): MapNote => ({ id, title: id, excerpt: '', tags: [], groupId: null, groupName: null, workspaceId: 'general', workspaceName: 'General', workspaceDefault: true, type: 'note', createdAt: 1, ...overrides })
+const note = (id: string, overrides: Partial<MapNote> = {}): MapNote => ({ id, title: id, tags: [], groupId: null, groupName: null, workspaceId: 'general', workspaceName: 'General', workspaceDefault: true, type: 'note', createdAt: 1, ...overrides })
 test('map joins groups by identity and tags across workspaces without duplicate edges', () => {
   const graph = buildKnowledgeGraph([
     note('a', { groupId: 'g1', groupName: 'Research', tags: ['RAG', ' #rag ', 'Vision'] }),

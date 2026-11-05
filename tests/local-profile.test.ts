@@ -356,6 +356,8 @@ test('knowledge map excludes secret/trash/other profiles at the API and filters 
   assert.equal(result.notes[0].workspaceName, 'Map workspace')
   for (const value of ['hidden-map-content', 'hidden-map-tag', 'Hidden map title', 'Hidden map group', 'deleted-map-tag', 'other-profile-content']) assert.equal(JSON.stringify(result).includes(value), false)
   assert.equal(result.notes[0].attachments, undefined)
+  assert.equal(result.notes[0].content, undefined)
+  assert.equal(result.notes[0].excerpt, undefined, 'map data contains relationships, not note bodies')
   assert.equal(result.notes[0].file_path, undefined)
   assert.equal((await json(`${route}&search=hidden-map`)).total, 0)
   assert.equal((await json(`${route}&search=Visible%20map%20group`)).total, 1)

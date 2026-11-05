@@ -41,7 +41,7 @@ export class CaptureAnalysisWindow {
     const workArea = screen.getDisplayMatching(options.firstCapture.bounds).workArea
     this.window = new BrowserWindow({ ...analysisWindowBounds(options.firstCapture.bounds, workArea),
       minWidth: Math.min(360, workArea.width), minHeight: Math.min(280, workArea.height),
-      title: `PeepNote · ${captureAnalysisCopy[options.language].title}`, frame: false, alwaysOnTop: true, resizable: true, show: false,
+      title: `PeepNote · ${captureAnalysisCopy[options.language].title}`, frame: false, alwaysOnTop: false, resizable: true, show: false,
       transparent: true, backgroundColor: '#00000000',
       webPreferences: { preload: path.join(__dirname, 'captureAnalysisPreload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true },
     })

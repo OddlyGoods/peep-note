@@ -1,14 +1,17 @@
 export function handleCaptureAnalysisShortcut(options: {
-  session: { window: { isDestroyed(): boolean }; close(): void } | null
+  session: { window: { isDestroyed(): boolean; isMinimized(): boolean; restore(): void; show(): void; focus(): void } } | null
   preparing: boolean
   cancelSelection: () => void
   start: () => Promise<void>
 }) {
   if (options.session && !options.session.window.isDestroyed()) {
-    // A follow-up selection can hide the response window. Close both surfaces
-    // so cancelling the selector cannot bring the response window back.
+    // A follow-up selection can hide the response window. Cancel just the
+    // selection and bring the existing conversation back without restarting it.
     options.cancelSelection()
-    options.session.close()
+    const window = options.session.window
+    if (window.isMinimized()) window.restore()
+    window.show()
+    window.focus()
     return
   }
   if (options.preparing) {

@@ -29,6 +29,7 @@ app.whenReady().then(async () => {
   await until(()=>session.window.isVisible())
   await until(()=>js('!!document.querySelector(".capture-analysis-waiting")'))
   assert.equal(session.state.status,'running')
+  assert.equal(session.window.isAlwaysOnTop(),false,'Magic Pen does not pin itself above other applications')
   assert.equal(await js('document.querySelector(".capture-analysis-composer")'),null,'the text input is hidden initially')
   assert.equal(await js('document.querySelector(".capture-analysis-header img")'),null)
   assert.equal(await js('document.querySelector(".capture-analysis-header .capture-analysis-logo").tagName.toLowerCase()'),'svg')
@@ -267,12 +268,19 @@ app.whenReady().then(async () => {
   const third = session.ask('Explain further')
   await until(()=>apiCalls===2)
   let shortcutCaptures=0, cancelledSelections=0
+  session.window.hide()
   handleCaptureAnalysisShortcut({session,preparing:false,cancelSelection:()=>{cancelledSelections++},start:async()=>{shortcutCaptures++}})
-  await third
-  assert.equal(session.window.isDestroyed(),true,'a second Magic Pen shortcut closes the running response window')
-  assert.equal(apiInput.signal.aborted,true,'closing with the shortcut aborts the current AI request')
+  assert.equal(session.window.isVisible(),true,'Alt+S brings a hidden response window forward')
+  assert.equal(session.window.isDestroyed(),false)
+  assert.equal(session.window.isAlwaysOnTop(),false,'bringing the window forward does not enable always-on-top')
+  assert.equal(session.state.status,'running')
+  assert.equal(apiInput.signal.aborted,false,'foregrounding preserves the ongoing AI request')
   assert.equal(cancelledSelections,1)
   assert.equal(shortcutCaptures,0)
+  session.close();await third
+  assert.equal(apiInput.signal.aborted,true,'explicitly closing the response still cancels its AI request')
+  handleCaptureAnalysisShortcut({session,preparing:false,cancelSelection:()=>{cancelledSelections++},start:async()=>{shortcutCaptures++}})
+  assert.equal(shortcutCaptures,1,'Alt+S starts a new area selection after the old response is closed')
 
   const models = await getCaptureCodexModels()
   assert.ok(models.length && models.every(item => item.value && item.label))

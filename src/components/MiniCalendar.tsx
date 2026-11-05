@@ -83,7 +83,7 @@ export default function MiniCalendar({ dateFrom, dateTo, rangeTarget, activeDate
           const isCurrentMonth = isSameMonth(day, viewDate)
           const dayColor = day.getDay() === 0 ? 'text-red-400' : day.getDay() === 6 ? 'text-blue-400' : 'text-gray-300'
           const dateStateClass = isStart || isEnd
-            ? 'bg-violet-600 text-white font-semibold rounded-full hover:bg-violet-500'
+            ? 'text-white font-semibold'
             : inRange
               ? `bg-violet-500/15 ${isCurrentMonth ? dayColor : 'text-gray-500'}`
               : isCurrentMonth
@@ -95,9 +95,14 @@ export default function MiniCalendar({ dateFrom, dateTo, rangeTarget, activeDate
               key={date}
               disabled={disabled}
               onClick={() => selectDate(date)}
-              className={`relative h-7 flex items-center justify-center text-xs transition-colors disabled:opacity-25 disabled:cursor-not-allowed ${dateStateClass}`}
+              className={`group relative h-7 flex items-center justify-center text-xs transition-colors disabled:opacity-25 disabled:cursor-not-allowed ${dateStateClass}`}
             >
-              {format(day, 'd')}
+              {(isStart || isEnd) && <>
+                {isStart !== isEnd && <span aria-hidden="true"
+                  className={`absolute inset-y-0 bg-violet-500/15 ${isStart ? 'left-1/2 right-0' : 'left-0 right-1/2'}`} />}
+                <span aria-hidden="true" className="absolute inset-0 rounded-full bg-violet-600 transition-colors group-hover:bg-violet-500" />
+              </>}
+              <span className="relative">{format(day, 'd')}</span>
               {hasLog && !isStart && !isEnd && <span className="calendar-log-dot absolute bottom-0.5 w-1 h-1 rounded-full bg-violet-300" />}
             </button>
           )

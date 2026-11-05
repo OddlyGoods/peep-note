@@ -9,6 +9,7 @@ import { useAttachmentPicker } from './lib/useAttachmentPicker'
 import AttachmentFileRow from './components/AttachmentFileRow'
 import FileDropZone from './components/FileDropZone'
 import TagInput from './components/TagInput'
+import VideoPreview from './components/VideoPreview'
 
 type LogType = 'note' | 'screenshot' | 'video'
 type ContentFormat = 'text' | 'markdown' | 'code' | 'html'
@@ -590,7 +591,7 @@ export default function Overlay() {
             )}
             {previewUrl && type === 'video' && (
               <div className="relative group h-28 rounded-lg overflow-hidden shrink-0" style={{ border: '1px solid rgba(99,102,241,0.2)' }}>
-                <video src={previewUrl} className="w-full h-full object-cover" />
+                <VideoPreview src={previewUrl} filePath={filePath} theme={theme} className="w-full h-full" />
                 <button
                   onClick={() => { setPreviewUrl(null); setFilePath(null) }}
                   className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"

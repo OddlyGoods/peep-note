@@ -59,6 +59,7 @@ declare global {
       downloadUpdate: () => Promise<UpdateState>
       installUpdate: () => Promise<UpdateState>
       openExternal: (url: string) => Promise<void>
+      openVideoViewer: (filepath: string, theme?: 'light' | 'dark') => Promise<boolean>
       openImageViewer: (filepath: string, theme?: 'light' | 'dark') => Promise<void>
       imageViewerControl: (action: 'minimize' | 'maximize' | 'close') => Promise<void>
       on: (channel: string, callback: (...args: unknown[]) => void) => void

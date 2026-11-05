@@ -51,6 +51,7 @@ import { saveCaptureAnalysis } from '../server/captureAnalysisNotes'
 import { LOCAL_PROFILE_ID } from '../server/localProfile'
 import type { CaptureLanguage } from '../shared/captureAnalysis'
 import { openHtmlPreview } from './htmlPreview'
+import { createVideoViewer } from './videoViewer'
 import { APP_DEVELOPER, APP_GITHUB_URL, APP_WEBSITE_URL } from '../shared/appInfo'
 
 // Register the internal app scheme before Electron is ready.
@@ -103,7 +104,7 @@ let regionSession: ReturnType<typeof createMultiMonitorRegion> | null = null
 let snippingPreparing = false
 let capturePickerWindow: BrowserWindow | null = null
 let quickSwitchWindow: BrowserWindow | null = null
-const imageViewerWindows = new Set<BrowserWindow>()
+const mediaViewerWindows = new Set<BrowserWindow>()
 let tray: Tray | null = null
 let updateController: UpdateController
 let quickSwitchAccelerator = 'Alt+Q'
@@ -1029,16 +1030,37 @@ function setupIPC() {
         nodeIntegration: false
       }
     })
-    imageViewerWindows.add(win)
-    win.on('closed', () => imageViewerWindows.delete(win))
+    mediaViewerWindows.add(win)
+    win.on('closed', () => mediaViewerWindows.delete(win))
     win.on('maximize', () => win.webContents.send('image-viewer-maximized', true))
     win.on('unmaximize', () => win.webContents.send('image-viewer-maximized', false))
     win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`)
   })
 
+  ipcMain.handle('open-video-viewer', async (event, filepath: unknown, requestedTheme?: unknown) => {
+    if (event.sender !== overlayWindow?.webContents && event.sender !== mainWindow?.webContents) return false
+    if (typeof filepath !== 'string') return false
+    const source = managedLocalFile(filepath)
+    if (!source || !/\.(webm|mp4|m4v|ogv)$/i.test(source) || !fs.statSync(source).isFile()) return false
+    const settings = loadSettings()
+    const theme = requestedTheme === 'light' || requestedTheme === 'dark' ? requestedTheme : settings.theme === 'dark' ? 'dark' : 'light'
+    try {
+      const { window: win, ready } = createVideoViewer({ source, theme, language: settings.language ?? 'en',
+        page: path.join(app.getAppPath(), isDev ? 'public' : 'dist', 'video-viewer.html'),
+        preload: path.join(__dirname, 'preload.js'),
+      })
+      mediaViewerWindows.add(win)
+      win.on('closed', () => mediaViewerWindows.delete(win))
+      win.on('maximize', () => win.webContents.send('image-viewer-maximized', true))
+      win.on('unmaximize', () => win.webContents.send('image-viewer-maximized', false))
+      await ready
+      return true
+    } catch { return false }
+  })
+
   ipcMain.handle('image-viewer-control', (event, action: string) => {
     const win = BrowserWindow.fromWebContents(event.sender)
-    if (!win || !imageViewerWindows.has(win)) return
+    if (!win || !mediaViewerWindows.has(win)) return
     if (action === 'minimize') win.minimize()
     else if (action === 'maximize') {
       if (win.isMaximized()) win.unmaximize()
@@ -1083,7 +1105,7 @@ function setupIPC() {
       mainWindow?.webContents.send('theme-changed', theme)
       overlayWindow?.webContents.send('theme-changed', theme)
       quickSwitchWindow?.webContents.send('theme-changed', theme)
-      for (const win of imageViewerWindows) {
+      for (const win of mediaViewerWindows) {
         win.setBackgroundColor(theme === 'dark' ? '#080b1a' : '#f6f7fb')
         win.webContents.send('theme-changed', theme)
       }

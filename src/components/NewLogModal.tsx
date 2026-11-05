@@ -3,8 +3,10 @@ import { useEffect, useState, useRef, useId } from 'react'
 import { X, Camera, Video, FileText, Text as TextIcon, Code2, Globe, StopCircle, Hash, Lock } from 'lucide-react'
 import { useLogStore } from '../stores/logStore'
 import { useI18n } from '../i18n'
+import { useTheme } from '../theme'
 import { startRegionRecording } from '../lib/regionRecording'
 import TagInput from './TagInput'
+import VideoPreview from './VideoPreview'
 import ModalLayer from './ModalLayer'
 import { useAttachmentPicker } from '../lib/useAttachmentPicker'
 import FileDropZone from './FileDropZone'
@@ -32,6 +34,7 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
   const fieldId = useId()
   const active = useScreenActive()
   const { t } = useI18n()
+  const { theme } = useTheme()
   const workspaceTitle = workspaceName || t('defaultWorkspace')
   const { createLog } = useLogStore()
   const [type, setType] = useState<LogType>('note')
@@ -367,7 +370,7 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
                   <StopCircle className="w-4 h-4" />{t('stopRecording')} ({fmt(recordingTime)})
                 </button>
               )}
-              {previewUrl && !recording && <video src={previewUrl} controls className="mt-2 rounded-lg border border-gray-700 w-full max-h-40" />}
+              {previewUrl && !recording && <VideoPreview src={previewUrl} filePath={filePath} theme={theme} className="mt-2 h-40 w-full rounded-lg border border-gray-700" />}
             </div>
           )}
 

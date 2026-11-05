@@ -20,6 +20,7 @@
     "test:updates": "node scripts/test-updates.cjs",
     "verify:release": "node scripts/verify-release.cjs",
     "test:capture-native": "node scripts/test-native-capture.cjs",
+    "test:video-native": "node scripts/test-video-native.cjs",
     "test:analysis-native": "node scripts/test-analysis-native.cjs",
     "test:local": "node scripts/test-local.cjs",
     "typecheck": "tsc --noEmit",

@@ -72,7 +72,7 @@ test('closing or timing out cancels the child process and rejects without a comp
 test('conversation export preserves follow-up questions and answers, and response windows stay on the captured display', () => {
   assert.match(captureNoteMarkdown([...previous, { question: 'More\ncontext', answer: 'Use this fix.', elapsedMs: 20 }]), /> More\n> context\n\nUse this fix\./)
   assert.ok(capturePrompt('ja', previous, 'Explain').includes('Japanese'))
-  assert.deepEqual(analysisWindowBounds({ x: -20, y: 700 }, { x: -1024, y: 0, width: 1024, height: 768 }), { x: -520, y: 248, width: 520, height: 520 })
+  assert.deepEqual(analysisWindowBounds({ x: -20, y: 700 }, { x: -1024, y: 0, width: 1024, height: 768 }), { x: -480, y: 128, width: 480, height: 640 })
   assert.deepEqual(analysisWindowBounds({ x: 500, y: -50 }, { x: 0, y: 0, width: 320, height: 240 }), { x: 0, y: 0, width: 320, height: 240 })
 })
 

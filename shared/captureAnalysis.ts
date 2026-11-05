@@ -150,7 +150,7 @@ export function captureNoteMarkdown(turns: CaptureTurn[], language: CaptureLangu
 }
 
 export function analysisWindowBounds(anchor: { x: number; y: number }, area: { x: number; y: number; width: number; height: number }) {
-  const width = Math.min(520, area.width), height = Math.min(520, area.height)
+  const width = Math.min(480, area.width), height = Math.min(640, area.height)
   return { width, height,
     x: Math.round(Math.max(area.x, Math.min(anchor.x, area.x + area.width - width))),
     y: Math.round(Math.max(area.y, Math.min(anchor.y, area.y + area.height - height))),

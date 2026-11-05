@@ -58,7 +58,11 @@ app.whenReady().then(async () => {
   assert.equal(await js('document.querySelector(".capture-analysis-orb").toDataURL()'),stillOrb,'reduced-motion preference should keep a static orb')
   session.window.webContents.debugger.detach()
   assert.equal(await js('getComputedStyle(document.querySelector(".capture-analysis-header")).webkitAppRegion'),'drag')
-  assert.ok(session.window.getBounds().x <= 504)
+  const initialBounds = session.window.getBounds()
+  assert.equal(initialBounds.width,480)
+  assert.equal(initialBounds.height,640)
+  assert.ok(initialBounds.x+initialBounds.width<=1024)
+  assert.ok(initialBounds.y+initialBounds.height<=768)
   fs.writeFileSync('/tmp/peepnote-analysis-waiting.png',(await session.window.webContents.capturePage()).toPNG())
   const firstBody = '## 오류 원인\n\n포트가 사용 중입니다.\n\n추가 로그 화면을 캡처해 주세요.\n\n```bash\nexample command\n```'
   const firstAnswer = '# 포트 사용 현황 정리\n\n' + firstBody

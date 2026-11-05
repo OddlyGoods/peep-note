@@ -2,6 +2,7 @@ const { app, protocol, net, ipcMain, nativeImage, BrowserWindow, clipboard } = r
 const fs = require('node:fs'), path = require('node:path'), assert = require('node:assert/strict')
 const { pathToFileURL } = require('node:url')
 const { CaptureAnalysisWindow } = require('./analysis.cjs')
+const { handleCaptureAnalysisShortcut } = require('./analysisShortcut.cjs')
 const { getCaptureCodexModels } = require('./catalog.cjs')
 protocol.registerSchemesAsPrivileged([{scheme:'app',privileges:{secure:true,standard:true,supportFetchAPI:true}}])
 app.setPath('userData', path.join(__dirname, 'isolated-data'))
@@ -251,8 +252,13 @@ app.whenReady().then(async () => {
   assert.equal(session.window.isDestroyed(),false,'failed save must leave the answer available')
   const third = session.ask('Explain further')
   await until(()=>apiCalls===2)
-  session.close();await third
-  assert.equal(apiInput.signal.aborted,true)
+  let shortcutCaptures=0, cancelledSelections=0
+  handleCaptureAnalysisShortcut({session,preparing:false,cancelSelection:()=>{cancelledSelections++},start:async()=>{shortcutCaptures++}})
+  await third
+  assert.equal(session.window.isDestroyed(),true,'a second Magic Pen shortcut closes the running response window')
+  assert.equal(apiInput.signal.aborted,true,'closing with the shortcut aborts the current AI request')
+  assert.equal(cancelledSelections,1)
+  assert.equal(shortcutCaptures,0)
 
   const models = await getCaptureCodexModels()
   assert.ok(models.length && models.every(item => item.value && item.label))

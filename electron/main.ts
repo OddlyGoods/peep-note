@@ -42,6 +42,7 @@ import { dataStorageCopy, dataStorageErrorKey, type DataLocationResult } from '.
 import { getActiveHotkeys, resolveHotkeys } from '../shared/hotkeys'
 import { handleFavoritesShortcut } from './favoritesShortcut'
 import { createCaptureAction } from './captureAction'
+import { handleCaptureAnalysisShortcut } from './captureAnalysisShortcut'
 import { createMultiMonitorLasso, lassoWindowOptions } from './multiMonitorLasso'
 import { createMultiMonitorRegion, type MonitorRegionResult } from './multiMonitorRegion'
 import { getCaptureCodexModels } from './codexModelCatalog'
@@ -878,7 +879,10 @@ function registerHotkeys() {
       globalShortcut.register(hk.takeScreenshot, () => { void captureToOverlay() })
     }
     if (hk.captureFreeform) {
-      globalShortcut.register(hk.captureFreeform, () => { void startCaptureAnalysis() })
+      globalShortcut.register(hk.captureFreeform, () => { void handleCaptureAnalysisShortcut({
+        session: captureAnalysis, preparing: analysisPreparing,
+        cancelSelection: () => lassoSession?.close(), start: startCaptureAnalysis,
+      }) })
     }
     if (hk.startRecording) {
       globalShortcut.register(hk.startRecording, async () => {

@@ -117,7 +117,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2 py-1 rounded-md text-xs font-medium text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50"
                       style={{ background: 'rgba(30,34,60,0.97)', border: '1px solid rgba(99,102,241,0.25)' }}
                     >
-                      {label}{count !== undefined && ` (${count})`}
+                      {label}
                     </div>
                   )}
                 </div>

@@ -71,6 +71,7 @@ export default function Overlay() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const timerRef = useRef<number | null>(null)
   const recordingStartedAtRef = useRef<number | null>(null)
+  const activeCaptureRef = useRef<object | null>(null)
   const contentRef = useRef<HTMLTextAreaElement>(null)
   const inputAreaRef = useRef<HTMLDivElement>(null)
   const contentFieldRef = useRef<HTMLDivElement>(null)
@@ -205,6 +206,8 @@ export default function Overlay() {
     window.electronAPI?.on('stop-recording', () => stopRecording())
     const handleVisibilityChange = () => {
       if (document.hidden) {
+        // The region selector temporarily hides this window; keep its draft.
+        if (activeCaptureRef.current) return
         discardUnsavedVideo()
         clearAttachments(!savedAttachmentsRef.current)
         savedAttachmentsRef.current = false
@@ -245,12 +248,19 @@ export default function Overlay() {
   }, [workspaceMenuOpen])
 
   const handleScreenshot = async () => {
-    const path = await window.electronAPI?.startSnipping()
-    if (path) {
-      setFilePath(path)
+    if (activeCaptureRef.current) return
+    const capture = {}
+    activeCaptureRef.current = capture
+    try {
+      const path = await window.electronAPI?.startSnipping()
+      if (!path || activeCaptureRef.current !== capture) return
       const b64 = await window.electronAPI?.readFileAsBase64(path)
-      if (b64) setPreviewUrl(`data:image/png;base64,${b64}`)
-    }
+      if (activeCaptureRef.current !== capture) return
+      setType('screenshot')
+      setFilePath(path)
+      setPreviewUrl(b64 ? `data:image/png;base64,${b64}` : null)
+    } catch (error) { console.error('Capture preview error:', error) }
+    finally { if (activeCaptureRef.current === capture) activeCaptureRef.current = null }
   }
 
   const removeAttachment = (i: number) => {
@@ -404,6 +414,7 @@ export default function Overlay() {
   }
 
   const handleClose = () => {
+    activeCaptureRef.current = null
     // Hiding a BrowserWindow does not stop getUserMedia/MediaRecorder.
     discardUnsavedVideo()
     clearAttachments(!savedAttachmentsRef.current)

@@ -31,9 +31,18 @@ try {
   fs.copyFileSync(path.join(root, 'tests/native-multi-monitor-capture.cjs'), path.join(fixture, 'multi-monitor.cjs'))
   fs.copyFileSync(path.join(root, 'tests/native-multi-monitor-region.cjs'), path.join(fixture, 'multi-monitor-region.cjs'))
   fs.copyFileSync(path.join(root, 'tests/native-recording-outline.cjs'), path.join(fixture, 'recording-outline.cjs'))
+  buildSync({ entryPoints:[path.join(root,'tests/fixtures/overlay-capture-preview.tsx')],bundle:true,platform:'browser',format:'iife',jsx:'automatic',
+    define:{'import.meta.env':'{}','import.meta.hot':'false'},outfile:path.join(fixture,'overlay-preview.js') })
+  const assets=path.join(process.env.PEEPNOTE_TEST_DIST || path.join(root,'dist'),'assets')
+  const css=fs.existsSync(assets) ? fs.readdirSync(assets).filter(file=>file.endsWith('.css')).map(file=>fs.readFileSync(path.join(assets,file),'utf8')).join('\n') : ''
+  fs.writeFileSync(path.join(fixture,'overlay-preview.html'),`<!doctype html><html data-theme="light"><meta charset="utf-8"><style>${css}\nhtml,body,#overlay-root{height:100%;margin:0}</style><body><div id="overlay-root"></div><script src="./overlay-preview.js"></script></body></html>`)
+  fs.copyFileSync(path.join(root,'tests/native-overlay-capture.cjs'),path.join(fixture,'overlay-capture.cjs'))
   const env = { ...process.env }
   delete env.ELECTRON_RUN_AS_NODE
-  for (const entry of ['main.cjs', 'multi-monitor.cjs', 'multi-monitor-region.cjs', 'recording-outline.cjs']) {
+  const entries = ['main.cjs', 'multi-monitor.cjs', 'multi-monitor-region.cjs', 'recording-outline.cjs', 'overlay-capture.cjs']
+  const selected = process.env.PEEPNOTE_CAPTURE_CASE ? entries.filter(entry => entry === process.env.PEEPNOTE_CAPTURE_CASE) : entries
+  if (!selected.length) throw new Error('Unknown native capture test case')
+  for (const entry of selected) {
     const result = spawnSync('xvfb-run', ['-a', '-s', '-screen 0 1024x768x24', require('electron'), '--no-sandbox', path.join(fixture, entry)], {
       env, encoding: 'utf8', timeout: 30000, maxBuffer: 4 * 1024 * 1024,
     })

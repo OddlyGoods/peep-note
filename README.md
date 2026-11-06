@@ -173,17 +173,9 @@ In **Settings → General**, **Automatically advance dates** updates the main li
 
 **Trash** is in the left navigation, below **Favorites**. Deleting a record, selected records, or a group moves its records to Trash and removes them from normal lists, search, Quick List, and calendar counts. Deleted groups appear as a single group, including their AI summary, and can be restored or permanently deleted together. Select records to restore them or permanently delete them. **Empty** permanently deletes all of the current user's trashed records after confirmation.
 
-Records, comments, and managed media files are retained for the period selected in Settings → General → Trash retention: 7, 10, 30, or 90 days (default 10). This applies from the original deletion date, including records already in Trash. Expired records are removed at startup and periodically while the app runs. Restoring preserves group membership where the group still exists; records whose workspace was removed return to General. Media still referenced by another record is preserved when purging. Records deleted before this feature was installed cannot be recovered.
-
 ### Image text search
 
-Open an image record and click **Extract text** to recognize its screenshot or attached images. Saving, opening, editing, restoring records, and launching the app never start extraction automatically. Interrupted requests must be started again. Korean and English recognition models ship with the app; OCR runs locally without an AI API key or uploading images. The first extraction prepares local models under the app's data directory. Extraction may take time for large images. Images larger than 40 MB are skipped; recognition accuracy depends on image quality and typography.
-
-Use **Search** to find previously extracted image text alongside titles and note contents. Date, type, and workspace filters apply before pagination. Image details show extracted text and a Delete action that removes only the extracted text from the record and search. The original image is kept. After deleting the text, Extract text becomes available again. Secret records are excluded from OCR and content search. Making a record secret clears previously indexed image text.
-
-### Feature regression tests
-
-Run `npm run test:features` to check trash retention, restore, local profile isolation, media cleanup, search pagination, and real Korean/English OCR. Tests use a temporary database and image fixture; they do not access your records or build an installer.
+Open an image record and click **Extract text** to recognize its screenshot or attached images. Saving, opening, editing, restoring records, and launching the app never start extraction automatically. Interrupted requests must be started again. Korean and English recognition models ship with the app; OCR runs locally without an AI API key or uploading images. The first extraction prepares local models under the app's data directory. Extraction may take time for large images. Images larger than 40 MB are skipped; recognition accuracy depends on image quality and typography. Use **Search** to find previously extracted image text alongside titles and note contents.
 
 ### Create a record
 

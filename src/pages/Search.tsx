@@ -7,6 +7,7 @@ import { api, Log } from '../lib/api'
 import { useWorkspaceStore } from '../stores/workspaceStore'
 import { useSearchStore } from '../stores/searchStore'
 import LogCard from '../components/LogCard'
+import SearchClearButton from '../components/SearchClearButton'
 import { useI18n } from '../i18n'
 import { useTheme } from '../theme'
 
@@ -238,17 +239,14 @@ export default function Search({ sidebarOnly }: { sidebarOnly?: boolean }) {
             <input
               type="text"
               placeholder={t('searchPlaceholder')}
+              aria-label={t('searchPlaceholder')}
               value={query}
               onChange={e => setQuery(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && doSearch()}
               autoFocus
-              className="input pl-9 py-2 w-full text-sm"
+              className="input pl-9 pr-9 py-2 w-full text-sm"
             />
-            {query && (
-              <button onClick={() => setQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300">
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
+            <SearchClearButton value={query} onClear={() => setQuery('')} />
           </div>
           <button
             onClick={() => doSearch()}

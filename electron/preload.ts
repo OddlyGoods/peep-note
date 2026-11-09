@@ -66,6 +66,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   closeOverlay: () => ipcRenderer.invoke('close-overlay'),
   selectQuickLog: (id: string) => ipcRenderer.invoke('select-quick-log', id),
   closeQuickSwitch: () => ipcRenderer.invoke('close-quick-switch'),
+  quickSwitchReady: () => ipcRenderer.invoke('quick-switch-ready'),
+  quickSwitchResult: (request: number, status: 'ready' | 'empty' | 'error') => ipcRenderer.invoke('quick-switch-result', request, status),
   showMain: () => ipcRenderer.invoke('show-main'),
 
   // 포트

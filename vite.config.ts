@@ -9,6 +9,8 @@ const electronExternals = [
   'electron',
   'sql.js',
   'tesseract.js',
+  '@huggingface/transformers',
+  'node:worker_threads',
   'electron-store',
   '@hono/node-server',
   'hono',

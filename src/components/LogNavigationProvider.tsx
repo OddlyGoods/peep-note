@@ -3,6 +3,7 @@ import { useLocation, useNavigate, type NavigateOptions } from 'react-router-dom
 import { api } from '../lib/api'
 import { hasActiveSecretUnlock, rememberSecretUnlock } from '../lib/secretUnlock'
 import { useI18n } from '../i18n'
+import { noteNavigationState } from '../lib/noteNavigation'
 import ConfirmModal from './ConfirmModal'
 import SecretPasswordModal from './SecretPasswordModal'
 
@@ -26,6 +27,8 @@ export function useOpenLog() {
 export default function LogNavigationProvider({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate()
   const location = useLocation()
+  const locationRef = useRef(location)
+  locationRef.current = location
   const { t } = useI18n()
   const [pending, setPending] = useState<PendingNavigation | null>(null)
   const requestRef = useRef(0)
@@ -51,7 +54,9 @@ export default function LogNavigationProvider({ children }: { children: React.Re
 
   const openLog = useCallback<OpenLog>((id, basePath = '/log', options) => {
     const request = ++requestRef.current
-    const target: PendingNavigation = { request, path: `${basePath}/${id}`, options, stage: 'loading' }
+    const path = `${basePath}/${id}`
+    const targetOptions = { ...options, state: noteNavigationState(locationRef.current, path, options?.state) }
+    const target: PendingNavigation = { request, path, options: targetOptions, stage: 'loading' }
     setPending(target)
     void (async () => {
       try {
@@ -59,7 +64,7 @@ export default function LogNavigationProvider({ children }: { children: React.Re
         if (request !== requestRef.current) return
         if (!log.is_secret || hasActiveSecretUnlock()) {
           setPending(null)
-          navigate(target.path, options)
+          navigate(target.path, target.options)
           return
         }
         const status = await api.settings.secretPasswordStatus()

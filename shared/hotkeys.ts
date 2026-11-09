@@ -7,7 +7,8 @@ export const DEFAULT_HOTKEYS = {
   startRecording: 'Alt+3',
   stopRecording: 'Alt+4',
   quickSwitch: 'Alt+Q',
-  quickSwitchPrevious: 'Alt+E'
+  quickSwitchPrevious: 'Alt+E',
+  toggleHotkeys: 'Alt+X'
 }
 
 export type HotkeyAction = keyof typeof DEFAULT_HOTKEYS
@@ -27,6 +28,13 @@ export function resolveHotkeys(hotkeys?: Partial<Hotkeys> | null): Hotkeys {
       .map(action => normalized(resolved[action])))
     const candidates = ['Alt+S', 'Alt+Shift+S', 'Control+Alt+S', ...Array.from({ length: 8 }, (_, index) => `Alt+Shift+F${index + 5}`)]
     resolved.captureFreeform = candidates.find(value => !used.has(normalized(value)))!
+  }
+  if (hotkeys?.toggleHotkeys === undefined) {
+    const used = new Set((Object.keys(DEFAULT_HOTKEYS) as HotkeyAction[])
+      .filter(action => action !== 'toggleHotkeys' && !resolved.disabled?.[action])
+      .map(action => normalized(resolved[action])))
+    resolved.toggleHotkeys = ['Alt+X', 'Alt+Shift+X', 'Control+Alt+X', ...Array.from({ length: 8 }, (_, index) => `Alt+Shift+F${index + 5}`)]
+      .find(value => !used.has(normalized(value)))!
   }
   return resolved
 }

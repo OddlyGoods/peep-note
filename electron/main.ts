@@ -40,6 +40,9 @@ import { DataStorageError, prepareDataLocation, scheduleDataLocation } from './d
 import { restartAfterDataLocationChange } from './restart'
 import { dataStorageCopy, dataStorageErrorKey, isDataLocationMode, type DataLocationResult } from '../shared/dataStorage'
 import { getActiveHotkeys, resolveHotkeys } from '../shared/hotkeys'
+import { GlobalHotkeyGate } from './hotkeyGate'
+import { HotkeyToast } from './hotkeyToast'
+import { hotkeyCopy } from '../shared/hotkeyMessages'
 import { handleFavoritesShortcut } from './favoritesShortcut'
 import { createCaptureAction } from './captureAction'
 import { handleCaptureAnalysisShortcut } from './captureAnalysisShortcut'
@@ -105,12 +108,15 @@ let regionSession: ReturnType<typeof createMultiMonitorRegion> | null = null
 let snippingPreparing = false
 let capturePickerWindow: BrowserWindow | null = null
 let quickSwitchWindow: BrowserWindow | null = null
+let quickSwitchRequestSequence = 0
+let activeQuickSwitchRequest: number | null = null
 const mediaViewerWindows = new Set<BrowserWindow>()
 let tray: Tray | null = null
 let updateController: UpdateController
 let quickSwitchAccelerator = 'Alt+Q'
 let quickSwitchPreviousAccelerator = 'Alt+E'
-let globalHotkeysEnabled = true
+const hotkeyGate = new GlobalHotkeyGate()
+const hotkeyToast = new HotkeyToast()
 const captureToOverlay = createCaptureAction(() => startSnipping(), () => overlayWindow,
   error => console.error('Capture action failed:', error))
 let captureAnalysis: CaptureAnalysisWindow | null = null
@@ -376,8 +382,8 @@ function createQuickSwitchWindow() {
     }
   })
   quickSwitchWindow.setAlwaysOnTop(true, 'floating')
-  quickSwitchWindow.on('closed', () => { quickSwitchWindow = null })
-  quickSwitchWindow.on('hide', () => registerQuickSwitchShortcut())
+  quickSwitchWindow.on('closed', () => { quickSwitchWindow = null; activeQuickSwitchRequest = null })
+  quickSwitchWindow.on('hide', () => { activeQuickSwitchRequest = null; registerQuickSwitchShortcut() })
   quickSwitchWindow.on('blur', () => {
     if (quickSwitchWindow && !quickSwitchWindow.isDestroyed() && quickSwitchWindow.isVisible()) {
       quickSwitchWindow.hide()
@@ -405,22 +411,13 @@ function createQuickSwitchWindow() {
 }
 
 function openQuickSwitch() {
-
   const win = createQuickSwitchWindow()
+  const request = ++quickSwitchRequestSequence
+  activeQuickSwitchRequest = request
   const open = () => {
-    if (!win || win.isDestroyed()) return
-    win.show()
-    win.focus()
-    win.webContents.focus()
-    // Some Linux compositors finish mapping an always-on-top window after
-    // show() returns, so repeat the focus request once it is visible.
-    setTimeout(() => {
-      if (win.isVisible() && !win.isDestroyed()) {
-        win.focus()
-        win.webContents.focus()
-      }
-    }, 50)
-    win.webContents.send('quick-switch-open')
+    if (win.isDestroyed() || activeQuickSwitchRequest !== request) return
+    // Keep the transparent window hidden until the renderer has real items.
+    win.webContents.send('quick-switch-open', request)
   }
   if (win.webContents.isLoading()) win.webContents.once('did-finish-load', open)
   else open()
@@ -449,7 +446,7 @@ function previousQuickSwitch() {
 }
 
 function registerQuickSwitchShortcut() {
-  if (!globalHotkeysEnabled) return
+  if (!hotkeyGate.actionsEnabled) return
   if (quickSwitchAccelerator) globalShortcut.register(quickSwitchAccelerator, advanceQuickSwitch)
   if (quickSwitchPreviousAccelerator) globalShortcut.register(quickSwitchPreviousAccelerator, previousQuickSwitch)
 }
@@ -868,15 +865,27 @@ async function selectRecordingRegion(owner: Electron.WebContents | undefined, _f
 }
 
 // ── 글로벌 단축키 등록 ────────────────────────────────────────────────
-function registerHotkeys() {
-  if (!globalHotkeysEnabled) return
-  globalShortcut.unregisterAll()
+function registerHotkeys(keepToggle = false) {
   const settings = loadSettings()
-  const hk = getActiveHotkeys(settings.hotkeys)
+  // Regrabbing the key from inside its own callback can replay the held key on
+  // X11. Keep the toggle registered while changing every other action.
+  if (keepToggle) {
+    for (const [action, accelerator] of Object.entries(getActiveHotkeys(settings.hotkeys))) {
+      if (action !== 'toggleHotkeys' && accelerator) globalShortcut.unregister(accelerator)
+    }
+  } else globalShortcut.unregisterAll()
+  const hk = hotkeyGate.active(settings.hotkeys)
   quickSwitchAccelerator = hk.quickSwitch
   quickSwitchPreviousAccelerator = hk.quickSwitchPrevious
 
   try {
+    if (hk.toggleHotkeys && !keepToggle) {
+      globalShortcut.register(hk.toggleHotkeys, () => {
+        const enabled = hotkeyGate.toggle()
+        registerHotkeys(true)
+        hotkeyToast.show(enabled, loadSettings().language)
+      })
+    }
     if (hk.openMain) {
       globalShortcut.register(hk.openMain, () => {
 
@@ -1140,9 +1149,8 @@ function setupIPC() {
   })
 
   ipcMain.handle('set-hotkeys-enabled', (_e, enabled: unknown) => {
-    globalHotkeysEnabled = enabled !== false
-    if (globalHotkeysEnabled) registerHotkeys()
-    else globalShortcut.unregisterAll()
+    hotkeyGate.setEditing(enabled === false)
+    registerHotkeys()
     return { ok: true }
   })
 
@@ -1293,6 +1301,25 @@ function setupIPC() {
     mainWindow?.webContents.send('open-log', { id, fromQuickSwitch: true })
   })
   ipcMain.handle('close-quick-switch', () => quickSwitchWindow?.hide())
+  ipcMain.handle('quick-switch-ready', event => {
+    if (event.sender !== quickSwitchWindow?.webContents || activeQuickSwitchRequest === null) return
+    quickSwitchWindow.webContents.send('quick-switch-open', activeQuickSwitchRequest)
+  })
+  ipcMain.handle('quick-switch-result', (event, request: unknown, status: unknown) => {
+    const win = quickSwitchWindow
+    if (!win || win.isDestroyed() || event.sender !== win.webContents || typeof request !== 'number' || request !== activeQuickSwitchRequest) return
+    if (status === 'empty' || status === 'error') {
+      activeQuickSwitchRequest = null
+      win.hide()
+      const copy = hotkeyCopy(loadSettings().language)
+      hotkeyToast.showMessage(status === 'empty' ? copy.quickListEmpty : copy.quickListFailed)
+    } else if (status === 'ready') {
+      win.show(); win.focus(); win.webContents.focus()
+      setTimeout(() => {
+        if (!win.isDestroyed() && win.isVisible()) { win.focus(); win.webContents.focus() }
+      }, 50)
+    }
+  })
 
   ipcMain.handle('overlay-maximize', () => {
     if (!overlayWindow) return
@@ -1440,7 +1467,7 @@ app.whenReady().then(async () => {
   })
 
   // 로컬 Hono 서버 시작
-  await startServer(APP_PORT, dataDirectory, change => {
+  const localServer = await startServer(APP_PORT, dataDirectory, change => {
     if (change?.notificationsEnabled !== undefined) {
       if (!change.notificationsEnabled) noteNotifications.dismiss()
       return
@@ -1450,7 +1477,11 @@ app.whenReady().then(async () => {
     }
     mainWindow?.webContents.send('log-created')
     if (change?.noteSaved) noteNotifications.show(change.noteSaved)
+  }, {
+    workerPath: path.join(app.isPackaged ? process.resourcesPath : app.getAppPath(), 'resources', 'embedding-worker.cjs'),
+    cacheDir: path.join(app.getPath('userData'), 'models', 'embeddings')
   })
+  app.on('before-quit', () => localServer.disposeEmbeddings())
 
   createMainWindow()
   createOverlayWindow()
@@ -1471,6 +1502,7 @@ app.on('window-all-closed', () => {
 })
 
 app.on('will-quit', () => {
+  hotkeyToast.dismiss()
   globalShortcut.unregisterAll()
 })
 

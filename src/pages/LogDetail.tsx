@@ -1,5 +1,6 @@
+import { useNoteView } from '../lib/useNoteView'
 import { useScreenActive } from '../lib/screenActivity'
-import { menuForPath } from '../lib/menuMemory'
+import { noteBackTarget } from '../lib/noteNavigation'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { format } from 'date-fns'
@@ -92,6 +93,8 @@ export default function LogDetail() {
   const navigate = useNavigate()
   const openLog = useOpenLog()
   const location = useLocation()
+  const backTarget = useRef(noteBackTarget(location.pathname, location.state))
+  backTarget.current = noteBackTarget(location.pathname, location.state)
   const { updateLog, deleteLog, setCommentCount } = useLogStore()
   const [log, setLog] = useState<Log | null>(null)
   const [editing, setEditing] = useState(false)
@@ -193,7 +196,7 @@ export default function LogDetail() {
     }).catch(() => {
       if (cancelled) return
       setLoading(false)
-      if (activeRef.current) navigate(menuForPath(location.pathname) ?? '/')
+      if (activeRef.current) navigate(backTarget.current)
     })
     return () => { cancelled = true }
   }, [id, navigate])
@@ -221,7 +224,7 @@ export default function LogDetail() {
         setLog(data)
         setForm({ title: data.title, content: data.content, tags: data.tags, content_format: data.content_format ?? 'text', is_secret: !!data.is_secret })
       }).catch(error => {
-        if (!cancelled && !editingRef.current && error.status === 404) navigate(menuForPath(location.pathname) ?? '/')
+        if (!cancelled && !editingRef.current && error.status === 404) navigate(backTarget.current)
       })
     }
     window.electronAPI?.on('mcp-data-changed', changed)
@@ -237,7 +240,7 @@ export default function LogDetail() {
       setLog(data)
       setForm({ title: data.title, content: data.content, tags: data.tags, content_format: data.content_format ?? 'text', is_secret: !!data.is_secret })
     }).catch(error => {
-      if (!cancelled && error.status === 404) navigate(menuForPath(location.pathname) ?? '/')
+      if (!cancelled && error.status === 404) navigate(backTarget.current)
     })
     return () => { cancelled = true }
   }, [active, id])
@@ -280,6 +283,8 @@ export default function LogDetail() {
     return () => { cancelled = true }
   }, [id, log?.id, log?.group_id, secretGate, loading])
 
+  useNoteView(id, active, !loading && log?.id === id && secretGate === 'open')
+
   const resetNoteEditor = () => {
     discardDraftFiles(noteFilesRef.current, pendingNoteSave.current)
     noteFilesRef.current = []
@@ -294,14 +299,14 @@ export default function LogDetail() {
     const files = [...(log?.attachments ?? []), ...addedNoteFiles].filter((_, index) => !removedAttachments.includes(index))
     if (editing && log && hasNoteChanges(log, form, files)) { setPendingEditExit(action); return }
     resetNoteEditor()
-    if (action === 'back') navigate(menuForPath(location.pathname) ?? '/')
+    if (action === 'back') navigate(backTarget.current)
   }
 
   const discardNoteChanges = () => {
     const action = pendingEditExit
     setPendingEditExit(null)
     resetNoteEditor()
-    if (action === 'back') navigate(menuForPath(location.pathname) ?? '/')
+    if (action === 'back') navigate(backTarget.current)
   }
 
   const handleSave = async () => {
@@ -337,7 +342,7 @@ export default function LogDetail() {
     setShowConfirm(false)
     try {
       await deleteLog(log.id)
-      if (activeRef.current && recordIdRef.current === log.id) navigate(menuForPath(location.pathname) ?? '/', { state: { deletionTransition: true } })
+      if (activeRef.current && recordIdRef.current === log.id) navigate(backTarget.current, { state: { deletionTransition: true } })
     } catch {}
   }
 

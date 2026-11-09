@@ -1,0 +1,32 @@
+.search-clear-button {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--quick-text);
+  opacity: .6;
+  cursor: pointer;
+  transition: background-color 120ms, opacity 120ms;
+}
+.search-clear-button:hover:not(:disabled) {
+  background: rgba(139, 92, 246, .1);
+  opacity: 1;
+}
+.search-clear-button:focus-visible {
+  outline: 2px solid #a78bfa;
+  outline-offset: 1px;
+  opacity: 1;
+}
+.search-clear-button:disabled {
+  cursor: default;
+  opacity: .3;
+}

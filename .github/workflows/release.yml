@@ -9,6 +9,9 @@ on:
 permissions:
   contents: read
 
+env:
+  ONNXRUNTIME_NODE_INSTALL_CUDA: skip
+
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false

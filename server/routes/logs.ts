@@ -4,6 +4,7 @@ import { LOCAL_PROFILE_ID } from '../localProfile'
 import { moveToTrash } from '../trash'
 import { scheduleOcr, ocrStatus } from '../ocr'
 import { cleanupUnreferencedMedia, imageMediaPaths, mediaPaths } from '../media'
+import { normalizeQuickListOrder } from '../../shared/quickList'
 
 const logs = new Hono()
 
@@ -63,10 +64,13 @@ logs.get('/', async (c) => {
   }
   if (workspace_id) { sql += ' AND (workspace_id = ? OR (workspace_id IS NULL AND ? = (SELECT id FROM workspaces WHERE user_id = ? AND is_default = 1 LIMIT 1)))'; params.push(workspace_id, workspace_id, userId) }
 
-  // Quick List requests a strict newest-first order; normal lists keep pinned logs first.
+  const quickOrder = sort === 'quick' ? normalizeQuickListOrder(queryOne<{ quick_list_order: unknown }>('SELECT quick_list_order FROM settings WHERE user_id = ?', [userId])?.quick_list_order) : null
+  if (quickOrder === 'viewed') sql += ' AND EXISTS (SELECT 1 FROM note_views WHERE note_id = logs.id)'
+  // Quick List has its own order; normal lists keep pinned notes first.
   const safeLimit = Math.floor(Math.min(Math.max(Number(limit) || 50, 1), 500))
   const safePage = Math.floor(Math.max(Number(page) || 1, 1))
-  sql += ` ORDER BY ${sort === 'recent' ? 'created_at DESC' : 'pinned DESC, created_at DESC'}, id DESC LIMIT ${safeLimit} OFFSET ${(safePage - 1) * safeLimit}`
+  const order = quickOrder === 'viewed' ? '(SELECT viewed_at FROM note_views WHERE note_id = logs.id) DESC, created_at DESC' : sort === 'recent' || quickOrder === 'created' ? 'created_at DESC' : 'pinned DESC, created_at DESC'
+  sql += ` ORDER BY ${order}, id DESC LIMIT ${safeLimit} OFFSET ${(safePage - 1) * safeLimit}`
 
   const rows = queryAll<any>(sql, params)
   return c.json(rows.map(r => ({ ...r, tags: JSON.parse(r.tags || '[]'), attachments: JSON.parse(r.attachments || '[]'), pinned: !!r.pinned, is_secret: !!r.is_secret })))
@@ -278,6 +282,16 @@ logs.post('/:id/move', async (c) => {
   run('UPDATE logs SET workspace_id = ?, group_id = NULL, updated_at = ? WHERE id = ? AND user_id = ?', [workspaceId, Math.floor(Date.now() / 1000), logId, userId])
   const updated = queryOne<any>('SELECT logs.*, (SELECT COUNT(*) FROM comments WHERE comments.log_id = logs.id AND comments.user_id = logs.user_id) AS comment_count FROM logs WHERE logs.id = ?', [logId])!
   return c.json({ ...updated, tags: JSON.parse(updated.tags || '[]'), attachments: JSON.parse(updated.attachments || '[]'), pinned: !!updated.pinned, is_secret: !!updated.is_secret })
+})
+
+// Reading for previews, MCP or unlock checks is not a user view. The visible
+// detail screen reports a view explicitly after the secret gate is open.
+logs.post('/:id/viewed', c => {
+  const id = c.req.param('id')
+  if (!queryOne('SELECT id FROM logs WHERE id = ? AND user_id = ? AND deleted_at IS NULL', [id, LOCAL_PROFILE_ID])) return c.json({ error: noteError('notFound') }, 404)
+  const latest = queryOne<{ latest: number }>('SELECT COALESCE(MAX(viewed_at), 0) AS latest FROM note_views')!.latest
+  run('INSERT INTO note_views (note_id, viewed_at) VALUES (?, ?) ON CONFLICT(note_id) DO UPDATE SET viewed_at = excluded.viewed_at', [id, Math.max(Date.now(), latest + 1)])
+  return c.json({ ok: true })
 })
 
 // GET /api/logs/:id

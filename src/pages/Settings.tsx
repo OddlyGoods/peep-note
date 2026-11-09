@@ -24,6 +24,8 @@ import { DEFAULT_TRASH_RETENTION_DAYS, normalizeTrashRetentionDays } from '../..
 import { AI_MODELS, DEFAULT_AI_MODELS, getAiModels, getAiModelSelection, type AiProvider } from '../../shared/aiModels'
 import { DEFAULT_AI_CONTEXT_LENGTH, MIN_AI_CONTEXT_LENGTH, MAX_AI_CONTEXT_LENGTH, isAiContextLength, normalizeAiContextLength } from '../../shared/aiContext'
 import { resolveHotkeys, type HotkeyAction, type Hotkeys } from '../../shared/hotkeys'
+import { DEFAULT_QUICK_LIST_ORDER, normalizeQuickListOrder, type QuickListOrder } from '../../shared/quickList'
+import QuickListOrderSelect from '../components/QuickListOrderSelect'
 import { createSettingsAutosave, type AutosaveStatus } from '../lib/settingsAutosave'
 
 function HotkeyInput({ value, label, disabled, onChange, onDisabledChange }: {
@@ -248,6 +250,7 @@ export default function Settings() {
   const [autoAdvanceDateRange, setAutoAdvanceDateRange] = useState(true)
   const [fixedStartDate, setFixedStartDate] = useState(true)
   const [trashRetentionDays, setTrashRetentionDays] = useState(DEFAULT_TRASH_RETENTION_DAYS)
+  const [quickListOrder, setQuickListOrder] = useState<QuickListOrder>(DEFAULT_QUICK_LIST_ORDER)
   const [secretPasswordSet, setSecretPasswordSet] = useState(false)
   const [showSecretPasswordModal, setShowSecretPasswordModal] = useState(false)
   const setStoreDateNavigation = useLogStore(s => s.setDateNavigation)
@@ -273,7 +276,8 @@ export default function Settings() {
   const draft = useMemo<Partial<SettingsType>>(() => ({
     hotkeys, language: selectedLanguage, auto_advance_date_range: autoAdvanceDateRange,
     fixed_start_date: fixedStartDate, trash_retention_days: trashRetentionDays,
-  }), [hotkeys, selectedLanguage, autoAdvanceDateRange, fixedStartDate, trashRetentionDays])
+    quick_list_order: quickListOrder,
+  }), [hotkeys, selectedLanguage, autoAdvanceDateRange, fixedStartDate, trashRetentionDays, quickListOrder])
   const aiDraft = useMemo<Partial<SettingsType> | null>(() => aiModel.trim() && validAiContextLength ? ({
     ai_provider: aiProvider, ai_model: aiModel.trim(), ai_custom_models: customModelMemory,
     ai_models: Object.fromEntries(Object.entries(aiModelChoices).filter(([, choice]) => choice.model.trim()).map(([provider, choice]) => [provider, choice.model.trim()])),
@@ -358,6 +362,7 @@ export default function Settings() {
       setFixedStartDate(fixedStart)
       setStoreDateNavigation({ autoAdvanceDateRange: autoAdvance, fixedStartDate: fixedStart })
       setTrashRetentionDays(normalizeTrashRetentionDays(s.trash_retention_days))
+      setQuickListOrder(normalizeQuickListOrder(s.quick_list_order))
       setSecretPasswordSet(!!s.secret_password_set)
       setLoadFailed(false)
       setSaveStatus('idle')
@@ -555,6 +560,10 @@ export default function Settings() {
                 <RetentionSelect value={trashRetentionDays} onChange={setTrashRetentionDays} />
               </div>
               <div className="border-t border-gray-800 pt-4 flex items-center justify-between gap-5">
+                <label htmlFor="quick-list-order" className="text-sm font-medium text-gray-200">{t('quickListView')}</label>
+                <QuickListOrderSelect value={quickListOrder} onChange={setQuickListOrder} />
+              </div>
+              <div className="border-t border-gray-800 pt-4 flex items-center justify-between gap-5">
                 <div className="min-w-0">
                   <h3 id="auto-advance-date-range-label" className="text-sm font-medium text-gray-200">{t('autoAdvanceDateRange')}</h3>
                   <p id="auto-advance-date-range-description" className="text-xs text-gray-400 mt-1">{t('autoAdvanceDateRangeDescription')}</p>
@@ -618,11 +627,12 @@ export default function Settings() {
               {t('shortcutDescription')}
             </p>
             <div className="space-y-3">
-              {Object.entries({ openMain: t('shortcutOpenMain'), openFavorites: t('shortcutOpenFavorites'), openOverlay: t('shortcutOpenOverlay'), takeScreenshot: t('shortcutCaptureScreenshot'), startRecording: t('shortcutStartRecording'), stopRecording: t('shortcutStopRecording'), quickSwitch: t('quickSwitch'), quickSwitchPrevious: t('quickSwitchPrevious'), captureFreeform: t('shortcutCaptureFreeform') }).map(([key, label]) => (
+              {Object.entries({ openMain: t('shortcutOpenMain'), openFavorites: t('shortcutOpenFavorites'), openOverlay: t('shortcutOpenOverlay'), takeScreenshot: t('shortcutCaptureScreenshot'), startRecording: t('shortcutStartRecording'), stopRecording: t('shortcutStopRecording'), quickSwitch: t('quickSwitch'), quickSwitchPrevious: t('quickSwitchPrevious'), captureFreeform: t('shortcutCaptureFreeform'), toggleHotkeys: t('shortcutToggleHotkeys') }).map(([key, label]) => (
                 <div key={key} className="flex items-center justify-between py-2 border-b border-gray-800 last:border-0">
                   <div>
                     <p className="text-sm text-gray-200">{label}</p>
                     <p className="text-xs text-gray-400 mt-0.5">
+                      {key === 'toggleHotkeys' && t('shortcutToggleHotkeysDescription')}
                       {key === 'openMain' && t('shortcutOpenMainDescription')}
                       {key === 'openFavorites' && t('shortcutOpenFavoritesDescription')}
                       {key === 'openOverlay' && t('shortcutOpenOverlayDescription')}

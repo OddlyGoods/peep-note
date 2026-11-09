@@ -74,7 +74,7 @@ app.whenReady().then(async () => {
   await js('Array.from(document.querySelectorAll("[role=option]")).find(el=>el.textContent==="Engineering").click()')
   await until(() => js('document.querySelector(".knowledge-stats b").textContent==="10"'))
   await js('window.qa.language("ko")'); await wait(80)
-  assert.equal(await js('document.querySelector(".knowledge-header h1").textContent'), '메모지도')
+  assert.equal(await js('document.querySelector(".knowledge-header h1").textContent'), '맵')
   await js('window.qa.navigate("/settings")'); await wait(80)
   await js(`document.querySelector('a[href="/map"]').click()`)
   await until(() => js('window.qa.path==="/map"'))

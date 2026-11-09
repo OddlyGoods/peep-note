@@ -1,8 +1,8 @@
 export const knowledgeMapMessages = {
   en: {
-    mapEnabled: 'Enabled', mapDisabled: 'Disabled', mapEnableHint: 'Enable the note map to download the local model and connect related notes.',
+    mapEnabled: 'Enabled', mapDisabled: 'Disabled', mapEnableHint: 'Enable the map to download the local model and connect related notes.',
     mapIndexing: 'Preparing local embeddings… {completed}/{total}', mapDownloading: 'Downloading local model… {progress}%', mapIndexError: 'Could not prepare local embeddings. Please try again.',
-    knowledgeMap: 'Note map', mapDescription: 'Content-based note connections',
+    knowledgeMap: 'Map', mapDescription: 'Content-based note connections',
     mapSearch: 'Search note titles or content…', mapAllWorkspaces: 'All workspaces',
     mapNotes: 'Notes', mapConnections: 'Connections',
     mapHint: 'Drag to rotate · Scroll to zoom · Shift + drag to pan', mapKeyboard: 'Arrow keys rotate. + and − zoom. Home resets the view.',
@@ -14,9 +14,9 @@ export const knowledgeMapMessages = {
     mapNoConnections: 'No connected notes yet.',
   },
   ko: {
-    mapEnabled: '사용', mapDisabled: '미사용', mapEnableHint: '메모지도를 켜면 로컬 모델을 다운로드하고 비슷한 메모를 연결합니다.',
+    mapEnabled: '사용', mapDisabled: '미사용', mapEnableHint: '맵을 켜면 로컬 모델을 다운로드하고 비슷한 메모를 연결합니다.',
     mapIndexing: '메모 연결을 준비하는 중… {completed}/{total}', mapDownloading: '로컬 모델을 받는 중… {progress}%', mapIndexError: '로컬 임베딩을 준비하지 못했어요. 다시 시도해 주세요.',
-    knowledgeMap: '메모지도', mapDescription: '내용 기반 메모 연결',
+    knowledgeMap: '맵', mapDescription: '내용 기반 메모 연결',
     mapSearch: '메모 제목이나 내용 검색…', mapAllWorkspaces: '모든 워크스페이스',
     mapNotes: '메모', mapConnections: '연결',
     mapHint: '드래그로 회전 · 스크롤로 확대/축소 · Shift + 드래그로 이동', mapKeyboard: '방향키로 회전, +와 −로 확대/축소, Home으로 초기화합니다.',
@@ -28,9 +28,9 @@ export const knowledgeMapMessages = {
     mapNoConnections: '연결된 메모가 없어요.',
   },
   ja: {
-    mapEnabled: '使用', mapDisabled: '未使用', mapEnableHint: 'メモマップを有効にすると、ローカルモデルをダウンロードして関連するメモをつなぎます。',
+    mapEnabled: '使用', mapDisabled: '未使用', mapEnableHint: 'マップを有効にすると、ローカルモデルをダウンロードして関連するメモをつなぎます。',
     mapIndexing: 'メモの接続を準備中… {completed}/{total}', mapDownloading: 'ローカルモデルをダウンロード中… {progress}%', mapIndexError: 'ローカル埋め込みを準備できませんでした。再試行してください。',
-    knowledgeMap: 'メモマップ', mapDescription: '内容に基づくメモのつながり',
+    knowledgeMap: 'マップ', mapDescription: '内容に基づくメモのつながり',
     mapSearch: 'メモのタイトルや内容を検索…', mapAllWorkspaces: 'すべてのワークスペース',
     mapNotes: 'メモ', mapConnections: 'つながり',
     mapHint: 'ドラッグで回転 · スクロールで拡大/縮小 · Shift + ドラッグで移動', mapKeyboard: '矢印キーで回転、+と−で拡大/縮小、Homeでリセット。',
@@ -42,9 +42,9 @@ export const knowledgeMapMessages = {
     mapNoConnections: '関連するメモはまだありません。',
   },
   zh: {
-    mapEnabled: '启用', mapDisabled: '停用', mapEnableHint: '启用笔记地图后，将下载本地模型并连接相关笔记。',
+    mapEnabled: '启用', mapDisabled: '停用', mapEnableHint: '启用地图后，将下载本地模型并连接相关笔记。',
     mapIndexing: '正在准备笔记连接… {completed}/{total}', mapDownloading: '正在下载本地模型… {progress}%', mapIndexError: '无法准备本地嵌入，请重试。',
-    knowledgeMap: '笔记地图', mapDescription: '基于内容的笔记关联',
+    knowledgeMap: '地图', mapDescription: '基于内容的笔记关联',
     mapSearch: '搜索笔记标题或内容…', mapAllWorkspaces: '所有工作区',
     mapNotes: '笔记', mapConnections: '连接',
     mapHint: '拖动旋转 · 滚动缩放 · Shift + 拖动平移', mapKeyboard: '方向键旋转，+和−缩放，Home重置视角。',

@@ -141,7 +141,7 @@ export default function KnowledgeMapCanvas({ graph, selected, onSelect }: {
           if (!previous.moved && Math.hypot(dx, dy) < 4) return
           previous.moved = true; previous.x = event.clientX; previous.y = event.clientY
           setHovered(null)
-          setCamera(value => previous.pan ? { ...value, panX: value.panX + dx, panY: value.panY + dy } : { ...value, yaw: value.yaw + dx * 0.007, pitch: Math.max(-1.4, Math.min(1.4, value.pitch + dy * 0.007)) })
+          setCamera(value => previous.pan ? { ...value, panX: value.panX + dx, panY: value.panY + dy } : { ...value, yaw: value.yaw - dx * 0.007, pitch: Math.max(-1.4, Math.min(1.4, value.pitch + dy * 0.007)) })
         } else { const rect = event.currentTarget.getBoundingClientRect(); setHovered(hit(event.clientX - rect.left, event.clientY - rect.top)) }
       }}
       onPointerUp={event => {
@@ -158,7 +158,7 @@ export default function KnowledgeMapCanvas({ graph, selected, onSelect }: {
         if (event.key === 'Home') reset()
         else if (event.key === '+' || event.key === '=') zoom(1.2)
         else if (event.key === '-') zoom(1 / 1.2)
-        else setCamera(value => ({ ...value, yaw: value.yaw + (event.key === 'ArrowLeft' ? -0.12 : event.key === 'ArrowRight' ? 0.12 : 0), pitch: Math.max(-1.4, Math.min(1.4, value.pitch + (event.key === 'ArrowUp' ? -0.12 : event.key === 'ArrowDown' ? 0.12 : 0))) }))
+        else setCamera(value => ({ ...value, yaw: value.yaw + (event.key === 'ArrowLeft' ? 0.12 : event.key === 'ArrowRight' ? -0.12 : 0), pitch: Math.max(-1.4, Math.min(1.4, value.pitch + (event.key === 'ArrowUp' ? -0.12 : event.key === 'ArrowDown' ? 0.12 : 0))) }))
       }} />
     <div className="knowledge-view-controls">
       <button type="button" onClick={() => zoom(1.2)} title={t('mapZoomIn')} aria-label={t('mapZoomIn')}><Plus size={15} /></button>

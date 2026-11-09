@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Check, ChevronDown, FileText, FolderOpen, Layers, Waypoints, RefreshCw, Search, Tag, X } from 'lucide-react'
-import { buildKnowledgeGraph, type MapNode, type MapSnapshot } from '../../shared/knowledgeMap'
+import { Check, ChevronDown, FileText, FolderOpen, Waypoints, RefreshCw, Search, X } from 'lucide-react'
+import { buildKnowledgeGraph, emptyMapSnapshot, type MapNode, type MapSnapshot } from '../../shared/knowledgeMap'
 import { api } from '../lib/api'
 import { useScreenActive } from '../lib/screenActivity'
 import { useWorkspaceStore } from '../stores/workspaceStore'
@@ -15,9 +15,8 @@ export default function KnowledgeMap() {
   const workspaces = useWorkspaceStore(state => state.workspaces)
   const fetchWorkspaces = useWorkspaceStore(state => state.fetchWorkspaces)
   const logs = useLogStore(state => state.logs)
-  const [snapshot, setSnapshot] = useState<MapSnapshot>({ notes: [], total: 0, limit: 400 })
+  const [snapshot, setSnapshot] = useState<MapSnapshot>(emptyMapSnapshot)
   const [query, setQuery] = useState(''), [search, setSearch] = useState(''), [workspace, setWorkspace] = useState('')
-  const [groups, setGroups] = useState(true), [tags, setTags] = useState(true)
   const [selected, setSelected] = useState<string | null>(null)
   const [loading, setLoading] = useState(true), [error, setError] = useState(false), [refresh, setRefresh] = useState(0)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -35,12 +34,20 @@ export default function KnowledgeMap() {
   useEffect(() => {
     if (!active) return
     const controller = new AbortController()
+    let timer: ReturnType<typeof setTimeout> | null = null
     setLoading(true); setError(false)
-    api.knowledgeMap(workspace, search, controller.signal).then(result => {
-      if (!controller.signal.aborted) setSnapshot(result)
-    }).catch(() => { if (!controller.signal.aborted) { setError(true); setSnapshot({ notes: [], total: 0, limit: 400 }) } })
-      .finally(() => { if (!controller.signal.aborted) setLoading(false) })
-    return () => controller.abort()
+    const load = async () => {
+      try {
+        const result = await api.knowledgeMap(workspace, search, controller.signal)
+        if (controller.signal.aborted) return
+        setSnapshot(result); setError(false)
+        if (['downloading', 'indexing'].includes(result.indexing.stage)) timer = setTimeout(() => void load(), 1500)
+      } catch {
+        if (!controller.signal.aborted) { setError(true); setSnapshot(emptyMapSnapshot()); timer = setTimeout(() => void load(), 5000) }
+      } finally { if (!controller.signal.aborted) setLoading(false) }
+    }
+    void load()
+    return () => { controller.abort(); if (timer) clearTimeout(timer) }
   }, [active, workspace, search, refresh, logs])
   useEffect(() => {
     if (!menuOpen) return
@@ -51,19 +58,20 @@ export default function KnowledgeMap() {
     return () => { document.removeEventListener('pointerdown', outside); document.removeEventListener('keydown', escape, true) }
   }, [menuOpen])
 
-  const graph = useMemo(() => buildKnowledgeGraph(snapshot.notes, groups, tags), [snapshot.notes, groups, tags])
+  // Progress polling must not restart a 3D layout when its data is unchanged.
+  const graphKey = JSON.stringify([snapshot.notes, snapshot.connections])
+  const graph = useMemo(() => buildKnowledgeGraph(snapshot.notes, snapshot.connections), [graphKey])
   const nodeById = useMemo(() => new Map(graph.nodes.map(node => [node.id, node])), [graph])
   const current = selected ? nodeById.get(selected) : undefined
   useEffect(() => { if (selected && !nodeById.has(selected)) setSelected(null) }, [selected, nodeById])
   const connections = useMemo(() => {
     if (!current) return []
-    if (current.kind !== 'note') return current.members.map(id => nodeById.get(id)!).filter(Boolean)
-    const hubs = new Set(graph.edges.filter(edge => edge.source === current.id).map(edge => edge.target))
-    return graph.nodes.filter(node => node.kind === 'note' && node.id !== current.id && graph.edges.some(edge => edge.source === node.id && hubs.has(edge.target)))
+    return graph.edges.filter(edge => edge.source === current.id || edge.target === current.id)
+      .sort((a, b) => b.similarity - a.similarity)
+      .map(edge => nodeById.get(edge.source === current.id ? edge.target : edge.source)!).filter(Boolean)
   }, [current, graph, nodeById])
   const workspaceName = (note: NonNullable<MapNode['note']>) => note.workspaceDefault ? t('defaultWorkspace') : note.workspaceName || t('defaultWorkspace')
-  const name = (node: MapNode) => `${node.kind === 'tag' ? '#' : ''}${node.label || t('mapUntitled')}`
-  const Icon = ({ node }: { node: MapNode }) => node.kind === 'group' ? <Layers size={14} /> : node.kind === 'tag' ? <Tag size={14} /> : <FileText size={14} />
+  const name = (node: MapNode) => node.label || t('mapUntitled')
   const select = (id: string | null) => setSelected(id)
   const readNote = (node: MapNode) => {
     if (!node.note) return
@@ -91,12 +99,13 @@ export default function KnowledgeMap() {
           buttons[event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1 : (index + (event.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length]?.focus()
         }}>{options.map(item => <button type="button" role="option" key={item.id} aria-selected={workspace === item.id} onClick={() => { setWorkspace(item.id); setMenuOpen(false); trigger.current?.focus() }}><span>{item.label}</span>{workspace === item.id && <Check size={14} />}</button>)}</div>}
       </div>
-      <label className="knowledge-filter"><input type="checkbox" checked={groups} onChange={event => setGroups(event.target.checked)} /><Layers size={14} />{t('mapGroups')}</label>
-      <label className="knowledge-filter"><input type="checkbox" checked={tags} onChange={event => setTags(event.target.checked)} /><Tag size={14} />{t('mapTags')}</label>
     </div>
     <div className="knowledge-body">
       <div className={`knowledge-stage${snapshot.total > snapshot.notes.length ? ' knowledge-stage-limited' : ''}`} aria-busy={loading}>
-        <div className="knowledge-stats"><span><i className="knowledge-note-dot" />{t('mapNotes')} <b>{snapshot.notes.length}</b></span><span><i className="knowledge-group-dot" />{t('mapGroups')} <b>{graph.nodes.filter(node => node.kind === 'group').length}</b></span><span><i className="knowledge-tag-dot" />{t('mapTags')} <b>{graph.nodes.filter(node => node.kind === 'tag').length}</b></span></div>
+        <div className="knowledge-stats"><span><i className="knowledge-note-dot" />{t('mapNotes')} <b>{snapshot.notes.length}</b></span><span><i className="knowledge-group-dot" />{t('mapConnections')} <b>{graph.edges.length}</b></span></div>
+        {['downloading', 'indexing', 'error'].includes(snapshot.indexing.stage) && <div className="knowledge-index-status" role="status">
+          {snapshot.indexing.stage === 'error' ? <><span>{t('mapIndexError')}</span><button onClick={() => { void api.retryKnowledgeMap().then(() => setRefresh(value => value + 1)).catch(() => setError(true)) }}>{t('settingsRetry')}</button></> : <><RefreshCw size={13} className="animate-spin" /><span>{snapshot.indexing.stage === 'downloading' ? t('mapDownloading', { progress: snapshot.indexing.progress ?? 0 }) : t('mapIndexing', { completed: snapshot.indexing.completed, total: snapshot.indexing.total })}</span></>}
+        </div>}
         <KnowledgeMapCanvas graph={graph} selected={selected} onSelect={select} />
         {loading && <div className="knowledge-loading" role="status" aria-label={t('loading')}><RefreshCw size={20} className="animate-spin" /></div>}
         {!loading && (!snapshot.notes.length || error) && <div className="knowledge-empty" role="status"><Waypoints size={36} /><h2>{error ? t('mapError') : t('mapEmpty')}</h2><p>{error ? '' : t('mapEmptyHint')}</p>{error && <button className="knowledge-action" onClick={() => setRefresh(value => value + 1)}>{t('mapRefresh')}</button>}</div>}
@@ -105,7 +114,7 @@ export default function KnowledgeMap() {
       <aside className={`knowledge-inspector${current ? '' : ' knowledge-inspector-empty'}`} data-screen-scroll="knowledge-inspector">
         {current ? <>
           <div className="knowledge-inspector-heading">
-            <span className={`knowledge-kind knowledge-kind-${current.kind}`}><Icon node={current} />{t(current.kind === 'note' ? 'mapNotes' : current.kind === 'group' ? 'mapGroups' : 'mapTags')}</span>
+            <span className="knowledge-kind"><FileText size={14} />{t('mapNotes')}</span>
             <button className="knowledge-icon-button" onClick={() => select(null)} aria-label={t('close')}><X size={15} /></button>
           </div>
             <h2>{name(current)}</h2>

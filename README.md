@@ -103,7 +103,7 @@ Wayland screen capture relies on PipeWire and an xdg-desktop-portal implementati
 ```bash
 git clone https://github.com/OddlyGoods/peep-note.git
 cd peep-note
-npm ci
+npm ci --onnxruntime-node-install-cuda=skip
 npm run dev
 ```
 

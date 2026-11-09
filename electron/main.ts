@@ -1440,7 +1440,7 @@ app.whenReady().then(async () => {
   })
 
   // 로컬 Hono 서버 시작
-  await startServer(APP_PORT, dataDirectory, change => {
+  const localServer = await startServer(APP_PORT, dataDirectory, change => {
     if (change?.notificationsEnabled !== undefined) {
       if (!change.notificationsEnabled) noteNotifications.dismiss()
       return
@@ -1450,7 +1450,11 @@ app.whenReady().then(async () => {
     }
     mainWindow?.webContents.send('log-created')
     if (change?.noteSaved) noteNotifications.show(change.noteSaved)
+  }, {
+    workerPath: path.join(app.isPackaged ? process.resourcesPath : app.getAppPath(), 'resources', 'embedding-worker.cjs'),
+    cacheDir: path.join(app.getPath('userData'), 'models', 'embeddings')
   })
+  app.on('before-quit', () => localServer.disposeEmbeddings())
 
   createMainWindow()
   createOverlayWindow()

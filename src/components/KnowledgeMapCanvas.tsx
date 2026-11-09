@@ -6,8 +6,6 @@ import { useI18n } from '../i18n'
 import { useScreenActive } from '../lib/screenActivity'
 
 export function mapNodeColor(node: MapNode, dark: boolean) {
-  if (node.kind === 'group') return dark ? '#c4b5fd' : '#7c3aed'
-  if (node.kind === 'tag') return dark ? '#5eead4' : '#0f766e'
   const seed = [...(node.note?.workspaceId ?? '')].reduce((sum, char) => (sum * 31 + char.charCodeAt(0)) >>> 0, 0)
   return `hsl(${[224, 270, 190, 32, 330][seed % 5]} 78% ${dark ? 76 : 43}%)`
 }
@@ -30,12 +28,10 @@ export default function KnowledgeMapCanvas({ graph, selected, onSelect }: {
     const ids = new Set<string>()
     if (!id) return ids
     ids.add(id)
-    const hubs = new Set<string>()
     for (const edge of graph.edges) {
-      if (edge.source === id) hubs.add(edge.target)
+      if (edge.source === id) ids.add(edge.target)
       if (edge.target === id) ids.add(edge.source)
     }
-    for (const edge of graph.edges) if (hubs.has(edge.target)) { ids.add(edge.source); ids.add(edge.target) }
     return ids
   }, [graph, selected, hovered])
 
@@ -65,8 +61,8 @@ export default function KnowledgeMapCanvas({ graph, selected, onSelect }: {
     for (const edge of graph.edges) {
       const a = byId.get(edge.source)!, b = byId.get(edge.target)!
       const strong = highlighted.has(a.node.id) && highlighted.has(b.node.id)
-      ctx.globalAlpha = highlighted.size ? strong ? 0.75 : 0.08 : 0.32
-      ctx.strokeStyle = mapNodeColor(b.node, dark); ctx.lineWidth = strong ? 1.4 : 0.7
+      ctx.globalAlpha = highlighted.size ? strong ? 0.85 : 0.06 : 0.18 + edge.similarity * 0.25
+      ctx.strokeStyle = dark ? '#a78bfa' : '#7c3aed'; ctx.lineWidth = strong ? 1.6 : 0.5 + edge.similarity
       ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke()
     }
     const labels: { x: number; y: number; width: number; height: number }[] = []
@@ -77,27 +73,23 @@ export default function KnowledgeMapCanvas({ graph, selected, onSelect }: {
       const focused = node.id === selected || node.id === hovered
       const related = highlighted.has(node.id)
       const color = mapNodeColor(node, dark)
-      const radius = (node.kind === 'note' ? 6 : node.kind === 'group' ? 7 : 4) * Math.min(1.5, depth) + (focused ? 2 : 0)
+      const radius = 6 * Math.min(1.5, depth) + (focused ? 2 : 0)
       ctx.globalAlpha = highlighted.size && !related ? 0.35 : Math.max(0.5, Math.min(1, depth))
       if (focused) { ctx.beginPath(); ctx.arc(x, y, radius + 6, 0, Math.PI * 2); ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.stroke() }
       ctx.beginPath()
-      if (node.kind === 'group') { ctx.moveTo(x, y - radius); ctx.lineTo(x + radius, y); ctx.lineTo(x, y + radius); ctx.lineTo(x - radius, y); ctx.closePath() }
-      else ctx.arc(x, y, radius, 0, Math.PI * 2)
+      ctx.arc(x, y, radius, 0, Math.PI * 2)
       ctx.fillStyle = color; ctx.fill()
-      if (node.kind === 'group') {
-        ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = dark ? '#11152b' : '#ffffff'; ctx.fillText('◇', x, y + 0.5)
-      }
     }
-    // Titles belong to notes first; group and tag labels provide context.
-    const labelPriority = (node: MapNode) => node.id === selected || node.id === hovered ? 0 : node.kind === 'note' ? 1 : node.kind === 'group' ? 2 : 3
+    // Keep the selected note and its closest neighbours readable.
+    const labelPriority = (node: MapNode) => node.id === selected || node.id === hovered ? 0 : highlighted.has(node.id) ? 1 : 2
     for (const { node, x, y, depth } of [...projected].sort((a, b) => labelPriority(a.node) - labelPriority(b.node))) {
       if (x < -40 || y < -40 || x > width + 40 || y > height + 40) continue
       const focused = node.id === selected || node.id === hovered, related = highlighted.has(node.id)
       const color = mapNodeColor(node, dark)
-      const radius = (node.kind === 'note' ? 6 : node.kind === 'group' ? 7 : 4) * Math.min(1.5, depth) + (focused ? 2 : 0)
-      if (!focused && (labels.length >= 60 || (node.kind === 'tag' && !related))) continue
+      const radius = 6 * Math.min(1.5, depth) + (focused ? 2 : 0)
+      if (!focused && labels.length >= 60) continue
       const raw = node.label || t('mapUntitled')
-      const label = (node.kind === 'tag' ? '#' : '') + (raw.length > 28 ? raw.slice(0, 27) + '…' : raw)
+      const label = raw.length > 28 ? raw.slice(0, 27) + '…' : raw
       ctx.font = `${focused ? 600 : 400} 12px sans-serif`
       const labelWidth = ctx.measureText(label).width + 12
       const lx = Math.min(width - labelWidth - 6, Math.max(6, x - labelWidth / 2)), ly = y + radius + 6
@@ -174,6 +166,6 @@ export default function KnowledgeMapCanvas({ graph, selected, onSelect }: {
       <button type="button" onClick={reset} title={t('mapReset')} aria-label={t('mapReset')}><RotateCcw size={14} /></button>
     </div>
     <div className="knowledge-gesture-hint">{t('mapHint')}</div>
-    {hoverNode && <div className="knowledge-hover" role="status">{hoverNode.kind === 'tag' ? '#' : ''}{hoverNode.label || t('mapUntitled')}</div>}
+    {hoverNode && <div className="knowledge-hover" role="status">{hoverNode.label || t('mapUntitled')}</div>}
   </div>
 }

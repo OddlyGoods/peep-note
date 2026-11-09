@@ -27,10 +27,12 @@
     "test:privacy": "node scripts/audit-source.cjs",
     "test:mcp": "node scripts/test-mcp.cjs",
     "test:settings-native": "node scripts/test-settings-native.cjs",
-    "test:map-native": "node scripts/test-knowledge-map-native.cjs"
+    "test:map-native": "node scripts/test-knowledge-map-native.cjs",
+    "test:embeddings-native": "node scripts/test-embeddings-native.cjs"
   },
   "dependencies": {
     "@hono/node-server": "^1.12.0",
+    "@huggingface/transformers": "3.8.1",
     "@modelcontextprotocol/sdk": "1.32.2",
     "@tesseract.js-data/eng": "^1.0.0",
     "@tesseract.js-data/kor": "^1.0.0",
@@ -94,6 +96,7 @@
       }
     ],
     "asarUnpack": [
+      "node_modules/{@huggingface/transformers,onnxruntime-node,onnxruntime-common,onnxruntime-web,sharp,@img}/**/*",
       "node_modules/sql.js/dist/sql-wasm.wasm",
       "node_modules/{tesseract.js,tesseract.js-core,regenerator-runtime,wasm-feature-detect,is-url,node-fetch,whatwg-url,tr46,webidl-conversions,bmp-js,zlibjs,idb-keyval}/**/*"
     ],

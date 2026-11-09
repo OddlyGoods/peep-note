@@ -1,82 +1,52 @@
+import type { EmbeddingState, SemanticConnection } from './localEmbeddings'
 export const KNOWLEDGE_MAP_LIMIT = 400
 export type MapNote = {
-  id: string; title: string; tags: string[]
-  groupId: string | null; groupName: string | null
+  id: string; title: string
   workspaceId: string; workspaceName: string; workspaceDefault: boolean
   type: string; createdAt: number
 }
-export type MapSnapshot = { notes: MapNote[]; total: number; limit: number }
-export type MapNode = {
-  id: string; kind: 'note' | 'group' | 'tag'; label: string
-  note?: MapNote; members: string[]; x: number; y: number; z: number
-}
-export type MapEdge = { source: string; target: string; kind: 'group' | 'tag' }
+export type MapSnapshot = { notes: MapNote[]; connections: SemanticConnection[]; indexing: EmbeddingState; total: number; limit: number }
+export type MapNode = { id: string; kind: 'note'; label: string; note: MapNote; x: number; y: number; z: number }
+export type MapEdge = { source: string; target: string; similarity: number }
 export type KnowledgeGraph = { nodes: MapNode[]; edges: MapEdge[] }
+export const emptyMapSnapshot = (): MapSnapshot => ({ notes: [], connections: [], indexing: { stage: 'idle', completed: 0, total: 0 }, total: 0, limit: KNOWLEDGE_MAP_LIMIT })
 
-export function normalizedMapTags(value: unknown): string[] {
-  if (!Array.isArray(value)) return []
-  return [...new Set(value.filter((tag): tag is string => typeof tag === 'string')
-    .map(tag => tag.trim().normalize('NFKC').replace(/^#+/, '').trim().toLowerCase()).filter(Boolean))]
-}
-
-function hash(text: string) {
-  let value = 2166136261
-  for (const char of text) value = Math.imul(value ^ char.charCodeAt(0), 16777619)
-  return value >>> 0
-}
-function sphere(index: number, count: number, radius: number) {
-  const y = 1 - 2 * (index + 0.5) / Math.max(1, count)
-  const angle = index * Math.PI * (3 - Math.sqrt(5))
-  return { x: Math.cos(angle) * Math.sqrt(1 - y * y) * radius, y: y * radius, z: Math.sin(angle) * Math.sqrt(1 - y * y) * radius }
-}
-
-// Hubs keep a large shared tag linear in edge count, rather than connecting
-// every pair of notes. Positions are stable across refreshes of the same data.
-export function buildKnowledgeGraph(input: MapNote[], showGroups = true, showTags = true): KnowledgeGraph {
+export function buildKnowledgeGraph(input: MapNote[], connections: SemanticConnection[] = []): KnowledgeGraph {
   const notes = [...new Map(input.map(note => [note.id, note])).values()].slice(0, KNOWLEDGE_MAP_LIMIT).sort((a, b) => a.id.localeCompare(b.id))
-  const hubs = new Map<string, MapNode>()
-  const edges: MapEdge[] = []
-  const nodes: MapNode[] = notes.map(note => ({ id: `note:${note.id}`, kind: 'note', label: note.title, note, members: [], x: 0, y: 0, z: 0 }))
-  for (const node of nodes) {
-    const note = node.note!
-    const add = (id: string, kind: 'group' | 'tag', label: string) => {
-      if (!hubs.has(id)) hubs.set(id, { id, kind, label, members: [], x: 0, y: 0, z: 0 })
-      hubs.get(id)!.members.push(node.id)
-      edges.push({ source: node.id, target: id, kind })
-    }
-    if (showGroups && note.groupId) add(`group:${note.groupId}`, 'group', note.groupName ?? '')
-    if (showTags) for (const tag of normalizedMapTags(note.tags)) add(`tag:${tag}`, 'tag', tag)
-  }
-  const orderedHubs = [...hubs.values()].sort((a, b) => a.id.localeCompare(b.id))
   const radius = 110 + Math.sqrt(notes.length) * 13
-  orderedHubs.forEach((hub, index) => Object.assign(hub, sphere(index, orderedHubs.length, radius)))
-  const targets = new Map<string, MapNode[]>()
-  for (const edge of edges) targets.set(edge.source, [...(targets.get(edge.source) ?? []), hubs.get(edge.target)!])
-  nodes.forEach((node, index) => {
-    const related = targets.get(node.id) ?? []
-    // Explicit groups anchor notes. Tags supplement ungrouped notes instead
-    // of pulling every grouped note toward the most common tags.
-    const groups = related.filter(hub => hub.kind === 'group')
-    const connected = groups.length ? groups : related
-    const base = connected.length ? connected.reduce((sum, hub) => ({ x: sum.x + hub.x / connected.length, y: sum.y + hub.y / connected.length, z: sum.z + hub.z / connected.length }), { x: 0, y: 0, z: 0 }) : sphere(index, nodes.length, radius)
-    const seed = hash(node.id)
-    const offset = sphere(seed % 997, 997, 35 + seed % 40)
-    Object.assign(node, { x: base.x + offset.x, y: base.y + offset.y, z: base.z + offset.z })
+  const nodes: MapNode[] = notes.map((note, index) => {
+    const y = 1 - 2 * (index + 0.5) / Math.max(1, notes.length), angle = index * Math.PI * (3 - Math.sqrt(5))
+    return { id: `note:${note.id}`, kind: 'note', label: note.title, note, x: Math.cos(angle) * Math.sqrt(1 - y * y) * radius, y: y * radius, z: Math.sin(angle) * Math.sqrt(1 - y * y) * radius }
   })
-  // A short deterministic relaxation separates crowded notes in all 3 axes.
-  // This runs only when data/filters change, never in the rendering loop.
-  for (let step = 0; step < 24; step++) {
+  const byId = new Map(nodes.map(node => [node.note.id, node]))
+  const unique = new Map<string, MapEdge>()
+  for (const edge of connections) {
+    if (edge.source === edge.target || !byId.has(edge.source) || !byId.has(edge.target) || !Number.isFinite(edge.similarity)) continue
+    const [a, b] = [edge.source, edge.target].sort()
+    unique.set(JSON.stringify([a, b]), { source: `note:${a}`, target: `note:${b}`, similarity: Math.max(0, Math.min(1, edge.similarity)) })
+  }
+  const edges = [...unique.values()].sort((a, b) => a.source.localeCompare(b.source) || a.target.localeCompare(b.target))
+  const indexed = new Map(nodes.map(node => [node.id, node]))
+  // Similar notes attract each other; bounded repulsion keeps titles readable.
+  // Layout is deterministic and runs only when the relationship data changes.
+  for (let step = 0; step < 80; step++) {
+    const cooling = 1 - step / 100
+    for (const edge of edges) {
+      const a = indexed.get(edge.source)!, b = indexed.get(edge.target)!
+      const dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z, distance = Math.max(1, Math.hypot(dx, dy, dz))
+      const strength = (distance - (65 + (1 - edge.similarity) * 180)) / distance * 0.04 * cooling
+      a.x += dx * strength; a.y += dy * strength; a.z += dz * strength
+      b.x -= dx * strength; b.y -= dy * strength; b.z -= dz * strength
+    }
     for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) {
-      const a = nodes[i], b = nodes[j]
-      const dx = a.x - b.x, dy = a.y - b.y, dz = a.z - b.z
-      const distance = Math.max(1, Math.hypot(dx, dy, dz))
-      if (distance > 70) continue
-      const strength = (70 - distance) * 0.035 / distance
+      const a = nodes[i], b = nodes[j], dx = a.x - b.x, dy = a.y - b.y, dz = a.z - b.z, distance = Math.max(1, Math.hypot(dx, dy, dz))
+      if (distance >= 70) continue
+      const strength = (70 - distance) * 0.05 * cooling / distance
       a.x += dx * strength; a.y += dy * strength; a.z += dz * strength
       b.x -= dx * strength; b.y -= dy * strength; b.z -= dz * strength
     }
   }
-  return { nodes: [...nodes, ...orderedHubs], edges }
+  return { nodes, edges }
 }
 
 export type MapCamera = { yaw: number; pitch: number; zoom: number; panX: number; panY: number }

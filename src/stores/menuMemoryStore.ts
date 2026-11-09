@@ -1,20 +1,19 @@
 import { create } from 'zustand'
 import { menuForPath, type MenuPath } from '../lib/menuMemory'
-import { savedNoteReturnTarget, type NoteReturnTarget } from '../lib/noteNavigation'
 
-type Target = { pathname: string; search: string; hash: string; state?: unknown }
-type RememberedTarget = Omit<Target, 'state'> & { state?: { noteReturnTo: NoteReturnTarget } }
+type Target = { pathname: string; search: string; hash: string }
 
 // Keep navigation and drafts within this renderer session; never write note
 // contents, PINs, or unsaved API keys to browser storage.
 export const useMenuMemoryStore = create<{
-  targets: Partial<Record<MenuPath, RememberedTarget>>
-  remember: (location: Target) => void
+  targets: Partial<Record<MenuPath, Target>>
+  remember: (location: Target & { state?: unknown }) => void
 }>((set) => ({
   targets: {},
-  remember: ({ pathname, search, hash, state }) => {
+  remember: ({ pathname, search, hash }) => {
     const menu = menuForPath(pathname)
-    const noteReturnTo = savedNoteReturnTarget(state)
-    if (menu) set(previous => ({ targets: { ...previous.targets, [menu]: { pathname, search, hash, ...(noteReturnTo ? { state: { noteReturnTo } } : {}) } } }))
+    // A sidebar menu starts a new visit. Restore the screen, not the previous
+    // visit's cross-menu Back destination.
+    if (menu) set(previous => ({ targets: { ...previous.targets, [menu]: { pathname, search, hash } } }))
   },
 }))

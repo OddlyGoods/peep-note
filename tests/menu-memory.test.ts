@@ -53,12 +53,14 @@ test('direct note URLs fall back to their list and untrusted return targets are 
   }
 })
 
-test('switching menus preserves note origin without replaying one-time navigation flags', () => {
+test('reopening a detail through its menu starts a new visit with that menu as its Back destination', () => {
   useMenuMemoryStore.setState({ targets: {} })
-  const origin = { pathname: '/map', search: '', hash: '' }
-  useMenuMemoryStore.getState().remember({ pathname: '/log/a', search: '', hash: '', state: { noteReturnTo: origin, revealLogId: 'one-time', deletionTransition: true } })
-  assert.deepEqual(useMenuMemoryStore.getState().targets['/']?.state, { noteReturnTo: origin })
-  assert.deepEqual(noteBackTarget('/log/a', useMenuMemoryStore.getState().targets['/']?.state), origin)
+  for (const [path, menu] of [['/log/a', '/'], ['/search/log/a', '/search'], ['/favorites/log/a', '/favorites']] as const) {
+    useMenuMemoryStore.getState().remember({ pathname: path, search: '', hash: '', state: { noteReturnTo: { pathname: '/map', search: '', hash: '' }, revealLogId: 'one-time', deletionTransition: true } })
+    const remembered = useMenuMemoryStore.getState().targets[menu]!
+    assert.deepEqual(remembered, { pathname: path, search: '', hash: '' })
+    assert.deepEqual(noteBackTarget(remembered.pathname, undefined), { pathname: menu, search: '', hash: '' })
+  }
 })
 
 test('refreshing a cached list keeps all loaded pages and removes boundary duplicates', async () => {

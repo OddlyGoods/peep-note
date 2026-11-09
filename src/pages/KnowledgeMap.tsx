@@ -83,7 +83,7 @@ export default function KnowledgeMap() {
 
   return <section className="knowledge-map" aria-label={t('knowledgeMap')}>
     <header className="knowledge-header">
-      <div><h1><Waypoints size={21} />{t('knowledgeMap')}</h1><p>{t('mapDescription')}</p></div>
+      <div><h1>{t('knowledgeMap')}</h1><p>{t('mapDescription')}</p></div>
       <button type="button" className="knowledge-icon-button" disabled={loading} onClick={() => setRefresh(value => value + 1)} title={t('mapRefresh')} aria-label={t('mapRefresh')}><RefreshCw size={16} className={loading ? 'animate-spin' : ''} /></button>
     </header>
     <div className="knowledge-toolbar">

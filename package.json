@@ -28,6 +28,7 @@
     "test:mcp": "node scripts/test-mcp.cjs",
     "test:settings-native": "node scripts/test-settings-native.cjs",
     "test:hotkeys-native": "node scripts/test-hotkeys-native.cjs",
+    "test:quick-list-native": "node scripts/test-quick-list-native.cjs",
     "test:map-native": "node scripts/test-knowledge-map-native.cjs",
     "test:embeddings-native": "node scripts/test-embeddings-native.cjs"
   },

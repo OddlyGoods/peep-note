@@ -35,6 +35,7 @@ export default function QuickSwitch() {
   const moveLockRef = useRef(false)
   const rangeRef = useRef<QuickListRange>(readQuickListRange())
   const requestVersionRef = useRef(0)
+  const openRequestRef = useRef<number | null>(null)
 
   useEffect(() => {
     const htmlBackground = document.documentElement.style.background
@@ -55,7 +56,8 @@ export default function QuickSwitch() {
     return true
   }
 
-  const loadRecent = useCallback(async () => {
+  const loadRecent = useCallback(async (openRequest: number) => {
+    openRequestRef.current = openRequest
     const requestVersion = ++requestVersionRef.current
     const range = readQuickListRange()
     rangeRef.current = range
@@ -78,11 +80,13 @@ export default function QuickSwitch() {
       setLogs(recent)
       setSelected(0)
       setMoveDirection(null)
+      void window.electronAPI?.quickSwitchResult(openRequest, recent.length ? 'ready' : 'empty')
     } catch {
       if (requestVersion !== requestVersionRef.current) return
       logsRef.current = []
       selectedRef.current = 0
       setLogs([])
+      void window.electronAPI?.quickSwitchResult(openRequest, 'error')
     }
   }, [])
 
@@ -152,14 +156,10 @@ export default function QuickSwitch() {
     setMoveDirection(direction)
   }, [openSelected])
 
-  // The first IPC message can arrive before React has attached its listener.
-  // Loading on mount guarantees the initial Alt+Q invocation still has data.
-  useEffect(() => { loadRecent() }, [loadRecent])
-
   useEffect(() => {
-    const open = () => loadRecent()
+    const open = (request: unknown) => { if (typeof request === 'number') void loadRecent(request) }
     const rangeChanged = (event: StorageEvent) => {
-      if (event.key === QUICK_LIST_RANGE_KEY || event.key === null) void loadRecent()
+      if (!document.hidden && openRequestRef.current !== null && (event.key === QUICK_LIST_RANGE_KEY || event.key === null)) void loadRecent(openRequestRef.current)
     }
     const next = () => moveNext()
     const previous = () => movePrevious()
@@ -168,6 +168,8 @@ export default function QuickSwitch() {
     window.electronAPI?.on('quick-switch-next', next)
     window.electronAPI?.on('quick-switch-previous', previous)
     window.electronAPI?.on('quick-switch-confirm', confirm)
+    // Main resends a pending open after all React listeners are attached.
+    void window.electronAPI?.quickSwitchReady()
     window.addEventListener('storage', rangeChanged)
     return () => {
       window.electronAPI?.off('quick-switch-open', open)
@@ -180,7 +182,7 @@ export default function QuickSwitch() {
   }, [loadRecent, moveNext, movePrevious, openSelected])
 
   if (!logs.length) {
-    return <div style={emptyStyle}>{t('noRecords')}</div>
+    return null
   }
 
   const above = logs[selected - 1]
@@ -317,4 +319,3 @@ const titleStyle: React.CSSProperties = { color: 'var(--quick-title)', fontWeigh
 const excerptStyle: React.CSSProperties = { display: '-webkit-box', WebkitBoxOrient: 'vertical', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'pre-wrap', color: 'var(--quick-excerpt)', fontSize: 11, lineHeight: 1.35, marginTop: 4 }
 const quickFooterStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', marginTop: 5 }
 const fileBadgeStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 4, minHeight: 17, padding: '1px 6px', borderRadius: 999, border: '1px solid var(--quick-faded-border)', background: 'var(--quick-icon-bg)', color: 'var(--quick-meta)', fontSize: 10, lineHeight: 1 }
-const emptyStyle: React.CSSProperties = { height: '100%', display: 'grid', placeItems: 'center', color: 'var(--quick-meta)', fontFamily: 'sans-serif', background: 'var(--overlay-bg)', border: '1px solid var(--medium-border)' }

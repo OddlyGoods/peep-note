@@ -33,6 +33,8 @@ declare global {
       closeOverlay: () => Promise<void>
       selectQuickLog: (id: string) => Promise<void>
       closeQuickSwitch: () => Promise<void>
+      quickSwitchReady: () => Promise<void>
+      quickSwitchResult: (request: number, status: 'ready' | 'empty' | 'error') => Promise<void>
       showMain: () => Promise<void>
       getAppPort: () => Promise<number>
       windowMinimize: () => Promise<void>

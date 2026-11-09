@@ -4,6 +4,10 @@ import { hotkeyCopy } from '../shared/hotkeyMessages'
 export const HOTKEY_TOAST_MS = 2000
 export function hotkeyToastHtml(enabled: boolean, language: unknown) {
   const text = hotkeyCopy(language)[enabled ? 'hotkeysEnabled' : 'hotkeysDisabled']
+  return statusToastHtml(text)
+}
+function statusToastHtml(message: string) {
+  const text = message.replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]!)
   return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'"><style>
   *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;background:transparent;overflow:hidden}
   body{display:flex;align-items:center;justify-content:center}
@@ -16,6 +20,9 @@ export class HotkeyToast {
   private window: BrowserWindow | null = null
   private timer: ReturnType<typeof setTimeout> | null = null
   show(enabled: boolean, language: unknown) {
+    this.showMessage(hotkeyCopy(language)[enabled ? 'hotkeysEnabled' : 'hotkeysDisabled'])
+  }
+  showMessage(message: string) {
     this.dismiss()
     const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint())
     const width = Math.min(340, display.workArea.width)
@@ -38,7 +45,7 @@ export class HotkeyToast {
       this.timer.unref()
     })
     win.on('closed', () => { if (this.window === win) this.dismiss() })
-    void win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(hotkeyToastHtml(enabled, language))}`).catch(() => {
+    void win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(statusToastHtml(message))}`).catch(() => {
       if (this.window === win) this.dismiss()
     })
   }

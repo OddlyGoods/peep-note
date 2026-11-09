@@ -42,6 +42,7 @@ import { dataStorageCopy, dataStorageErrorKey, isDataLocationMode, type DataLoca
 import { getActiveHotkeys, resolveHotkeys } from '../shared/hotkeys'
 import { GlobalHotkeyGate } from './hotkeyGate'
 import { HotkeyToast } from './hotkeyToast'
+import { hotkeyCopy } from '../shared/hotkeyMessages'
 import { handleFavoritesShortcut } from './favoritesShortcut'
 import { createCaptureAction } from './captureAction'
 import { handleCaptureAnalysisShortcut } from './captureAnalysisShortcut'
@@ -107,6 +108,8 @@ let regionSession: ReturnType<typeof createMultiMonitorRegion> | null = null
 let snippingPreparing = false
 let capturePickerWindow: BrowserWindow | null = null
 let quickSwitchWindow: BrowserWindow | null = null
+let quickSwitchRequestSequence = 0
+let activeQuickSwitchRequest: number | null = null
 const mediaViewerWindows = new Set<BrowserWindow>()
 let tray: Tray | null = null
 let updateController: UpdateController
@@ -379,8 +382,8 @@ function createQuickSwitchWindow() {
     }
   })
   quickSwitchWindow.setAlwaysOnTop(true, 'floating')
-  quickSwitchWindow.on('closed', () => { quickSwitchWindow = null })
-  quickSwitchWindow.on('hide', () => registerQuickSwitchShortcut())
+  quickSwitchWindow.on('closed', () => { quickSwitchWindow = null; activeQuickSwitchRequest = null })
+  quickSwitchWindow.on('hide', () => { activeQuickSwitchRequest = null; registerQuickSwitchShortcut() })
   quickSwitchWindow.on('blur', () => {
     if (quickSwitchWindow && !quickSwitchWindow.isDestroyed() && quickSwitchWindow.isVisible()) {
       quickSwitchWindow.hide()
@@ -408,22 +411,13 @@ function createQuickSwitchWindow() {
 }
 
 function openQuickSwitch() {
-
   const win = createQuickSwitchWindow()
+  const request = ++quickSwitchRequestSequence
+  activeQuickSwitchRequest = request
   const open = () => {
-    if (!win || win.isDestroyed()) return
-    win.show()
-    win.focus()
-    win.webContents.focus()
-    // Some Linux compositors finish mapping an always-on-top window after
-    // show() returns, so repeat the focus request once it is visible.
-    setTimeout(() => {
-      if (win.isVisible() && !win.isDestroyed()) {
-        win.focus()
-        win.webContents.focus()
-      }
-    }, 50)
-    win.webContents.send('quick-switch-open')
+    if (win.isDestroyed() || activeQuickSwitchRequest !== request) return
+    // Keep the transparent window hidden until the renderer has real items.
+    win.webContents.send('quick-switch-open', request)
   }
   if (win.webContents.isLoading()) win.webContents.once('did-finish-load', open)
   else open()
@@ -1307,6 +1301,25 @@ function setupIPC() {
     mainWindow?.webContents.send('open-log', { id, fromQuickSwitch: true })
   })
   ipcMain.handle('close-quick-switch', () => quickSwitchWindow?.hide())
+  ipcMain.handle('quick-switch-ready', event => {
+    if (event.sender !== quickSwitchWindow?.webContents || activeQuickSwitchRequest === null) return
+    quickSwitchWindow.webContents.send('quick-switch-open', activeQuickSwitchRequest)
+  })
+  ipcMain.handle('quick-switch-result', (event, request: unknown, status: unknown) => {
+    const win = quickSwitchWindow
+    if (!win || win.isDestroyed() || event.sender !== win.webContents || typeof request !== 'number' || request !== activeQuickSwitchRequest) return
+    if (status === 'empty' || status === 'error') {
+      activeQuickSwitchRequest = null
+      win.hide()
+      const copy = hotkeyCopy(loadSettings().language)
+      hotkeyToast.showMessage(status === 'empty' ? copy.quickListEmpty : copy.quickListFailed)
+    } else if (status === 'ready') {
+      win.show(); win.focus(); win.webContents.focus()
+      setTimeout(() => {
+        if (!win.isDestroyed() && win.isVisible()) { win.focus(); win.webContents.focus() }
+      }, 50)
+    }
+  })
 
   ipcMain.handle('overlay-maximize', () => {
     if (!overlayWindow) return

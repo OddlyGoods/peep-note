@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Check, ChevronDown, FileText, FolderOpen, Waypoints, RefreshCw, Search, X } from 'lucide-react'
+import { ArrowUpRight, Check, ChevronDown, FileText, FolderOpen, Waypoints, RefreshCw, Search, X } from 'lucide-react'
 import { buildKnowledgeGraph, emptyMapSnapshot, type MapNode, type MapSnapshot } from '../../shared/knowledgeMap'
 import { api } from '../lib/api'
 import { useScreenActive } from '../lib/screenActivity'
@@ -118,7 +118,7 @@ export default function KnowledgeMap() {
             <span className="knowledge-kind"><FileText size={14} />{t('mapNotes')}</span>
             <button className="knowledge-icon-button" onClick={() => select(null)} aria-label={t('close')}><X size={15} /></button>
           </div>
-            <h2>{name(current)}</h2>
+            <h2><button type="button" className="knowledge-selected-note" onClick={() => readNote(current)}><span>{name(current)}</span><ArrowUpRight size={14} aria-hidden="true" /></button></h2>
             <h3>{t('mapConnectedNotes')} <span>{connections.length}</span></h3>
             {!connections.length && <p className="knowledge-muted">{t('mapNoConnections')}</p>}
             <div className="knowledge-node-list">{connections.map(node => <button key={node.id} onClick={() => readNote(node)}><FileText size={14} /><span>{name(node)}<small>{workspaceName(node.note!)}</small></span></button>)}</div>

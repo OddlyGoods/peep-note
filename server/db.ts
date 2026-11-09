@@ -139,6 +139,7 @@ function initializeSchema(db: Database) {
   try { db.run('ALTER TABLE settings ADD COLUMN trash_retention_days INTEGER NOT NULL DEFAULT 10') } catch {}
   try { db.run('ALTER TABLE settings ADD COLUMN secret_password_hash TEXT') } catch {}
   try { db.run('ALTER TABLE settings ADD COLUMN note_map_enabled INTEGER NOT NULL DEFAULT 0') } catch {}
+  try { db.run("ALTER TABLE settings ADD COLUMN quick_list_order TEXT NOT NULL DEFAULT 'viewed'") } catch {}
   try { db.run('ALTER TABLE logs ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0') } catch {}
   try { db.run('ALTER TABLE logs ADD COLUMN deleted_at INTEGER') } catch {}
   try { db.run('ALTER TABLE logs ADD COLUMN trash_group_id TEXT') } catch {}
@@ -160,6 +161,11 @@ function initializeSchema(db: Database) {
           AND (logs.workspace_id IS NULL OR logs.workspace_id != workspace_id)
       )`)
   db.run('CREATE INDEX IF NOT EXISTS logs_user_deleted_date ON logs(user_id, deleted_at, created_at)')
+  db.run(`CREATE TABLE IF NOT EXISTS note_views (note_id TEXT PRIMARY KEY, viewed_at INTEGER NOT NULL);
+    CREATE INDEX IF NOT EXISTS note_views_recent ON note_views(viewed_at);
+    CREATE TRIGGER IF NOT EXISTS viewed_note_deleted AFTER DELETE ON logs BEGIN
+      DELETE FROM note_views WHERE note_id = OLD.id;
+    END;`)
   db.run(`CREATE TABLE IF NOT EXISTS note_embeddings (
     note_id TEXT PRIMARY KEY, content_hash TEXT NOT NULL, model_id TEXT NOT NULL,
     vector BLOB NOT NULL, dimensions INTEGER NOT NULL, updated_at INTEGER NOT NULL

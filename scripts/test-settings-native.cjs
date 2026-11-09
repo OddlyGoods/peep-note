@@ -6,7 +6,7 @@ const root = path.resolve(__dirname, '..'), fixture = fs.mkdtempSync(path.join(o
 try {
   buildSync({ entryPoints: [path.join(root, 'tests/fixtures/settings-preview.tsx')], bundle: true, format: 'iife', platform: 'browser', jsx: 'automatic',
     define: { 'import.meta.env': '{}', 'import.meta.hot': 'false' }, outfile: path.join(fixture, 'preview.js') })
-  const assets = path.join(root, 'dist/assets')
+  const assets = path.join(process.env.PEEPNOTE_TEST_DIST || path.join(root, 'dist'), 'assets')
   const css = fs.readdirSync(assets).filter(file => file.endsWith('.css')).map(file => fs.readFileSync(path.join(assets, file), 'utf8')).join('\n')
   fs.writeFileSync(path.join(fixture, 'index.html'), `<!doctype html><html data-theme="light"><head><meta charset="utf-8"><style>${css}\nhtml,body,#root{height:100%;margin:0}</style></head><body><div id="root"></div><script src="./preview.js"></script></body></html>`)
   fs.copyFileSync(path.join(root, 'tests/native-settings.cjs'), path.join(fixture, 'main.cjs'))

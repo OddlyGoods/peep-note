@@ -67,7 +67,7 @@ export default function QuickSwitch() {
     setSelected(0)
     try {
       const recent = await api.logs.list({
-        page: 1, limit: 10, sort: 'recent',
+        page: 1, limit: 10, sort: 'quick',
         date_from: range.dateFrom || undefined, date_to: range.dateTo || undefined
       })
       if (requestVersion !== requestVersionRef.current) return
@@ -94,7 +94,7 @@ export default function QuickSwitch() {
     try {
       const nextPage = pageRef.current + 1
       const nextLogs = await api.logs.list({
-        page: nextPage, limit: 10, sort: 'recent',
+        page: nextPage, limit: 10, sort: 'quick',
         date_from: range.dateFrom || undefined, date_to: range.dateTo || undefined
       })
       if (requestVersion !== requestVersionRef.current) return false

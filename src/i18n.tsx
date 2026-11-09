@@ -1,3 +1,4 @@
+import { quickListMessages } from '../shared/quickList'
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { hotkeyMessages } from '../shared/hotkeyMessages'
 import { knowledgeMapMessages } from './knowledgeMapMessages'
@@ -10,6 +11,7 @@ const messages = {
   en: {
     clearSearch: 'Clear search',
     ...knowledgeMapMessages.en,
+    ...quickListMessages.en,
     ...hotkeyMessages.en,
     playVideo: 'Play video', videoPlaybackFailed: 'Could not open this video.',
     quickNoteTitle: 'Note',
@@ -92,6 +94,7 @@ const messages = {
   ko: {
     clearSearch: '검색어 지우기',
     ...knowledgeMapMessages.ko,
+    ...quickListMessages.ko,
     ...hotkeyMessages.ko,
     playVideo: '동영상 재생', videoPlaybackFailed: '동영상을 열지 못했습니다.',
     quickNoteTitle: '메모',
@@ -174,6 +177,7 @@ const messages = {
   ja: {
     clearSearch: '検索語をクリア',
     ...knowledgeMapMessages.ja,
+    ...quickListMessages.ja,
     ...hotkeyMessages.ja,
     playVideo: '動画を再生', videoPlaybackFailed: '動画を開けませんでした。',
     quickNoteTitle: 'メモ',
@@ -256,6 +260,7 @@ const messages = {
   zh: {
     clearSearch: '清除搜索词',
     ...knowledgeMapMessages.zh,
+    ...quickListMessages.zh,
     ...hotkeyMessages.zh,
     playVideo: '播放视频', videoPlaybackFailed: '无法打开此视频。',
     quickNoteTitle: '笔记',

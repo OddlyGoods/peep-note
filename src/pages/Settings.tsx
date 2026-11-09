@@ -24,6 +24,8 @@ import { DEFAULT_TRASH_RETENTION_DAYS, normalizeTrashRetentionDays } from '../..
 import { AI_MODELS, DEFAULT_AI_MODELS, getAiModels, getAiModelSelection, type AiProvider } from '../../shared/aiModels'
 import { DEFAULT_AI_CONTEXT_LENGTH, MIN_AI_CONTEXT_LENGTH, MAX_AI_CONTEXT_LENGTH, isAiContextLength, normalizeAiContextLength } from '../../shared/aiContext'
 import { resolveHotkeys, type HotkeyAction, type Hotkeys } from '../../shared/hotkeys'
+import { DEFAULT_QUICK_LIST_ORDER, normalizeQuickListOrder, type QuickListOrder } from '../../shared/quickList'
+import QuickListOrderSelect from '../components/QuickListOrderSelect'
 import { createSettingsAutosave, type AutosaveStatus } from '../lib/settingsAutosave'
 
 function HotkeyInput({ value, label, disabled, onChange, onDisabledChange }: {
@@ -248,6 +250,7 @@ export default function Settings() {
   const [autoAdvanceDateRange, setAutoAdvanceDateRange] = useState(true)
   const [fixedStartDate, setFixedStartDate] = useState(true)
   const [trashRetentionDays, setTrashRetentionDays] = useState(DEFAULT_TRASH_RETENTION_DAYS)
+  const [quickListOrder, setQuickListOrder] = useState<QuickListOrder>(DEFAULT_QUICK_LIST_ORDER)
   const [secretPasswordSet, setSecretPasswordSet] = useState(false)
   const [showSecretPasswordModal, setShowSecretPasswordModal] = useState(false)
   const setStoreDateNavigation = useLogStore(s => s.setDateNavigation)
@@ -273,7 +276,8 @@ export default function Settings() {
   const draft = useMemo<Partial<SettingsType>>(() => ({
     hotkeys, language: selectedLanguage, auto_advance_date_range: autoAdvanceDateRange,
     fixed_start_date: fixedStartDate, trash_retention_days: trashRetentionDays,
-  }), [hotkeys, selectedLanguage, autoAdvanceDateRange, fixedStartDate, trashRetentionDays])
+    quick_list_order: quickListOrder,
+  }), [hotkeys, selectedLanguage, autoAdvanceDateRange, fixedStartDate, trashRetentionDays, quickListOrder])
   const aiDraft = useMemo<Partial<SettingsType> | null>(() => aiModel.trim() && validAiContextLength ? ({
     ai_provider: aiProvider, ai_model: aiModel.trim(), ai_custom_models: customModelMemory,
     ai_models: Object.fromEntries(Object.entries(aiModelChoices).filter(([, choice]) => choice.model.trim()).map(([provider, choice]) => [provider, choice.model.trim()])),
@@ -358,6 +362,7 @@ export default function Settings() {
       setFixedStartDate(fixedStart)
       setStoreDateNavigation({ autoAdvanceDateRange: autoAdvance, fixedStartDate: fixedStart })
       setTrashRetentionDays(normalizeTrashRetentionDays(s.trash_retention_days))
+      setQuickListOrder(normalizeQuickListOrder(s.quick_list_order))
       setSecretPasswordSet(!!s.secret_password_set)
       setLoadFailed(false)
       setSaveStatus('idle')
@@ -553,6 +558,10 @@ export default function Settings() {
                   <p id="trash-retention-description" className="text-xs text-gray-400 mt-1">{t('trashRetentionDescription')}</p>
                 </div>
                 <RetentionSelect value={trashRetentionDays} onChange={setTrashRetentionDays} />
+              </div>
+              <div className="border-t border-gray-800 pt-4 flex items-center justify-between gap-5">
+                <label htmlFor="quick-list-order" className="text-sm font-medium text-gray-200">{t('quickListView')}</label>
+                <QuickListOrderSelect value={quickListOrder} onChange={setQuickListOrder} />
               </div>
               <div className="border-t border-gray-800 pt-4 flex items-center justify-between gap-5">
                 <div className="min-w-0">

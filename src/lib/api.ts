@@ -21,7 +21,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   })
   const data = await res.json()
   if (!res.ok) throw Object.assign(new Error(data.error ?? 'Request failed'), { status: res.status })
-  if (options.method && options.method !== 'GET' && /^\/api\/(logs|groups|trash|workspaces)(?:\/|$|\?)/.test(path)) invalidateExploreCache()
+  if (options.method && options.method !== 'GET' && /^\/api\/(logs|groups|trash|workspaces)(?:\/|$|\?)/.test(path) && !/^\/api\/logs\/[^/]+\/viewed$/.test(path)) invalidateExploreCache()
   return data as T
 }
 
@@ -42,7 +42,7 @@ export const api = {
     deleteOcr: (id: string) => request(`/api/logs/${id}/ocr`, { method: 'DELETE' }),
     ocrStatus: () => request<Record<string, number>>('/api/logs/ocr-status'),
     extractText: (id: string) => request(`/api/logs/${id}/ocr`, { method: 'POST' }),
-    list: (params?: { date?: string; date_from?: string; date_to?: string; type?: string; search?: string; workspace_id?: string; page?: number; limit?: number; sort?: 'recent'; favorite?: boolean }) => {
+    list: (params?: { date?: string; date_from?: string; date_to?: string; type?: string; search?: string; workspace_id?: string; page?: number; limit?: number; sort?: 'recent' | 'quick'; favorite?: boolean }) => {
       const q = new URLSearchParams()
       if (params?.favorite) q.set('favorite', 'true')
       if (params?.date) q.set('date', params.date)
@@ -57,6 +57,7 @@ export const api = {
       return request<Log[]>(`/api/logs?${q}`)
     },
     get: (id: string) => request<Log>(`/api/logs/${id}`),
+    markViewed: (id: string) => request<{ ok: boolean }>(`/api/logs/${id}/viewed`, { method: 'POST' }),
     create: (data: Partial<Log>) =>
       request<Log>('/api/logs', { method: 'POST', body: JSON.stringify(data) }),
     update: (id: string, data: Partial<Log>) =>
@@ -237,6 +238,7 @@ export interface Workspace {
 }
 
 export interface Settings {
+  quick_list_order?: import('../../shared/quickList').QuickListOrder
   user_id: string
   hotkeys: Hotkeys
   backup_enabled: boolean

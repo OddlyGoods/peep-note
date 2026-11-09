@@ -1,3 +1,4 @@
+import { useNoteView } from '../lib/useNoteView'
 import { useScreenActive } from '../lib/screenActivity'
 import { noteBackTarget } from '../lib/noteNavigation'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
@@ -281,6 +282,8 @@ export default function LogDetail() {
     }).catch(() => {})
     return () => { cancelled = true }
   }, [id, log?.id, log?.group_id, secretGate, loading])
+
+  useNoteView(id, active, !loading && log?.id === id && secretGate === 'open')
 
   const resetNoteEditor = () => {
     discardDraftFiles(noteFilesRef.current, pendingNoteSave.current)

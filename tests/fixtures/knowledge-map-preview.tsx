@@ -12,7 +12,7 @@ import { buildKnowledgeGraph, INITIAL_MAP_CAMERA, projectMapNode } from '../../s
 import { useLogStore } from '../../src/stores/logStore'
 
 localStorage.clear()
-const qa = (window as any).qa = { requests: [] as string[], fail: false, empty: false, enabled: false }
+const qa = (window as any).qa = { requests: [] as string[], views: [] as string[], fail: false, empty: false, enabled: false }
 const titles = ['RAG pipeline overview', 'Chunking strategies', 'Embedding model comparison', 'Retrieval quality checklist', 'Hybrid search experiments', 'Reranking with cross encoders', 'Prompt templates', 'Evaluation datasets', 'Vector database notes', 'Reducing hallucinations', 'Product launch checklist', 'Customer interview notes', 'Release plan', 'Landing page draft', 'API design decisions', 'Database migration plan', 'Authentication flow', 'Performance profiling', 'Canvas rendering notes', 'Desktop keyboard shortcuts', 'Research reading list', 'Semantic caching', 'Context window budgets', 'Cost tracking']
 qa.notes = titles.map((title, index) => ({ id: `fixture-${index}`, title, excerpt: `# ${title}\n\nPractical notes and findings for our next iteration.`, workspaceId: index < 14 ? 'general' : 'engineering', workspaceName: index < 14 ? 'General' : 'Engineering', workspaceDefault: index < 14, type: 'note', createdAt: 1700000000 + index }))
 qa.connections = [{ source: 'fixture-0', target: 'fixture-1', similarity: .94 }, { source: 'fixture-0', target: 'fixture-2', similarity: .9 }, { source: 'fixture-1', target: 'fixture-2', similarity: .88 }, { source: 'fixture-14', target: 'fixture-15', similarity: .89 }]
@@ -34,6 +34,7 @@ window.fetch = (async (input: any, init?: RequestInit) => {
   if (route.endsWith('/count')) return Response.json({ count: 0 })
   if (route === '/api/mcp') return Response.json({ enabled: false })
   if (route.endsWith('/comments')) return Response.json([])
+  if (route.endsWith('/viewed')) { qa.views.push(route.split('/').at(-2)!); return Response.json({ ok: true }) }
   if (route.startsWith('/api/logs/')) {
     const note = qa.notes.find((item: any) => item.id === route.split('/').pop())
     return Response.json({ ...note, content: (note?.excerpt ?? '') + '\n\n' + 'Full body detail. '.repeat(70) + 'End of full note', log_type: 'note', content_format: 'markdown', tags: [], attachments: [], pinned: false, favorite: false, is_secret: false, created_at: 1700000000, updated_at: 1700000000, workspace_id: note?.workspaceId, group_id: null })

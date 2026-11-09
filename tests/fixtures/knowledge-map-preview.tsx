@@ -12,21 +12,23 @@ import { buildKnowledgeGraph, INITIAL_MAP_CAMERA, projectMapNode } from '../../s
 import { useLogStore } from '../../src/stores/logStore'
 
 localStorage.clear()
-const qa = (window as any).qa = { requests: [] as string[], fail: false, empty: false }
+const qa = (window as any).qa = { requests: [] as string[], fail: false, empty: false, enabled: false }
 const titles = ['RAG pipeline overview', 'Chunking strategies', 'Embedding model comparison', 'Retrieval quality checklist', 'Hybrid search experiments', 'Reranking with cross encoders', 'Prompt templates', 'Evaluation datasets', 'Vector database notes', 'Reducing hallucinations', 'Product launch checklist', 'Customer interview notes', 'Release plan', 'Landing page draft', 'API design decisions', 'Database migration plan', 'Authentication flow', 'Performance profiling', 'Canvas rendering notes', 'Desktop keyboard shortcuts', 'Research reading list', 'Semantic caching', 'Context window budgets', 'Cost tracking']
 qa.notes = titles.map((title, index) => ({ id: `fixture-${index}`, title, excerpt: `# ${title}\n\nPractical notes and findings for our next iteration.`, workspaceId: index < 14 ? 'general' : 'engineering', workspaceName: index < 14 ? 'General' : 'Engineering', workspaceDefault: index < 14, type: 'note', createdAt: 1700000000 + index }))
 qa.connections = [{ source: 'fixture-0', target: 'fixture-1', similarity: .94 }, { source: 'fixture-0', target: 'fixture-2', similarity: .9 }, { source: 'fixture-1', target: 'fixture-2', similarity: .88 }, { source: 'fixture-14', target: 'fixture-15', similarity: .89 }]
 qa.indexing = { stage: 'ready', total: 24, completed: 24 }
-window.fetch = (async (input: any) => {
+window.fetch = (async (input: any, init?: RequestInit) => {
   const url = new URL(String(input)), route = url.pathname
   qa.requests.push(route)
+  if (route === '/api/knowledge-map/enabled') { qa.enabled = JSON.parse(String(init?.body)).enabled; return Response.json({ enabled: qa.enabled }) }
   if (route === '/api/knowledge-map/retry') { qa.indexing = { stage: 'ready', total: 24, completed: 24 }; return Response.json({ ok: true }) }
   if (route === '/api/knowledge-map') {
+    if (!qa.enabled) return Response.json({ enabled: false, notes: [], connections: [], indexing: { stage: 'idle', total: 0, completed: 0 }, total: 0, limit: 400 })
     if (qa.fail) return Response.json({ error: 'Fixture failure' }, { status: 503 })
     const workspace = url.searchParams.get('workspace'), search = (url.searchParams.get('search') || '').toLowerCase()
     const notes = qa.empty ? [] : qa.notes.filter((note: any) => (!workspace || note.workspaceId === workspace) && JSON.stringify(note).toLowerCase().includes(search))
     const ids = new Set(notes.map((note: any) => note.id))
-    return Response.json({ notes: notes.map(({ excerpt, ...note }: any) => note), connections: qa.connections.filter((edge: any) => ids.has(edge.source) && ids.has(edge.target)), indexing: qa.indexing, total: notes.length, limit: 400 })
+    return Response.json({ enabled: true, notes: notes.map(({ excerpt, ...note }: any) => note), connections: qa.connections.filter((edge: any) => ids.has(edge.source) && ids.has(edge.target)), indexing: qa.indexing, total: notes.length, limit: 400 })
   }
   if (route === '/api/workspaces') return Response.json([{ id: 'general', name: 'General', is_default: true }, { id: 'engineering', name: 'Engineering', is_default: false }])
   if (route.endsWith('/count')) return Response.json({ count: 0 })

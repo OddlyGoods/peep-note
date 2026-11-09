@@ -5,6 +5,10 @@ import { EMBEDDING_CACHE_KEY, EMBEDDING_DIMENSIONS, normalizedVector, type Embed
 import type { LocalEmbedder } from './embeddingWorker'
 
 export const EMBEDDABLE_NOTES = 'user_id = ? AND is_secret = 0 AND deleted_at IS NULL'
+export const noteMapEnabled = () => queryOne<{ note_map_enabled: number }>('SELECT note_map_enabled FROM settings WHERE user_id = ?', [LOCAL_PROFILE_ID])?.note_map_enabled === 1
+export function saveNoteMapEnabled(enabled: boolean) {
+  run('INSERT INTO settings (user_id, note_map_enabled) VALUES (?, ?) ON CONFLICT(user_id) DO UPDATE SET note_map_enabled = excluded.note_map_enabled', [LOCAL_PROFILE_ID, enabled ? 1 : 0])
+}
 type CacheRow = { note_id: string; content_hash: string; model_id: string; vector: Uint8Array; dimensions: number }
 export function decodeEmbedding(row: CacheRow): number[] | null {
   if (row.model_id !== EMBEDDING_CACHE_KEY || row.dimensions !== EMBEDDING_DIMENSIONS || row.vector?.byteLength !== EMBEDDING_DIMENSIONS * 4) return null
@@ -24,12 +28,14 @@ export function currentEmbeddingVectors(ids: string[]): Map<string, number[]> {
 }
 
 export interface KnowledgeIndex {
-  touch(): void; status(): EmbeddingState; retry(): void; dispose(): void
+  touch(): void; setEnabled(enabled: boolean): void; status(): EmbeddingState; retry(): void; dispose(): void
 }
 export class LocalKnowledgeIndex implements KnowledgeIndex {
   private database = getDb()
   private state: EmbeddingState = { stage: 'idle', completed: 0, total: 0 }
   private activated = false
+  private enabled = noteMapEnabled()
+  private generation = 0
   private disposed = false
   private running = false
   private dirty = false
@@ -37,24 +43,38 @@ export class LocalKnowledgeIndex implements KnowledgeIndex {
   private unsubscribe: () => void
   constructor(private embedder: LocalEmbedder) {
     this.unsubscribe = onNotesChanged(() => { if (this.activated) this.schedule() })
+    if (this.enabled) this.touch()
   }
   status() { return { ...this.state } }
-  touch() { if (!this.activated) { this.activated = true; this.schedule() } }
+  touch() { if (this.enabled && !this.activated) { this.activated = true; this.schedule() } }
+  setEnabled(enabled: boolean) {
+    if (this.disposed || getDb() !== this.database) return
+    saveNoteMapEnabled(enabled)
+    if (this.enabled === enabled) return
+    this.enabled = enabled; this.generation++
+    this.activated = false; this.dirty = false
+    if (this.scheduled) clearTimeout(this.scheduled)
+    this.scheduled = null
+    this.state = { stage: 'idle', completed: 0, total: 0 }
+    this.embedder.dispose()
+    if (enabled) this.touch()
+  }
   retry() {
-    if (this.disposed || this.running) return
+    if (!this.enabled || this.disposed || this.running) return
     this.embedder.dispose(); this.state = { ...this.state, stage: 'indexing', progress: undefined }; this.schedule()
   }
   private schedule() {
-    if (this.disposed || getDb() !== this.database || this.state.stage === 'error') return
+    if (!this.enabled || this.disposed || getDb() !== this.database || this.state.stage === 'error') return
     this.dirty = true
     this.state = { ...this.state, stage: 'indexing', progress: undefined }
     if (this.running || this.scheduled) return
     this.scheduled = setTimeout(() => { this.scheduled = null; void this.process() }, 150)
     this.scheduled.unref()
   }
-  private valid() { return !this.disposed && getDb() === this.database }
+  private valid(generation = this.generation) { return this.enabled && !this.disposed && getDb() === this.database && generation === this.generation }
   private async process() {
     if (!this.valid() || this.running) return
+    const generation = this.generation
     this.running = true
     try {
       do {
@@ -68,15 +88,15 @@ export class LocalKnowledgeIndex implements KnowledgeIndex {
         })
         this.state = { stage: 'indexing', total: notes.length, completed: notes.length - missing.length }
         for (const item of missing) {
-          if (!this.valid()) return
+          if (!this.valid(generation)) return
           // Re-read before and after inference: edits, deletion, and changing a
           // note to secret must never allow a late result back into the cache.
           const current = queryOne<EmbeddingNote>(`SELECT * FROM logs WHERE id = ? AND ${EMBEDDABLE_NOTES}`, [item.note.id, LOCAL_PROFILE_ID])
           if (!current) continue
           const text = embeddingText(current), hash = embeddingHash(text)
           if (!text) continue
-          const output = await this.embedder.embed(text, progress => { if (this.valid()) this.state = { ...this.state, stage: progress.stage, progress: progress.progress } })
-          if (!this.valid()) return
+          const output = await this.embedder.embed(text, progress => { if (this.valid(generation)) this.state = { ...this.state, stage: progress.stage, progress: progress.progress } })
+          if (!this.valid(generation)) return
           const latest = queryOne<EmbeddingNote>(`SELECT * FROM logs WHERE id = ? AND ${EMBEDDABLE_NOTES}`, [item.note.id, LOCAL_PROFILE_ID])
           if (!latest || embeddingHash(embeddingText(latest)) !== hash) { this.dirty = true; continue }
           const vector = normalizedVector(output)
@@ -86,11 +106,14 @@ export class LocalKnowledgeIndex implements KnowledgeIndex {
           this.state = { ...this.state, stage: 'indexing', completed: this.state.completed + 1, progress: undefined }
           await new Promise(resolve => setTimeout(resolve, 10))
         }
-      } while (this.dirty && this.valid())
-      if (this.valid()) this.state = { ...this.state, stage: 'ready', progress: undefined }
+      } while (this.dirty && this.valid(generation))
+      if (this.valid(generation)) this.state = { ...this.state, stage: 'ready', progress: undefined }
     } catch {
-      if (this.valid()) this.state = { ...this.state, stage: 'error', progress: undefined }
-    } finally { this.running = false }
+      if (this.valid(generation)) this.state = { ...this.state, stage: 'error', progress: undefined }
+    } finally {
+      this.running = false
+      if (this.valid() && generation !== this.generation) this.schedule()
+    }
   }
   dispose() {
     this.disposed = true; this.unsubscribe()

@@ -20,6 +20,7 @@ export default function KnowledgeMap() {
   const [query, setQuery] = useState(''), [search, setSearch] = useState(''), [workspace, setWorkspace] = useState('')
   const [selected, setSelected] = useState<string | null>(null)
   const [loading, setLoading] = useState(true), [error, setError] = useState(false), [refresh, setRefresh] = useState(0)
+  const [savingEnabled, setSavingEnabled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const menu = useRef<HTMLDivElement>(null), trigger = useRef<HTMLButtonElement>(null)
   useEffect(() => { const timer = setTimeout(() => setSearch(query.trim()), 200); return () => clearTimeout(timer) }, [query])
@@ -33,7 +34,7 @@ export default function KnowledgeMap() {
     return () => { window.removeEventListener('focus', refreshMap); window.electronAPI?.off('log-created', refreshMap); window.electronAPI?.off('mcp-data-changed', refreshMap) }
   }, [active, fetchWorkspaces])
   useEffect(() => {
-    if (!active) return
+    if (!active || savingEnabled) return
     const controller = new AbortController()
     let timer: ReturnType<typeof setTimeout> | null = null
     setLoading(true); setError(false)
@@ -44,12 +45,12 @@ export default function KnowledgeMap() {
         setSnapshot(result); setError(false)
         if (['downloading', 'indexing'].includes(result.indexing.stage)) timer = setTimeout(() => void load(), 1500)
       } catch {
-        if (!controller.signal.aborted) { setError(true); setSnapshot(emptyMapSnapshot()); timer = setTimeout(() => void load(), 5000) }
+        if (!controller.signal.aborted) { setError(true); setSnapshot(previous => ({ ...emptyMapSnapshot(), enabled: previous.enabled })); timer = setTimeout(() => void load(), 5000) }
       } finally { if (!controller.signal.aborted) setLoading(false) }
     }
     void load()
     return () => { controller.abort(); if (timer) clearTimeout(timer) }
-  }, [active, workspace, search, refresh, logs])
+  }, [active, workspace, search, refresh, logs, savingEnabled])
   useEffect(() => {
     if (!menuOpen) return
     const outside = (event: PointerEvent) => { if (!menu.current?.contains(event.target as Node)) setMenuOpen(false) }
@@ -80,12 +81,27 @@ export default function KnowledgeMap() {
     openLog(node.note.id)
   }
   const options = [{ id: '', label: t('mapAllWorkspaces') }, ...workspaces.map(item => ({ id: item.id, label: item.is_default ? t('defaultWorkspace') : item.name }))]
+  const toggleEnabled = async () => {
+    setSavingEnabled(true)
+    try {
+      const result = await api.setNoteMapEnabled(!snapshot.enabled)
+      setSnapshot({ ...emptyMapSnapshot(), enabled: result.enabled })
+      setSelected(null); setMenuOpen(false); setError(false)
+    } catch { setError(true) }
+    finally { setSavingEnabled(false) }
+  }
 
   return <section className="knowledge-map" aria-label={t('knowledgeMap')}>
     <header className="knowledge-header">
       <div><h1>{t('knowledgeMap')}</h1><p>{t('mapDescription')}</p></div>
-      <button type="button" className="knowledge-icon-button" disabled={loading} onClick={() => setRefresh(value => value + 1)} title={t('mapRefresh')} aria-label={t('mapRefresh')}><RefreshCw size={16} className={loading ? 'animate-spin' : ''} /></button>
+      <div className="knowledge-header-actions">
+        <label className="knowledge-enable-control"><span>{t(snapshot.enabled ? 'mapEnabled' : 'mapDisabled')}</span>
+          <button type="button" role="switch" className="knowledge-enable-toggle" aria-label={t('knowledgeMap')} aria-checked={snapshot.enabled} disabled={savingEnabled || loading} onClick={() => void toggleEnabled()}><span /></button>
+        </label>
+        <button type="button" className="knowledge-icon-button" disabled={!snapshot.enabled || loading || savingEnabled} onClick={() => setRefresh(value => value + 1)} title={t('mapRefresh')} aria-label={t('mapRefresh')}><RefreshCw size={16} className={loading && snapshot.enabled ? 'animate-spin' : ''} /></button>
+      </div>
     </header>
+    {!snapshot.enabled ? <div className="knowledge-disabled" role="status"><Waypoints size={32} /><p>{error ? t('mapError') : t('mapEnableHint')}</p></div> : <>
     <div className="knowledge-toolbar">
       <div className="knowledge-search"><Search size={15} className="shrink-0" /><input aria-label={t('mapSearch')} placeholder={t('mapSearch')} value={query} onChange={event => setQuery(event.target.value)} /><SearchClearButton value={query} onClear={() => { setQuery(''); setSearch('') }} /></div>
       <div className="knowledge-workspaces" ref={menu}>
@@ -125,5 +141,6 @@ export default function KnowledgeMap() {
         </> : <div className="knowledge-intro"><Waypoints size={30} /><h2>{t('mapSelect')}</h2><p>{t('mapSelectHint')}</p></div>}
       </aside>
     </div>
+    </>}
   </section>
 }

@@ -27,6 +27,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
 export const api = {
   retryKnowledgeMap: () => request<{ ok: boolean }>('/api/knowledge-map/retry', { method: 'POST' }),
+  setNoteMapEnabled: (enabled: boolean) => request<{ enabled: boolean }>('/api/knowledge-map/enabled', { method: 'PUT', body: JSON.stringify({ enabled }) }),
   knowledgeMap: (workspace: string, search: string, signal?: AbortSignal) => request<MapSnapshot>(`/api/knowledge-map?${new URLSearchParams({ workspace, search })}`, { signal }),
   mcp: {
     status: () => request<McpStatus>('/api/mcp'),

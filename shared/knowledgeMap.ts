@@ -5,11 +5,11 @@ export type MapNote = {
   workspaceId: string; workspaceName: string; workspaceDefault: boolean
   type: string; createdAt: number
 }
-export type MapSnapshot = { notes: MapNote[]; connections: SemanticConnection[]; indexing: EmbeddingState; total: number; limit: number }
+export type MapSnapshot = { enabled: boolean; notes: MapNote[]; connections: SemanticConnection[]; indexing: EmbeddingState; total: number; limit: number }
 export type MapNode = { id: string; kind: 'note'; label: string; note: MapNote; x: number; y: number; z: number }
 export type MapEdge = { source: string; target: string; similarity: number }
 export type KnowledgeGraph = { nodes: MapNode[]; edges: MapEdge[] }
-export const emptyMapSnapshot = (): MapSnapshot => ({ notes: [], connections: [], indexing: { stage: 'idle', completed: 0, total: 0 }, total: 0, limit: KNOWLEDGE_MAP_LIMIT })
+export const emptyMapSnapshot = (): MapSnapshot => ({ enabled: false, notes: [], connections: [], indexing: { stage: 'idle', completed: 0, total: 0 }, total: 0, limit: KNOWLEDGE_MAP_LIMIT })
 
 export function buildKnowledgeGraph(input: MapNote[], connections: SemanticConnection[] = []): KnowledgeGraph {
   const notes = [...new Map(input.map(note => [note.id, note])).values()].slice(0, KNOWLEDGE_MAP_LIMIT).sort((a, b) => a.id.localeCompare(b.id))

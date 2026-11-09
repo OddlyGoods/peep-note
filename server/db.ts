@@ -138,6 +138,7 @@ function initializeSchema(db: Database) {
   try { db.run('ALTER TABLE settings ADD COLUMN fixed_start_date INTEGER NOT NULL DEFAULT 1') } catch {}
   try { db.run('ALTER TABLE settings ADD COLUMN trash_retention_days INTEGER NOT NULL DEFAULT 10') } catch {}
   try { db.run('ALTER TABLE settings ADD COLUMN secret_password_hash TEXT') } catch {}
+  try { db.run('ALTER TABLE settings ADD COLUMN note_map_enabled INTEGER NOT NULL DEFAULT 0') } catch {}
   try { db.run('ALTER TABLE logs ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0') } catch {}
   try { db.run('ALTER TABLE logs ADD COLUMN deleted_at INTEGER') } catch {}
   try { db.run('ALTER TABLE logs ADD COLUMN trash_group_id TEXT') } catch {}

@@ -336,6 +336,7 @@ test('capture Codex model persists independently of summary providers and surviv
 })
 
 test('knowledge map excludes secret/trash/other profiles at the API and filters before limiting', async () => {
+  await json('/api/knowledge-map/enabled', 'PUT', { enabled: true })
   const workspace = await json('/api/workspaces', 'POST', { name: 'Map workspace' })
   const visible = await json('/api/logs', 'POST', { title: 'Map public', content: 'Visible excerpt', tags: ['RAG', '#rag'], workspace_id: workspace.id })
   const secret = await json('/api/logs', 'POST', { title: 'Hidden map title', content: 'hidden-map-content', tags: ['hidden-map-tag'], is_secret: true, workspace_id: workspace.id })

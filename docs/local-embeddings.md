@@ -5,7 +5,7 @@ do not create edges or influence the layout.
 
 - Model: [`Xenova/multilingual-e5-small`](https://huggingface.co/Xenova/multilingual-e5-small), revision `761b726dd34fb83930e26aab4e9ac3899aa1fa78`.
 - Inference: Transformers.js 3.8.1, quantized CPU model, 384 dimensions, two CPU threads, isolated Node worker.
-- First map visit downloads approximately 130 MiB of public model assets. The cache lives in `<Electron userData>/models/embeddings`; the installed application directory is never used as a writable cache.
+- The note map is disabled by default. Enabling its header switch downloads approximately 130 MiB of public model assets. The cache lives in `<Electron userData>/models/embeddings`; the installed application directory is never used as a writable cache.
 - Later model loads use local files only. No account, API key, Python, GPU, or separate server is required.
 - Network access in the worker is restricted to model downloads over HTTPS. Note text is passed to local inference and never sent in an HTTP request.
 
@@ -22,8 +22,10 @@ vector immediately. Trash, secret and deleted notes cannot appear in results;
 their vectors are removed by database triggers. Results finishing after an edit,
 deletion, privacy change or data-folder switch are discarded.
 
-Indexing starts on the first map visit and follows subsequent note changes in the
-background. The map polls progress while indexing is active. Failures show a retry
+The enabled state is saved in the local database. While enabled, indexing follows
+note changes in the background and resumes after an app restart. Disabling stops
+the worker, downloads and pending indexing; downloaded assets and valid cached
+vectors are kept for later reuse. The map polls progress while indexing is active. Failures show a retry
 action; retrying keeps valid cached vectors. The inference worker releases the
 model after 30 seconds without work.
 

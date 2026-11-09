@@ -24,13 +24,64 @@ test('embedding preparation uses title/body/manual OCR, excluding markup and lin
   const result = embeddingText({ id: 'b', title: '', content: '# Heading\n**Body** [source](https://example.test/private-path)', content_format: 'markdown', log_type: 'note', ocr_text: '' })
   assert.equal(result, 'Heading Body source'); assert.equal(result.includes('private-path'), false)
 })
+test('note map is opt-in, persists its switch, and does no inference while disabled', async () => store(async root => {
+  let calls = 0
+  const fake: LocalEmbedder = { embed: async () => { calls++; return vector() }, dispose() {} }
+  let index = new LocalKnowledgeIndex(fake)
+  const api = () => createApiApp(3848, undefined, undefined, index)
+  const toggle = (enabled: unknown) => api().request('http://127.0.0.1:3848/api/knowledge-map/enabled', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled }) })
+  try {
+    seed('opt-in', 'Only process after enabling')
+    const initial = await (await api().request('http://127.0.0.1:3848/api/knowledge-map')).json() as any
+    assert.equal(initial.enabled, false); assert.deepEqual(initial.notes, [])
+    index.touch(); index.retry()
+    await api().request('http://127.0.0.1:3848/api/knowledge-map/retry', { method: 'POST' })
+    await wait(200); assert.equal(calls, 0)
+    assert.equal((await toggle('true')).status, 400)
+    assert.equal((await toggle(true)).status, 200)
+    await until(() => index.status().stage === 'ready'); assert.equal(calls, 1)
+    index.dispose(); await initDb(root); index = new LocalKnowledgeIndex(fake)
+    await until(() => index.status().stage === 'ready'); assert.equal(calls, 1, 'saved enabled state resumes with cached vectors')
+    await toggle(false)
+    run('UPDATE logs SET content = ? WHERE id = ?', ['Do not embed this change', 'opt-in'])
+    await wait(200); assert.equal(calls, 1); assert.equal(index.status().stage, 'idle')
+    index.dispose(); await initDb(root); index = new LocalKnowledgeIndex(fake)
+    index.touch(); await wait(200); assert.equal(calls, 1, 'saved disabled state survives restart')
+  } finally { index.dispose() }
+}))
+test('disabling cancels in-flight work and rejects late progress/results, including a quick re-enable', async () => store(async () => {
+  let finish: ((value: number[]) => void) | undefined
+  let lateProgress: (() => void) | undefined
+  let calls = 0, stops = 0
+  const index = new LocalKnowledgeIndex({
+    embed: (_text, progress) => {
+      calls++
+      if (calls > 1) return Promise.resolve(vector())
+      lateProgress = () => progress({ stage: 'downloading', progress: 99 })
+      return new Promise(resolve => { finish = resolve })
+    }, dispose() { stops++ },
+  })
+  try {
+    seed('cancel', 'Indexing can be stopped')
+    index.setEnabled(true); await until(() => !!finish)
+    const before = stops; index.setEnabled(false)
+    assert.equal(stops, before + 1)
+    lateProgress!(); assert.equal(index.status().stage, 'idle')
+    index.setEnabled(true)
+    lateProgress!(); assert.notEqual(index.status().stage, 'downloading')
+    finish!(vector())
+    await until(() => index.status().stage === 'ready')
+    assert.equal(calls, 2, 'late first-generation result was discarded')
+    assert.equal(currentEmbeddingVectors(['cancel']).size, 1)
+  } finally { index.dispose() }
+}))
 test('local index caches vectors across restarts, ignores metadata edits, and re-embeds changed content', async () => store(async root => {
   const calls: string[] = []
   const fake: LocalEmbedder = { embed: async text => { calls.push(text); return vector() }, dispose() {} }
   let index = new LocalKnowledgeIndex(fake)
   try {
     seed('public', 'Public text'); seed('private', 'private-excluded', 1); seed('trash', 'trash-excluded', 0, 1); seed('foreign', 'foreign-excluded', 0, null, 'foreign')
-    index.touch(); await until(() => index.status().stage === 'ready')
+    index.setEnabled(true); await until(() => index.status().stage === 'ready')
     assert.deepEqual(calls, ['Public text'])
     assert.equal(currentEmbeddingVectors(['public', 'private', 'trash', 'foreign']).size, 1)
     run('UPDATE logs SET tags = ? WHERE id = ?', ['["new-tag"]', 'public'])
@@ -39,7 +90,7 @@ test('local index caches vectors across restarts, ignores metadata edits, and re
     assert.equal(queryOne('SELECT * FROM note_embeddings WHERE note_id = ?', ['public']), null)
     await until(() => index.status().stage === 'ready'); assert.deepEqual(calls, ['Public text', 'Changed text'])
     index.dispose(); await initDb(root); index = new LocalKnowledgeIndex(fake)
-    index.touch(); await until(() => index.status().stage === 'ready'); assert.equal(calls.length, 2)
+    index.setEnabled(true); await until(() => index.status().stage === 'ready'); assert.equal(calls.length, 2)
     run('UPDATE logs SET is_secret = 1 WHERE id = ?', ['public'])
     assert.equal(queryOne('SELECT * FROM note_embeddings WHERE note_id = ?', ['public']), null)
     await until(() => index.status().stage === 'ready'); assert.equal(currentEmbeddingVectors(['public']).size, 0)
@@ -50,7 +101,7 @@ for (const change of ['secret', 'delete', 'edit'] as const) test(`an in-flight e
   const calls: string[] = []
   const index = new LocalKnowledgeIndex({ embed: text => { calls.push(text); return calls.length === 1 ? new Promise(resolve => { finish = resolve }) : Promise.resolve(vector()) }, dispose() {} })
   try {
-    seed('changing', 'Originally public'); index.touch(); await until(() => !!finish)
+    seed('changing', 'Originally public'); index.setEnabled(true); await until(() => !!finish)
     if (change === 'secret') run('UPDATE logs SET is_secret = 1 WHERE id = ?', ['changing'])
     else if (change === 'delete') run('UPDATE logs SET deleted_at = 1 WHERE id = ?', ['changing'])
     else run('UPDATE logs SET content = ? WHERE id = ?', ['Latest text', 'changing'])
@@ -67,7 +118,7 @@ test('switching data folders cannot write a previous folder’s in-flight result
   let finish: ((value: number[]) => void) | null = null
   const index = new LocalKnowledgeIndex({ embed: () => new Promise(resolve => { finish = resolve }), dispose() {} })
   try {
-    seed('same-id', 'Previous profile text'); index.touch(); await until(() => !!finish)
+    seed('same-id', 'Previous profile text'); index.setEnabled(true); await until(() => !!finish)
     const destination = path.join(root, 'other-profile'); fs.mkdirSync(destination)
     await initDb(destination); seed('same-id', 'New profile text')
     finish!(vector()); await wait(30)
@@ -79,7 +130,7 @@ test('failed local inference waits for explicit retry and a valid cache never ex
   const index = new LocalKnowledgeIndex({ embed: async (_text, progress) => { calls++; progress({ stage: 'downloading', progress: 50 }); if (!failed) { failed = true; throw new Error('Synthetic failure') }; return vector() }, dispose() {} })
   try {
     seed('one', 'Document retrieval for grounded answers'); seed('two', 'Search documents before answering')
-    index.touch(); await until(() => index.status().stage === 'error')
+    index.setEnabled(true); await until(() => index.status().stage === 'error')
     index.touch(); await wait(200); assert.equal(calls, 1)
     index.retry(); await until(() => index.status().stage === 'ready'); assert.equal(calls, 3)
     const app = createApiApp(3848, undefined, undefined, index)

@@ -7,6 +7,7 @@ import { useLogStore } from '../stores/logStore'
 import { useWorkspaceStore } from '../stores/workspaceStore'
 import { useI18n } from '../i18n'
 import LogCard from '../components/LogCard'
+import SearchClearButton from '../components/SearchClearButton'
 import { useScrollGutter } from '../lib/useScrollGutter'
 
 const PAGE_SIZE = 50
@@ -105,7 +106,8 @@ export default function Favorites() {
     <div className="px-6 md:px-[84px] py-3 border-b" style={{ borderColor: 'rgba(99,102,241,0.12)' }}>
       <div className="relative" style={{ marginRight: scrollbarWidth }}>
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-        <input className="input pl-8 w-full py-1.5" value={query} onChange={event => setQuery(event.target.value)} aria-label={t('searchPlaceholder')} placeholder={t('searchPlaceholder')} />
+        <input className="input pl-8 pr-9 w-full py-1.5" value={query} onChange={event => setQuery(event.target.value)} aria-label={t('searchPlaceholder')} placeholder={t('searchPlaceholder')} />
+        <SearchClearButton value={query} onClear={() => { setQuery(''); setSearch('') }} />
       </div>
     </div>
     <div ref={scrollRef} className="dashboard-scroll-area flex-1 overflow-y-auto px-6 md:px-[84px] pt-6 pb-40" data-screen-scroll="main" data-screen-scroll-key={search} aria-busy={loading || loadingMore}>

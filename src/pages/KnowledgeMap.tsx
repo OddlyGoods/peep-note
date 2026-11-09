@@ -8,6 +8,7 @@ import { useLogStore } from '../stores/logStore'
 import { useI18n } from '../i18n'
 import { useOpenLog } from '../components/LogNavigationProvider'
 import KnowledgeMapCanvas from '../components/KnowledgeMapCanvas'
+import SearchClearButton from '../components/SearchClearButton'
 import './KnowledgeMap.css'
 
 export default function KnowledgeMap() {
@@ -86,7 +87,7 @@ export default function KnowledgeMap() {
       <button type="button" className="knowledge-icon-button" disabled={loading} onClick={() => setRefresh(value => value + 1)} title={t('mapRefresh')} aria-label={t('mapRefresh')}><RefreshCw size={16} className={loading ? 'animate-spin' : ''} /></button>
     </header>
     <div className="knowledge-toolbar">
-      <label className="knowledge-search"><Search size={15} /><input aria-label={t('mapSearch')} placeholder={t('mapSearch')} value={query} onChange={event => setQuery(event.target.value)} /></label>
+      <div className="knowledge-search"><Search size={15} className="shrink-0" /><input aria-label={t('mapSearch')} placeholder={t('mapSearch')} value={query} onChange={event => setQuery(event.target.value)} /><SearchClearButton value={query} onClear={() => { setQuery(''); setSearch('') }} /></div>
       <div className="knowledge-workspaces" ref={menu}>
         <button ref={trigger} type="button" aria-label={t('workspaces')} aria-haspopup="listbox" aria-expanded={menuOpen} onClick={() => setMenuOpen(value => !value)} onKeyDown={event => { if (['ArrowDown', 'ArrowUp'].includes(event.key)) { event.preventDefault(); setMenuOpen(true) } }}>
           <FolderOpen size={14} /><span>{options.find(item => item.id === workspace)?.label ?? t('mapAllWorkspaces')}</span><ChevronDown size={14} />

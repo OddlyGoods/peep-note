@@ -13,6 +13,7 @@ import GroupCard from '../components/GroupCard'
 import NewLogModal from '../components/NewLogModal'
 import ConfirmModal from '../components/ConfirmModal'
 import BulkWorkspaceMoveButton from '../components/BulkWorkspaceMoveButton'
+import SearchClearButton from '../components/SearchClearButton'
 import { useI18n } from '../i18n'
 import { useLocation, useNavigate } from 'react-router-dom'
 
@@ -342,6 +343,7 @@ export default function Dashboard() {
             ref={searchInputRef}
             type="text"
             placeholder={t('searchPlaceholder')}
+            aria-label={t('searchPlaceholder')}
             value={searchInput}
             onChange={e => setSearchInput(e.target.value)}
             onFocus={() => { if (searchInput.trim().startsWith('#')) setTagMenuOpen(true) }}
@@ -370,8 +372,11 @@ export default function Dashboard() {
                 setTagMenuOpen(false)
               }
             }}
-            className="input pl-8 w-full py-1.5"
+            className="input pl-8 pr-9 w-full py-1.5"
           />
+          <SearchClearButton value={searchInput} onClear={() => {
+            setSearchInput(''); setSearchQuery(''); setTagMenuOpen(false); setActiveTagIndex(0)
+          }} />
           {tagMenuOpen && (
             <div className="absolute z-30 left-0 right-0 mt-1.5 max-h-56 overflow-y-auto rounded-lg border border-gray-700 bg-gray-900 p-1.5 shadow-xl">
               {filteredTagOptions.length > 0 ? (

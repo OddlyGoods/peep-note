@@ -3,6 +3,7 @@ import test from 'node:test'
 import { menuForPath, screenForPath } from '../src/lib/menuMemory'
 import { useMenuMemoryStore } from '../src/stores/menuMemoryStore'
 import { refreshLoadedPages } from '../src/lib/loadedPages'
+import { noteBackTarget, noteNavigationState } from '../src/lib/noteNavigation'
 
 test('each list and detail belongs to its own menu; invalid routes are not cached', () => {
   for (const [path, menu, screen] of [
@@ -30,6 +31,34 @@ test('menu targets retain the last detail without replaying transient route stat
   remember({ pathname: '/search', search: '', hash: '' })
   assert.equal(useMenuMemoryStore.getState().targets['/search']?.pathname, '/search')
   assert.equal(useMenuMemoryStore.getState().targets['/settings']?.pathname, '/settings')
+})
+
+test('notes return to the source menu and related notes retain that origin', () => {
+  for (const pathname of ['/', '/map', '/search', '/favorites', '/settings']) {
+    const source = { pathname, search: '?query=rag', hash: '#saved' }
+    const state = noteNavigationState(source, '/log/a', { fromQuickSwitch: true })
+    const target = noteBackTarget('/log/a', state)
+    assert.deepEqual(target, source)
+    assert.equal(state.fromQuickSwitch, true)
+    const related = noteNavigationState({ pathname: '/log/a', search: '', hash: '', state }, '/log/b')
+    assert.deepEqual(noteBackTarget('/log/b', related), source)
+  }
+})
+
+test('direct note URLs fall back to their list and untrusted return targets are ignored', () => {
+  for (const [pathname, list] of [['/log/a', '/'], ['/search/log/a', '/search'], ['/favorites/log/a', '/favorites']]) {
+    for (const state of [undefined, null, { noteReturnTo: { pathname: 'https://example.test' } }, { noteReturnTo: { pathname: '/log/a' } }]) {
+      assert.deepEqual(noteBackTarget(pathname, state), { pathname: list, search: '', hash: '' })
+    }
+  }
+})
+
+test('switching menus preserves note origin without replaying one-time navigation flags', () => {
+  useMenuMemoryStore.setState({ targets: {} })
+  const origin = { pathname: '/map', search: '', hash: '' }
+  useMenuMemoryStore.getState().remember({ pathname: '/log/a', search: '', hash: '', state: { noteReturnTo: origin, revealLogId: 'one-time', deletionTransition: true } })
+  assert.deepEqual(useMenuMemoryStore.getState().targets['/']?.state, { noteReturnTo: origin })
+  assert.deepEqual(noteBackTarget('/log/a', useMenuMemoryStore.getState().targets['/']?.state), origin)
 })
 
 test('refreshing a cached list keeps all loaded pages and removes boundary duplicates', async () => {

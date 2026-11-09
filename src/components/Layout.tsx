@@ -90,6 +90,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <div className="relative group">
                   <Link
                     to={active ? to : remembered[to as MenuPath] ?? to}
+                    state={active ? undefined : remembered[to as MenuPath]?.state}
                     aria-label={label}
                     aria-current={active ? 'page' : undefined}
                     className={`app-nav-link flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-all ${

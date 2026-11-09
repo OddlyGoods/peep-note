@@ -21,7 +21,7 @@ export default function QuickListOrderSelect({ value, onChange }: { value: Quick
     menu.current?.querySelector<HTMLButtonElement>('[aria-selected=true]')?.focus()
     return () => { document.removeEventListener('pointerdown', outside); document.removeEventListener('keydown', escape, true) }
   }, [open])
-  return <div ref={menu} className="relative shrink-0 w-40">
+  return <div ref={menu} className="relative shrink-0 w-28">
     <button ref={trigger} type="button" id="quick-list-order" aria-label={t('quickListView')} aria-haspopup="listbox" aria-expanded={open}
       onClick={() => setOpen(previous => !previous)} onKeyDown={event => { if (['ArrowDown', 'ArrowUp'].includes(event.key)) { event.preventDefault(); setOpen(true) } }}
       className="settings-select-trigger input flex items-center justify-between py-[7px] text-[13px] text-left hover:border-violet-400/50">

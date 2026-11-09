@@ -40,6 +40,8 @@ import { DataStorageError, prepareDataLocation, scheduleDataLocation } from './d
 import { restartAfterDataLocationChange } from './restart'
 import { dataStorageCopy, dataStorageErrorKey, isDataLocationMode, type DataLocationResult } from '../shared/dataStorage'
 import { getActiveHotkeys, resolveHotkeys } from '../shared/hotkeys'
+import { GlobalHotkeyGate } from './hotkeyGate'
+import { HotkeyToast } from './hotkeyToast'
 import { handleFavoritesShortcut } from './favoritesShortcut'
 import { createCaptureAction } from './captureAction'
 import { handleCaptureAnalysisShortcut } from './captureAnalysisShortcut'
@@ -110,7 +112,8 @@ let tray: Tray | null = null
 let updateController: UpdateController
 let quickSwitchAccelerator = 'Alt+Q'
 let quickSwitchPreviousAccelerator = 'Alt+E'
-let globalHotkeysEnabled = true
+const hotkeyGate = new GlobalHotkeyGate()
+const hotkeyToast = new HotkeyToast()
 const captureToOverlay = createCaptureAction(() => startSnipping(), () => overlayWindow,
   error => console.error('Capture action failed:', error))
 let captureAnalysis: CaptureAnalysisWindow | null = null
@@ -449,7 +452,7 @@ function previousQuickSwitch() {
 }
 
 function registerQuickSwitchShortcut() {
-  if (!globalHotkeysEnabled) return
+  if (!hotkeyGate.actionsEnabled) return
   if (quickSwitchAccelerator) globalShortcut.register(quickSwitchAccelerator, advanceQuickSwitch)
   if (quickSwitchPreviousAccelerator) globalShortcut.register(quickSwitchPreviousAccelerator, previousQuickSwitch)
 }
@@ -868,15 +871,27 @@ async function selectRecordingRegion(owner: Electron.WebContents | undefined, _f
 }
 
 // ── 글로벌 단축키 등록 ────────────────────────────────────────────────
-function registerHotkeys() {
-  if (!globalHotkeysEnabled) return
-  globalShortcut.unregisterAll()
+function registerHotkeys(keepToggle = false) {
   const settings = loadSettings()
-  const hk = getActiveHotkeys(settings.hotkeys)
+  // Regrabbing the key from inside its own callback can replay the held key on
+  // X11. Keep the toggle registered while changing every other action.
+  if (keepToggle) {
+    for (const [action, accelerator] of Object.entries(getActiveHotkeys(settings.hotkeys))) {
+      if (action !== 'toggleHotkeys' && accelerator) globalShortcut.unregister(accelerator)
+    }
+  } else globalShortcut.unregisterAll()
+  const hk = hotkeyGate.active(settings.hotkeys)
   quickSwitchAccelerator = hk.quickSwitch
   quickSwitchPreviousAccelerator = hk.quickSwitchPrevious
 
   try {
+    if (hk.toggleHotkeys && !keepToggle) {
+      globalShortcut.register(hk.toggleHotkeys, () => {
+        const enabled = hotkeyGate.toggle()
+        registerHotkeys(true)
+        hotkeyToast.show(enabled, loadSettings().language)
+      })
+    }
     if (hk.openMain) {
       globalShortcut.register(hk.openMain, () => {
 
@@ -1140,9 +1155,8 @@ function setupIPC() {
   })
 
   ipcMain.handle('set-hotkeys-enabled', (_e, enabled: unknown) => {
-    globalHotkeysEnabled = enabled !== false
-    if (globalHotkeysEnabled) registerHotkeys()
-    else globalShortcut.unregisterAll()
+    hotkeyGate.setEditing(enabled === false)
+    registerHotkeys()
     return { ok: true }
   })
 
@@ -1475,6 +1489,7 @@ app.on('window-all-closed', () => {
 })
 
 app.on('will-quit', () => {
+  hotkeyToast.dismiss()
   globalShortcut.unregisterAll()
 })
 

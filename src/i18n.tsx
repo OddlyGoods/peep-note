@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { hotkeyMessages } from '../shared/hotkeyMessages'
 import { knowledgeMapMessages } from './knowledgeMapMessages'
 import { updateMessages } from './updateMessages'
 import { dataStorageMessages } from '../shared/dataStorage'
@@ -9,6 +10,7 @@ const messages = {
   en: {
     clearSearch: 'Clear search',
     ...knowledgeMapMessages.en,
+    ...hotkeyMessages.en,
     playVideo: 'Play video', videoPlaybackFailed: 'Could not open this video.',
     quickNoteTitle: 'Note',
     expandAll: 'Expand all', collapseAll: 'Collapse all',
@@ -90,6 +92,7 @@ const messages = {
   ko: {
     clearSearch: '검색어 지우기',
     ...knowledgeMapMessages.ko,
+    ...hotkeyMessages.ko,
     playVideo: '동영상 재생', videoPlaybackFailed: '동영상을 열지 못했습니다.',
     quickNoteTitle: '메모',
     expandAll: '모두 펼치기', collapseAll: '모두 접기',
@@ -171,6 +174,7 @@ const messages = {
   ja: {
     clearSearch: '検索語をクリア',
     ...knowledgeMapMessages.ja,
+    ...hotkeyMessages.ja,
     playVideo: '動画を再生', videoPlaybackFailed: '動画を開けませんでした。',
     quickNoteTitle: 'メモ',
     expandAll: 'すべて展開', collapseAll: 'すべて折りたたむ',
@@ -252,6 +256,7 @@ const messages = {
   zh: {
     clearSearch: '清除搜索词',
     ...knowledgeMapMessages.zh,
+    ...hotkeyMessages.zh,
     playVideo: '播放视频', videoPlaybackFailed: '无法打开此视频。',
     quickNoteTitle: '笔记',
     expandAll: '全部展开', collapseAll: '全部收起',

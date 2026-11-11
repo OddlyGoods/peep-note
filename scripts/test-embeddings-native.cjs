@@ -6,7 +6,7 @@ if (process.platform !== 'linux') { console.log('Native embedding regression req
 const root = path.resolve(__dirname, '..'), fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'peepnote-local-model-'))
 async function main() {
   try {
-    for (const [entry, output] of [['server/embeddingWorker.ts', 'client.cjs'], ['shared/localEmbeddings.ts', 'semantic.cjs']]) buildSync({ entryPoints: [path.join(root, entry)], outfile: path.join(fixture, output), bundle: true, format: 'cjs', platform: 'node', external: ['@huggingface/transformers'] })
+    for (const [entry, output] of [['server/embeddingWorker.ts', 'client.cjs'], ['shared/localEmbeddings.ts', 'semantic.cjs']]) buildSync({ entryPoints: [path.join(root, entry)], outfile: path.join(fixture, output), bundle: true, format: 'cjs', platform: 'node', external: ['electron', '@huggingface/transformers'] })
     const source = path.join(fixture, 'app-source'), copied = new Set()
     function copyPackage(name, from = root) {
       if (copied.has(name)) return
@@ -35,8 +35,12 @@ async function main() {
     copyPackage('@huggingface/transformers')
     const archive = path.join(fixture, 'app.asar')
     const unpack = require(path.join(root, 'package.json')).build.asarUnpack.find(pattern => pattern.includes('@huggingface/transformers'))
-    await asar.createPackageWithOptions(source, archive, { unpack })
-    fs.writeFileSync(path.join(fixture, 'worker.cjs'), fs.readFileSync(path.join(root, 'resources/embedding-worker.cjs'), 'utf8').replace('} catch {', '} catch (error) { console.error(error);'))
+    // Electron Builder matches app-relative paths; asar's standalone API matches
+    // absolute paths. Preserve the production pattern with that prefix.
+    await asar.createPackageWithOptions(source, archive, { unpack: '**/' + unpack })
+    const binding = `node_modules/onnxruntime-node/bin/napi-v3/${process.platform}/${process.arch}/onnxruntime_binding.node`
+    if (!asar.statFile(archive, binding).unpacked) throw new Error('Native runtime must be unpacked')
+    fs.writeFileSync(path.join(fixture, 'worker.cjs'), fs.readFileSync(path.join(root, 'resources/embedding-worker.cjs'), 'utf8').replace('} catch (error) {', '} catch (error) { console.error(error);'))
     fs.writeFileSync(path.join(fixture, 'options.json'), JSON.stringify({ workerPath: path.join(fixture, 'worker.cjs'), modulePath: require.resolve('@huggingface/transformers'), cacheDir: process.env.PEEPNOTE_EMBEDDING_TEST_CACHE || path.join(os.tmpdir(), 'peepnote-embedding-model-tests'), asarModulePath: path.join(archive, 'node_modules/@huggingface/transformers/dist/transformers.node.cjs') }))
     fs.copyFileSync(path.join(root, 'tests/native-local-embeddings.cjs'), path.join(fixture, 'main.cjs'))
     const env = { ...process.env }; delete env.ELECTRON_RUN_AS_NODE

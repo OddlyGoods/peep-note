@@ -1,23 +1,31 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { createCaptureAction } from '../electron/captureAction'
+import { createCaptureAction, type CapturedScreenshot } from '../electron/captureAction'
+import { requestWindowRepaint } from '../electron/windowPresentation'
 
 function fixture() {
   const calls: unknown[] = [], errors: unknown[] = []
+  const state = { visible: false, minimized: false, destroyed: false, rendererDestroyed: false, repaints: 0 }
   const window = {
-    isDestroyed: () => false,
-    show: () => { calls.push('show') }, focus: () => { calls.push('focus') },
-    webContents: { send: (channel: string, file: unknown) => { calls.push([channel, file]) } }
+    isDestroyed: () => state.destroyed, isVisible: () => state.visible, isMinimized: () => state.minimized,
+    restore: () => { state.minimized = false; calls.push('restore') },
+    show: () => { state.visible = true; calls.push('show') }, focus: () => { calls.push('focus') },
+    webContents: {
+      isDestroyed: () => state.rendererDestroyed,
+      focus: () => { calls.push('renderer-focus') },
+      invalidate: () => { state.repaints++ },
+      send: (channel: string, ...args: unknown[]) => { calls.push([channel, ...args]) }
+    }
   }
-  return { window, calls, errors, onError: (error: unknown) => { errors.push(error) } }
+  return { window, state, calls, errors, onError: (error: unknown) => { errors.push(error) } }
 }
 
 test('capture opens and focuses the composer and delivers the selected image, while cancellation stays closed', async () => {
   const f = fixture()
-  let next: string | null = '/example/captured.png'
+  let next: CapturedScreenshot | null = { file: '/example/captured.png', previewUrl: 'data:image/png;base64,cHJldmlldw==' }
   const capture = createCaptureAction(async () => next, () => f.window, f.onError)
   await capture()
-  assert.deepEqual(f.calls, ['show', 'focus', ['screenshot-captured', next]])
+  assert.deepEqual(f.calls, ['show', 'focus', 'renderer-focus', ['screenshot-captured', next.file, next.previewUrl]])
   next = null
   f.calls.length = 0
   await capture()
@@ -35,7 +43,7 @@ test('repeated tray or shortcut activation cannot open duplicate captures and wo
   assert.deepEqual(f.calls, [])
   finish('/example/captured.png')
   await first
-  assert.equal(f.calls.length, 3)
+  assert.equal(f.calls.length, 4)
   const again = action()
   assert.equal(captures, 2)
   finish(null)
@@ -54,10 +62,26 @@ test('capture errors release the guard and do not deliver images to closed or mi
   assert.deepEqual(f.calls, [])
   fail = false
   await action()
-  assert.equal(f.calls.length, 3)
+  assert.equal(f.calls.length, 4)
   f.calls.length = 0
   for (const window of [null, { ...f.window, isDestroyed: () => true }]) {
     await createCaptureAction(async () => '/example/captured.png', () => window, f.onError)()
   }
   assert.deepEqual(f.calls, [])
+  f.state.rendererDestroyed = true
+  await action()
+  assert.deepEqual(f.calls, [])
+})
+
+test('capture restores a minimized composer, focuses its renderer and requests fresh frames', async () => {
+  const f = fixture()
+  f.state.minimized = true
+  await createCaptureAction(async () => '/example/captured.png', () => f.window, f.onError)()
+  assert.deepEqual(f.calls, ['restore', 'show', 'focus', 'renderer-focus', ['screenshot-captured', '/example/captured.png']])
+  await new Promise(resolve => setTimeout(resolve, 350))
+  assert.equal(f.state.repaints, 3)
+  requestWindowRepaint(f.window)
+  f.state.destroyed = true
+  await new Promise(resolve => setTimeout(resolve, 350))
+  assert.equal(f.state.repaints, 3, 'pending repaint requests skip a closed window')
 })

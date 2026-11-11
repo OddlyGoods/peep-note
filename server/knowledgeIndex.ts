@@ -1,7 +1,7 @@
 import { getDb, onNotesChanged, queryAll, queryOne, run } from './db'
 import { LOCAL_PROFILE_ID } from './localProfile'
 import { embeddingText, embeddingHash, type EmbeddingNote } from './embeddingText'
-import { EMBEDDING_CACHE_KEY, EMBEDDING_DIMENSIONS, normalizedVector, type EmbeddingState } from '../shared/localEmbeddings'
+import { EMBEDDING_CACHE_KEY, EMBEDDING_DIMENSIONS, embeddingErrorCode, normalizedVector, type EmbeddingState } from '../shared/localEmbeddings'
 import type { LocalEmbedder } from './embeddingWorker'
 
 export const EMBEDDABLE_NOTES = 'user_id = ? AND is_secret = 0 AND deleted_at IS NULL'
@@ -14,11 +14,11 @@ export function decodeEmbedding(row: CacheRow): number[] | null {
   if (row.model_id !== EMBEDDING_CACHE_KEY || row.dimensions !== EMBEDDING_DIMENSIONS || row.vector?.byteLength !== EMBEDDING_DIMENSIONS * 4) return null
   return normalizedVector(new Float32Array(new Uint8Array(row.vector).buffer))
 }
-export function currentEmbeddingVectors(ids: string[]): Map<string, number[]> {
+export function currentEmbeddingVectors(ids?: string[]): Map<string, number[]> {
   const vectors = new Map<string, number[]>()
-  if (!ids.length) return vectors
+  if (ids && !ids.length) return vectors
   const rows = queryAll<CacheRow & EmbeddingNote>(`SELECT e.*, l.id, l.title, l.content, l.content_format, l.log_type, l.ocr_text
-    FROM note_embeddings e JOIN logs l ON l.id = e.note_id WHERE l.user_id = ? AND l.is_secret = 0 AND l.deleted_at IS NULL AND l.id IN (${ids.map(() => '?').join(',')})`, [LOCAL_PROFILE_ID, ...ids])
+    FROM note_embeddings e JOIN logs l ON l.id = e.note_id WHERE l.user_id = ? AND l.is_secret = 0 AND l.deleted_at IS NULL${ids ? ` AND l.id IN (${ids.map(() => '?').join(',')})` : ''}`, [LOCAL_PROFILE_ID, ...(ids ?? [])])
   for (const row of rows) {
     if (row.content_hash !== embeddingHash(embeddingText(row))) continue
     const vector = decodeEmbedding(row)
@@ -29,6 +29,7 @@ export function currentEmbeddingVectors(ids: string[]): Map<string, number[]> {
 
 export interface KnowledgeIndex {
   touch(): void; setEnabled(enabled: boolean): void; status(): EmbeddingState; retry(): void; dispose(): void
+  searchVector(text: string): Promise<number[]>
 }
 export class LocalKnowledgeIndex implements KnowledgeIndex {
   private database = getDb()
@@ -40,6 +41,8 @@ export class LocalKnowledgeIndex implements KnowledgeIndex {
   private running = false
   private dirty = false
   private scheduled: ReturnType<typeof setTimeout> | null = null
+  private inference: Promise<unknown> = Promise.resolve()
+  private queries = new Map<string, Promise<number[]>>()
   private unsubscribe: () => void
   constructor(private embedder: LocalEmbedder) {
     this.unsubscribe = onNotesChanged(() => { if (this.activated) this.schedule() })
@@ -47,11 +50,35 @@ export class LocalKnowledgeIndex implements KnowledgeIndex {
   }
   status() { return { ...this.state } }
   touch() { if (this.enabled && !this.activated) { this.activated = true; this.schedule() } }
+  private embed(text: string, progress: Parameters<LocalEmbedder['embed']>[1], generation = this.generation) {
+    // Indexing and searches share one worker; interleave requests between notes.
+    const result = this.inference.then(async () => {
+      if (!this.valid(generation)) throw new Error('EMBEDDING_CANCELLED')
+      const output = await this.embedder.embed(text, progress)
+      if (!this.valid(generation)) throw new Error('EMBEDDING_CANCELLED')
+      const vector = normalizedVector(output)
+      if (!vector || vector.length !== EMBEDDING_DIMENSIONS) throw new Error('INVALID_EMBEDDING')
+      return vector
+    })
+    this.inference = result.catch(() => {})
+    return result
+  }
+  searchVector(text: string): Promise<number[]> {
+    if (!this.valid()) return Promise.reject(new Error('EMBEDDING_CANCELLED'))
+    const cached = this.queries.get(text)
+    if (cached) return cached
+    const result = this.embed(text, () => {})
+    this.queries.set(text, result)
+    if (this.queries.size > 8) this.queries.delete(this.queries.keys().next().value!)
+    void result.catch(() => { if (this.queries.get(text) === result) this.queries.delete(text) })
+    return result
+  }
   setEnabled(enabled: boolean) {
     if (this.disposed || getDb() !== this.database) return
     saveNoteMapEnabled(enabled)
     if (this.enabled === enabled) return
     this.enabled = enabled; this.generation++
+    this.queries.clear()
     this.activated = false; this.dirty = false
     if (this.scheduled) clearTimeout(this.scheduled)
     this.scheduled = null
@@ -61,7 +88,9 @@ export class LocalKnowledgeIndex implements KnowledgeIndex {
   }
   retry() {
     if (!this.enabled || this.disposed || this.running) return
-    this.embedder.dispose(); this.state = { ...this.state, stage: 'indexing', progress: undefined }; this.schedule()
+    const generation = this.generation
+    this.inference = this.inference.then(() => { if (this.valid(generation)) this.embedder.dispose() }).catch(() => {})
+    this.queries.clear(); this.state = { ...this.state, stage: 'indexing', progress: undefined, errorCode: undefined }; this.schedule()
   }
   private schedule() {
     if (!this.enabled || this.disposed || getDb() !== this.database || this.state.stage === 'error') return
@@ -95,7 +124,7 @@ export class LocalKnowledgeIndex implements KnowledgeIndex {
           if (!current) continue
           const text = embeddingText(current), hash = embeddingHash(text)
           if (!text) continue
-          const output = await this.embedder.embed(text, progress => { if (this.valid(generation)) this.state = { ...this.state, stage: progress.stage, progress: progress.progress } })
+          const output = await this.embed(text, progress => { if (this.valid(generation)) this.state = { ...this.state, stage: progress.stage, progress: progress.progress } }, generation)
           if (!this.valid(generation)) return
           const latest = queryOne<EmbeddingNote>(`SELECT * FROM logs WHERE id = ? AND ${EMBEDDABLE_NOTES}`, [item.note.id, LOCAL_PROFILE_ID])
           if (!latest || embeddingHash(embeddingText(latest)) !== hash) { this.dirty = true; continue }
@@ -107,9 +136,13 @@ export class LocalKnowledgeIndex implements KnowledgeIndex {
           await new Promise(resolve => setTimeout(resolve, 10))
         }
       } while (this.dirty && this.valid(generation))
-      if (this.valid(generation)) this.state = { ...this.state, stage: 'ready', progress: undefined }
-    } catch {
-      if (this.valid(generation)) this.state = { ...this.state, stage: 'error', progress: undefined }
+      if (this.valid(generation)) this.state = { ...this.state, stage: 'ready', progress: undefined, errorCode: undefined }
+    } catch (error) {
+      if (this.valid(generation)) {
+        const errorCode = embeddingErrorCode(error)
+        console.warn('Local embedding index failed:', errorCode)
+        this.state = { ...this.state, stage: 'error', progress: undefined, errorCode }
+      }
     } finally {
       this.running = false
       if (this.valid() && generation !== this.generation) this.schedule()
@@ -117,6 +150,7 @@ export class LocalKnowledgeIndex implements KnowledgeIndex {
   }
   dispose() {
     this.disposed = true; this.unsubscribe()
+    this.queries.clear()
     if (this.scheduled) clearTimeout(this.scheduled)
     this.embedder.dispose()
   }

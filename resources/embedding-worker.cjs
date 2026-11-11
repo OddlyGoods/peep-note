@@ -1,6 +1,7 @@
 // Runs only local inference. Network access is limited to downloading the
 // pinned public model; note text is never part of a network request.
-const { parentPort, workerData } = require('node:worker_threads')
+const parentPort = process.parentPort
+let workerData
 const fs = require('node:fs'), path = require('node:path')
 const nativeFetch = globalThis.fetch
 globalThis.fetch = (input, options = {}) => {
@@ -34,9 +35,12 @@ async function model() {
   })()
   return loading
 }
-parentPort.on('message', async ({ id, text }) => {
+parentPort.on('message', async ({ data: { id, text, config } }) => {
+  workerData = config
+  let phase = 'load'
   try {
     const pipe = await model()
+    phase = 'inference'
     parentPort.postMessage({ type: 'indexing' })
     const tokens = pipe.tokenizer.encode(text, { add_special_tokens: false })
     const vector = new Float32Array(workerData.dimensions)
@@ -53,10 +57,12 @@ parentPort.on('message', async ({ id, text }) => {
     norm = Math.sqrt(norm)
     if (!norm || vector.some(value => !Number.isFinite(value))) throw new Error('INVALID_VECTOR')
     for (let i = 0; i < vector.length; i++) vector[i] /= norm
-    parentPort.postMessage({ type: 'result', id, vector }, [vector.buffer])
-  } catch {
+    parentPort.postMessage({ type: 'result', id, vector })
+  } catch (error) {
     // Never include note text, local paths or credentials in error messages.
-    parentPort.postMessage({ type: 'error', id })
+    const code = String(error?.message).includes('Module did not self-register') ? 'NATIVE_MODULE_LOAD_FAILED'
+      : error?.message === 'INVALID_VECTOR' ? 'INVALID_VECTOR' : phase === 'load' ? 'MODEL_LOAD_FAILED' : 'INFERENCE_FAILED'
+    parentPort.postMessage({ type: 'error', id, code })
     loading = null
   }
 })

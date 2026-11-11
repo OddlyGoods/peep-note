@@ -1319,3 +1319,14 @@ html[data-theme='light'] .comment-composer {
   background: rgb(139 92 246 / .08) !important;
   box-shadow: 0 0 0 2px rgb(139 92 246 / .25);
 }
+
+/* Center search icons on the input itself, with a small optical adjustment. */
+.search-input-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  transform: translateY(calc(-50% - 1px));
+  pointer-events: none;
+}

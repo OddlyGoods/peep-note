@@ -10,20 +10,20 @@ app.whenReady().then(async()=>{
  const display=screen.getPrimaryDisplay(),{width,height}=display.bounds;
  background=new BrowserWindow({width,height,frame:false,show:false,backgroundColor:'#28324a'});await background.loadURL('data:text/html,<body style="background:%2328324a;color:white">Synthetic test screen</body>');background.show();
  preview=new BrowserWindow({width:400,height:400,show:false,webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false}});
- await preview.loadURL('data:text/html,<img id="result"><script>window.electronAPI.on("screenshot-captured",file=>{window.electronAPI.readFileAsBase64(file).then(data=>{const image=document.getElementById("result");image.onload=()=>window.electronAPI.notifyLogCreated("native-preview-ready");image.src="data:image/png;base64,"+data})})</script>');
- ipcMain.handle('read-file-as-base64',(_event,file)=>fs.readFileSync(file).toString('base64'));
+ await preview.loadURL('data:text/html,<img id="result"><script>window.electronAPI.on("screenshot-captured",(file,preview)=>{const image=document.getElementById("result");image.onload=()=>window.electronAPI.notifyLogCreated("native-preview-ready");image.src=preview})</script>');
+ ipcMain.handle('read-file-as-base64',()=>{throw new Error('Capture preview must not read the saved PNG again')});
  ipcMain.on('notify-log-created',(_event,id)=>{if(id==='native-preview-ready'){mark('SUCCESS');clearTimeout(timer);app.exit(0)}});
  const action=createCaptureAction(()=>new Promise(resolve=>{
    region=new BrowserWindow({x:0,y:0,width,height,frame:false,alwaysOnTop:true,transparent:true,backgroundColor:'#00000000',show:false,webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false}});
    const live=createLiveCapture({hide:()=>{region.hide();stage='hidden';mark(stage)},capture:async()=>{stage='capture';const sources=await desktopCapturer.getSources({types:['screen'],thumbnailSize:display.size});mark(stage,{displayId:display.id,sources:sources.map(s=>s.display_id)});const source=sources.find(s=>s.display_id===String(display.id))??(sources.length===1?sources[0]:undefined);if(!source)throw Error('source missing');return source.thumbnail.toDataURL()},deliver:data=>{stage='source-delivered';mark(stage,{visible:region.isVisible()});region.webContents.send('lasso-source',data)},onError:error=>{mark('ERROR',{message:error.message});app.exit(2)}});
    ipcMain.on('snipping-capture-lasso',(event,selection)=>{stage='selection';const bounds=region.getContentBounds();const valid=!!parseLassoCapture(selection,bounds.width,bounds.height);mark(stage,{valid,requested:[selection.width,selection.height],actual:[bounds.width,bounds.height]});if(valid)void live.start()});
-   ipcMain.on('snipping-done',(event,png)=>{stage='png-received';mark(stage);if(event.sender!==region.webContents||(!region.isVisible()&&!live.pending))return;const file=path.join(__dirname,'cropped.png');fs.writeFileSync(file,Buffer.from(png.split(',')[1],'base64'));
+   ipcMain.on('snipping-done',async(event,png)=>{stage='png-received';mark(stage);if(event.sender!==region.webContents||(!region.isVisible()&&!live.pending))return;const file=path.join(__dirname,'cropped.png');await fs.promises.writeFile(file,Buffer.from(png.split(',')[1],'base64'));
      const cropped=nativeImage.createFromPath(file),size=cropped.getSize(),bitmap=cropped.toBitmap();
      const pixel=(x,y)=>Array.from(bitmap.subarray((y*size.width+x)*4,(y*size.width+x)*4+3));
      if(size.width<=400||size.height<=400||pixel(5,50).every(value=>value===255)||!pixel(0,0).every(value=>value===255)){
        mark('BAD_MARGIN',{size,nearEdge:pixel(5,50),outside:pixel(0,0)});app.exit(6);return;
      }
-     mark('MARGIN_OK',{size});live.dispose();region.close();resolve(file)});
+     mark('MARGIN_OK',{size});live.dispose();region.close();resolve({file,previewUrl:png})});
    ipcMain.on('snipping-cancel',()=>{mark('CANCEL');app.exit(3)});
    region.webContents.once('did-finish-load',async()=>{
      try {

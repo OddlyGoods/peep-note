@@ -5,8 +5,8 @@ import os from 'node:os'
 import path from 'node:path'
 import { initDb, queryOne, run } from '../server/db'
 import { LocalKnowledgeIndex, currentEmbeddingVectors } from '../server/knowledgeIndex'
-import { embeddingText } from '../server/embeddingText'
-import { EMBEDDING_DIMENSIONS } from '../shared/localEmbeddings'
+import { embeddingHash, embeddingText } from '../server/embeddingText'
+import { EMBEDDING_CACHE_KEY, EMBEDDING_DIMENSIONS, normalizedVector } from '../shared/localEmbeddings'
 import type { LocalEmbedder } from '../server/embeddingWorker'
 import { createApiApp } from '../server/index'
 
@@ -142,5 +142,156 @@ test('failed local inference waits for explicit retry and a valid cache never ex
     assert.equal(queryOne('SELECT * FROM note_embeddings WHERE note_id = ?', ['one']), null)
     const fresh = await (await app.request('http://127.0.0.1:3848/api/knowledge-map')).json() as any
     assert.equal(fresh.connections.length, 0)
+  } finally { index.dispose() }
+}))
+
+// These tests exercise retrieval through the API, without network/model downloads.
+function cacheNote(id: string, values: number[]) {
+  const note = queryOne<any>('SELECT * FROM logs WHERE id = ?', [id])!
+  run('INSERT OR REPLACE INTO note_embeddings (note_id, content_hash, model_id, vector, dimensions, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+    [id, embeddingHash(embeddingText(note)), EMBEDDING_CACHE_KEY, new Uint8Array(new Float32Array(values).buffer), EMBEDDING_DIMENSIONS, 1])
+}
+const direction = (x: number) => normalizedVector([x, Math.sqrt(1 - x * x), ...new Array(EMBEDDING_DIMENSIONS - 2).fill(0)])!
+
+test('map semantic search retrieves older related notes beyond the visible 400 and reuses local query vectors', async () => store(async () => {
+  let calls = 0
+  const index = new LocalKnowledgeIndex({ embed: async () => { calls++; return vector() }, dispose() {} })
+  try {
+    run("INSERT INTO workspaces (id,user_id,name) VALUES ('semantic-a','local','A'), ('semantic-b','local','B')")
+    for (let i = 0; i < 405; i++) {
+      const id = `recent-${i}`
+      seed(id, 'Garden planting and composting')
+      run("UPDATE logs SET workspace_id = 'semantic-a', created_at = ? WHERE id = ?", [100 + i, id])
+      cacheNote(id, direction(.1))
+    }
+    seed('old-server', 'SSH tunnels and remote shell commands')
+    run("UPDATE logs SET workspace_id = 'semantic-a' WHERE id = 'old-server'")
+    cacheNote('old-server', vector())
+    seed('second', 'Secure terminal access'); cacheNote('second', direction(.98))
+    run("UPDATE logs SET workspace_id = 'semantic-b' WHERE id = 'second'")
+    seed('literal-only', 'How can I connect to a remote machine?'); cacheNote('literal-only', direction(.2))
+    seed('private-match', 'Private shell details', 1); cacheNote('private-match', vector())
+    seed('trash-match', 'Deleted shell details', 0, 1); cacheNote('trash-match', vector())
+    seed('foreign-match', 'Other profile shell details', 0, null, 'foreign'); cacheNote('foreign-match', vector())
+    index.setEnabled(true); await until(() => index.status().stage === 'ready')
+    assert.equal(calls, 0, 'existing note embeddings are reused')
+    const app = createApiApp(3848, undefined, undefined, index)
+    const get = async (suffix = '') => (await app.request('http://127.0.0.1:3848/api/knowledge-map' + suffix)).json() as Promise<any>
+    assert.equal((await get()).notes.some((note: any) => note.id === 'old-server'), false, 'older match is outside the unfiltered map')
+    const query = '?search=' + encodeURIComponent('How can I connect to a remote machine?')
+    const found = await get(query)
+    assert.deepEqual(found.notes.map((note: any) => note.id), ['old-server', 'second'])
+    assert.equal(found.limit, 50); assert.equal(found.total, 2)
+    assert.equal(JSON.stringify(found).includes('SSH tunnels'), false, 'bodies and vectors stay private to the server')
+    assert.deepEqual((await get(query + '&workspace=semantic-a')).notes.map((note: any) => note.id), ['old-server'])
+    assert.equal(calls, 1, 'polling and workspace changes reuse the query embedding')
+    assert.equal((await get('?search=%25')).notes.length, 2, 'query text is embedded, never interpreted as SQL wildcards')
+    assert.equal(calls, 2)
+    assert.equal((await get()).notes.length, 400, 'clearing search restores the normal map')
+  } finally { index.dispose() }
+}))
+
+test('search and background indexing serialize inference and search failures can be retried', async () => store(async () => {
+  let active = 0, maximum = 0, queryCalls = 0
+  const calls: string[] = []
+  const index = new LocalKnowledgeIndex({ embed: async text => {
+    active++; maximum = Math.max(maximum, active); calls.push(text)
+    try {
+      await wait(25)
+      if (text === 'query' && ++queryCalls === 1) throw new Error('Synthetic query error')
+      return vector()
+    } finally { active-- }
+  }, dispose() {} })
+  try {
+    seed('serial-a', 'First note'); seed('serial-b', 'Second note')
+    index.setEnabled(true); await until(() => active === 1)
+    await assert.rejects(index.searchVector('query'))
+    assert.deepEqual(await index.searchVector('query'), vector())
+    await until(() => index.status().stage === 'ready')
+    assert.equal(maximum, 1); assert.equal(queryCalls, 2)
+    assert.deepEqual(await index.searchVector('query'), vector()); assert.equal(queryCalls, 2)
+    assert.ok(calls.includes('Second note'))
+  } finally { index.dispose() }
+}))
+
+test('search rechecks privacy after inference and cancels when the map is disabled', async () => store(async () => {
+  let finish: ((value: number[]) => void) | undefined
+  const index = new LocalKnowledgeIndex({ embed: () => new Promise(resolve => { finish = resolve }), dispose() {} })
+  try {
+    seed('late-private', 'Public before query'); cacheNote('late-private', vector())
+    index.setEnabled(true); await until(() => index.status().stage === 'ready')
+    const app = createApiApp(3848, undefined, undefined, index)
+    const search = () => app.request('http://127.0.0.1:3848/api/knowledge-map?search=question')
+    const pending = search(); await until(() => !!finish)
+    run("UPDATE logs SET is_secret = 1 WHERE id = 'late-private'")
+    finish!(vector())
+    const result = await (await pending).json() as any
+    assert.deepEqual(result.notes, []); assert.deepEqual(result.connections, [])
+    finish = undefined
+    const cancelled = index.searchVector('another question'); await until(() => !!finish)
+    index.setEnabled(false); finish!(vector())
+    await assert.rejects(cancelled, /CANCELLED/)
+    assert.equal((await (await search()).json() as any).enabled, false)
+  } finally { index.dispose() }
+}))
+
+test('detail related notes use the map links, enforce privacy, and never activate a disabled model', async () => store(async () => {
+  let calls = 0
+  const index = new LocalKnowledgeIndex({ embed: async () => { calls++; return vector() }, dispose() {} })
+  try {
+    seed('source', 'Original document'); cacheNote('source', vector())
+    for (const [id, score] of [['best', .99], ['second-best', .98], ['third-best', .97], ['unrelated', .1]] as const) {
+      seed(id, 'Related document ' + id); cacheNote(id, direction(score))
+    }
+    seed('hidden-related', 'Hidden document', 1); cacheNote('hidden-related', vector())
+    seed('deleted-related', 'Deleted document', 0, 1); cacheNote('deleted-related', vector())
+    seed('foreign-related', 'Other profile document', 0, null, 'foreign'); cacheNote('foreign-related', vector())
+    const app = createApiApp(3848, undefined, undefined, index)
+    const get = async (id = 'source') => (await app.request('http://127.0.0.1:3848/api/knowledge-map/related/' + id)).json() as Promise<any>
+    assert.deepEqual((await get()).notes, []); assert.equal(calls, 0)
+    index.setEnabled(true); await until(() => index.status().stage === 'ready')
+    const result = await get()
+    assert.deepEqual(result.notes.map((note: any) => note.id), ['best', 'second-best', 'third-best'])
+    assert.ok(result.notes[0].similarity > result.notes[1].similarity && result.notes[1].similarity > result.notes[2].similarity)
+    assert.equal(result.notes[0].content, undefined); assert.equal(result.notes[0].vector, undefined)
+    assert.equal(calls, 0, 'detail recommendations only reuse valid stored vectors')
+    for (const id of ['hidden-related', 'deleted-related', 'foreign-related', 'missing']) assert.deepEqual((await get(id)).notes, [])
+    run("UPDATE logs SET is_secret = 1 WHERE id = 'best'")
+    assert.equal((await get()).notes.some((note: any) => note.id === 'best'), false)
+    run("UPDATE logs SET content = 'Updated content' WHERE id = 'source'")
+    assert.deepEqual((await get()).notes, [], 'stale source vectors cannot produce recommendations')
+    index.setEnabled(false); assert.deepEqual((await get()).notes, [])
+  } finally { index.dispose() }
+}))
+
+test('image-only notes stay visible and empty text is skipped without breaking the embedding index', async () => store(async () => {
+  const calls: string[] = []
+  const index = new LocalKnowledgeIndex({ embed: async text => { calls.push(text); return vector() }, dispose() {} })
+  try {
+    seed('only-image', ''); seed('named-image', '')
+    run("UPDATE logs SET log_type = 'screenshot', file_path = 'diagram.png' WHERE id IN ('only-image','named-image')")
+    run("UPDATE logs SET title = 'RAG architecture diagram' WHERE id = 'named-image'")
+    index.setEnabled(true); await until(() => index.status().stage === 'ready')
+    assert.deepEqual(calls, ['RAG architecture diagram'])
+    assert.equal(index.status().total, 1)
+    const result = await (await createApiApp(3848, undefined, undefined, index).request('http://127.0.0.1:3848/api/knowledge-map')).json() as any
+    assert.equal(result.notes.length, 2); assert.equal(result.indexing.stage, 'ready')
+    assert.ok(result.notes.every((note: any) => typeof note.imageVersion === 'string'))
+    assert.ok(result.notes.every((note: any) => note.file_path === undefined && note.attachments === undefined))
+  } finally { index.dispose() }
+}))
+
+test('index diagnostics preserve safe failure codes and clear them after retry', async () => store(async () => {
+  let fail = true
+  const index = new LocalKnowledgeIndex({ embed: async () => {
+    if (fail) throw new Error('LOCAL_EMBEDDING_NATIVE_MODULE_LOAD_FAILED')
+    return vector()
+  }, dispose() {} })
+  try {
+    seed('diagnostic', 'Local fixture content')
+    index.setEnabled(true); await until(() => index.status().stage === 'error')
+    assert.equal(index.status().errorCode, 'LOCAL_EMBEDDING_NATIVE_MODULE_LOAD_FAILED')
+    fail = false; index.retry(); await until(() => index.status().stage === 'ready')
+    assert.equal(index.status().errorCode, undefined)
   } finally { index.dispose() }
 }))

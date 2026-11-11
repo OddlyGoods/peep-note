@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { buildKnowledgeGraph, INITIAL_MAP_CAMERA, KNOWLEDGE_MAP_LIMIT, projectMapNode, type MapNote } from '../shared/knowledgeMap'
-import { semanticConnections, normalizedVector } from '../shared/localEmbeddings'
+import { embeddingErrorCode, semanticConnections, relatedSemanticNotes, semanticMatches, normalizedVector } from '../shared/localEmbeddings'
 const note = (id: string): MapNote => ({ id, title: id, workspaceId: 'general', workspaceName: 'General', workspaceDefault: true, type: 'note', createdAt: 1 })
 
 test('semantic graph connects notes directly and never creates group or tag hubs', () => {
@@ -41,4 +41,32 @@ test('camera rotation, pan and zoom change perspective without mutating coordina
   assert.equal(panned.x, first.x + 40); assert.equal(panned.y, first.y + 20)
   assert.equal(projectMapNode(point, { ...camera, zoom: 2 }, 800, 600, 200).x - 400, (first.x - 400) * 2)
   assert.deepEqual(point, { x: 100, y: 50, z: 100 })
+})
+
+test('meaning search ranks by cosine similarity and excludes unrelated or invalid candidates', () => {
+  const results = semanticMatches([1, 0], new Map([
+    ['weak', [.76, Math.sqrt(1 - .76 ** 2)]], ['best', [.99, Math.sqrt(1 - .99 ** 2)]],
+    ['related', [.94, Math.sqrt(1 - .94 ** 2)]], ['unrelated', [.1, .99]], ['invalid', [NaN, 0]], ['dimension', [1]],
+  ]))
+  assert.deepEqual(results.map(match => match.id), ['best', 'related'])
+  assert.deepEqual(semanticMatches([1, 0], new Map([['none', [.2, .98]]])), [])
+})
+
+test('detail recommendations match map edges, sorted by similarity and capped at three', () => {
+  const vectors = new Map(Array.from({ length: 15 }, (_, i) => [String(i), normalizedVector([1, i / 100, .1])!]))
+  const edges = semanticConnections(vectors)
+  for (const [id] of vectors) {
+    const expected = edges.filter(edge => edge.source === id || edge.target === id)
+      .map(edge => ({ id: edge.source === id ? edge.target : edge.source, score: edge.similarity }))
+      .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id))
+    assert.deepEqual(relatedSemanticNotes(id, vectors), expected)
+    assert.ok(expected.length <= 3)
+  }
+  assert.deepEqual(relatedSemanticNotes('missing', vectors), [])
+  assert.deepEqual(relatedSemanticNotes('a', new Map([['a', [1, 0]], ['unrelated', [0, 1]]])), [])
+})
+
+test('embedding diagnostics never expose raw exception text', () => {
+  assert.equal(embeddingErrorCode(new Error('private-input /private/local-file')), 'LOCAL_EMBEDDING_FAILED')
+  assert.equal(embeddingErrorCode(new Error('LOCAL_EMBEDDING_PROCESS_EXIT')), 'LOCAL_EMBEDDING_PROCESS_EXIT')
 })

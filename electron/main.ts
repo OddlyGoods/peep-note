@@ -31,6 +31,7 @@ import { protectAppNavigation } from './appNavigation'
 import { externalWebUrl } from '../shared/noteLinks'
 import { UPDATE_STATE_CHANNEL } from '../shared/updates'
 import { startServer } from '../server/index'
+import { mapImagePath } from '../server/mapThumbnails'
 import { attachmentPath, isLinkedAttachment } from '../shared/attachments'
 import { importLocalAttachments, attachmentFileSize } from './attachmentFiles'
 import { directoryUsage } from './dataUsage'
@@ -44,7 +45,8 @@ import { GlobalHotkeyGate } from './hotkeyGate'
 import { HotkeyToast } from './hotkeyToast'
 import { hotkeyCopy } from '../shared/hotkeyMessages'
 import { handleFavoritesShortcut } from './favoritesShortcut'
-import { createCaptureAction } from './captureAction'
+import { createCaptureAction, type CapturedScreenshot } from './captureAction'
+import { requestWindowRepaint, showWindow } from './windowPresentation'
 import { handleCaptureAnalysisShortcut } from './captureAnalysisShortcut'
 import { createMultiMonitorLasso, lassoWindowOptions } from './multiMonitorLasso'
 import { createMultiMonitorRegion, type MonitorRegionResult } from './multiMonitorRegion'
@@ -117,7 +119,7 @@ let quickSwitchAccelerator = 'Alt+Q'
 let quickSwitchPreviousAccelerator = 'Alt+E'
 const hotkeyGate = new GlobalHotkeyGate()
 const hotkeyToast = new HotkeyToast()
-const captureToOverlay = createCaptureAction(() => startSnipping(), () => overlayWindow,
+const captureToOverlay = createCaptureAction(captureRegionScreenshot, () => overlayWindow,
   error => console.error('Capture action failed:', error))
 let captureAnalysis: CaptureAnalysisWindow | null = null
 let analysisPreparing = false
@@ -172,25 +174,10 @@ async function startCaptureAnalysis() {
   } finally { analysisPreparing = false }
 }
 
-// A restored Linux compositor can accept show/focus before Chromium's surface
-// is ready. Request a few frames so the window does not remain transparent.
-function requestWindowRepaint(win: BrowserWindow) {
-  for (const delay of [0, 100, 300]) {
-    setTimeout(() => {
-      if (win.isDestroyed() || !win.isVisible() || win.webContents.isDestroyed()) return
-      win.webContents.invalidate()
-    }, delay)
-  }
-}
-
 function showMainWindow() {
   const win = mainWindow
   if (!win || win.isDestroyed()) return
-  if (win.isMinimized()) win.restore()
-  win.show()
-  win.focus()
-  win.webContents.focus()
-  requestWindowRepaint(win)
+  showWindow(win)
 }
 
 // ── 데이터 디렉토리 준비 ──────────────────────────────────────────────
@@ -335,7 +322,9 @@ function createOverlayWindow() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      // Keep the reusable composer responsive while hidden between captures.
+      backgroundThrottling: false
     }
   })
 
@@ -608,8 +597,7 @@ function toggleOverlay() {
   if (overlayWindow.isVisible()) {
     overlayWindow.hide()
   } else {
-    overlayWindow.show()
-    overlayWindow.focus()
+    showWindow(overlayWindow)
   }
 }
 
@@ -775,8 +763,19 @@ async function selectAcrossMonitors(mode: 'screenshot' | 'recording-region'): Pr
     regionSession?.close()
     regionSession = null
     snippingPreparing = false
-    if (overlayWasVisible) overlayWindow?.show()
+    if (overlayWasVisible && overlayWindow && !overlayWindow.isDestroyed()) showWindow(overlayWindow)
   }
+}
+
+async function captureRegionScreenshot(): Promise<CapturedScreenshot | null> {
+  const result = await selectAcrossMonitors('screenshot')
+  if (result?.mode !== 'screenshot') return null
+  const file = path.join(screenshotsDir, `screenshot_${Date.now()}.png`)
+  try {
+    // Yield during disk I/O so returning Chromium windows can repaint.
+    await fs.promises.writeFile(file, Buffer.from(result.dataUrl.split(',')[1], 'base64'))
+    return { file, previewUrl: result.dataUrl }
+  } catch (error) { console.error('Screenshot save error:', error); return null }
 }
 
 async function startSnipping(_forceChoose = false, shape: 'rectangle' | 'lasso' = 'rectangle', target?: {
@@ -784,11 +783,7 @@ async function startSnipping(_forceChoose = false, shape: 'rectangle' | 'lasso' 
   onBounds: (bounds: { x: number; y: number; width: number; height: number }) => void
 }): Promise<string | null> {
   if (shape === 'rectangle') {
-    const result = await selectAcrossMonitors('screenshot')
-    if (result?.mode !== 'screenshot') return null
-    const filepath = path.join(screenshotsDir, `screenshot_${Date.now()}.png`)
-    try { fs.writeFileSync(filepath, Buffer.from(result.dataUrl.split(',')[1], 'base64')); return filepath }
-    catch (error) { console.error('Screenshot save error:', error); return null }
+    return (await captureRegionScreenshot())?.file ?? null
   }
   if (snippingPreparing) return null
   snippingPreparing = true
@@ -977,7 +972,7 @@ function setupIPC() {
       return false
     }
   })
-  ipcMain.handle('open-image-viewer', (_e, filepath: string, requestedTheme?: string) => {
+  const showImageViewer = (filepath: string, requestedTheme?: string) => {
     const source = isLinkedAttachment(filepath) ? readableAttachmentFile(filepath) : filepath
     if (!source) return null
     const data = fs.readFileSync(source).toString('base64')
@@ -1069,6 +1064,13 @@ function setupIPC() {
     win.on('maximize', () => win.webContents.send('image-viewer-maximized', true))
     win.on('unmaximize', () => win.webContents.send('image-viewer-maximized', false))
     win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`)
+  }
+  ipcMain.handle('open-image-viewer', (_e, filepath: string, requestedTheme?: string) => showImageViewer(filepath, requestedTheme))
+  ipcMain.handle('open-map-image-viewer', (event, id: unknown, requestedTheme?: string) => {
+    if (event.sender !== mainWindow?.webContents) return false
+    const source = mapImagePath(id)
+    if (!source) return false
+    try { showImageViewer(source, requestedTheme); return true } catch { return false }
   })
 
   ipcMain.handle('open-video-viewer', async (event, filepath: unknown, requestedTheme?: unknown) => {
@@ -1224,11 +1226,11 @@ function setupIPC() {
     }
   })
 
-  ipcMain.handle('read-file-as-base64', (_e, filepath: string) => {
+  ipcMain.handle('read-file-as-base64', async (_e, filepath: string) => {
     try {
       const source = isLinkedAttachment(filepath) ? readableAttachmentFile(filepath) : filepath
       if (!source) return null
-      const data = fs.readFileSync(source)
+      const data = await fs.promises.readFile(source)
       return data.toString('base64')
     } catch {
       return null
@@ -1480,6 +1482,11 @@ app.whenReady().then(async () => {
   }, {
     workerPath: path.join(app.isPackaged ? process.resourcesPath : app.getAppPath(), 'resources', 'embedding-worker.cjs'),
     cacheDir: path.join(app.getPath('userData'), 'models', 'embeddings')
+  }, bytes => {
+    const image = nativeImage.createFromBuffer(Buffer.from(bytes))
+    if (image.isEmpty()) return null
+    const size = image.getSize(), scale = Math.min(1, 192 / size.width, 128 / size.height)
+    return image.resize({ width: Math.max(1, Math.round(size.width * scale)), height: Math.max(1, Math.round(size.height * scale)), quality: 'good' }).toPNG()
   })
   app.on('before-quit', () => localServer.disposeEmbeddings())
 

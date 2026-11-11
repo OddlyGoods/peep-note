@@ -101,6 +101,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
   openVideoViewer: (filepath: string, theme?: 'light' | 'dark') => ipcRenderer.invoke('open-video-viewer', filepath, theme),
   openImageViewer: (filepath: string, theme?: 'light' | 'dark') => ipcRenderer.invoke('open-image-viewer', filepath, theme),
+  openMapImageViewer: (id: string, theme?: 'light' | 'dark') => ipcRenderer.invoke('open-map-image-viewer', id, theme),
   imageViewerControl: (action: 'minimize' | 'maximize' | 'close') => ipcRenderer.invoke('image-viewer-control', action),
 
   // 앱 버전

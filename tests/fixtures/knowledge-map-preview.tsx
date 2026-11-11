@@ -22,11 +22,24 @@ window.fetch = (async (input: any, init?: RequestInit) => {
   qa.requests.push(route)
   if (route === '/api/knowledge-map/enabled') { qa.enabled = JSON.parse(String(init?.body)).enabled; return Response.json({ enabled: qa.enabled }) }
   if (route === '/api/knowledge-map/retry') { qa.indexing = { stage: 'ready', total: 24, completed: 24 }; return Response.json({ ok: true }) }
+  if (route.startsWith('/api/knowledge-map/thumbnail/')) {
+    const canvas = document.createElement('canvas'); canvas.width = 32; canvas.height = 32
+    const context = canvas.getContext('2d')!; context.fillStyle = '#ff007f'; context.fillRect(0, 0, 32, 32)
+    return Response.json({ image: canvas.toDataURL('image/png') })
+  }
+  if (route.startsWith('/api/knowledge-map/related/')) {
+    const id = route.split('/').pop()
+    const edges = id === 'fixture-0' ? [...qa.connections, { source: 'fixture-0', target: 'fixture-3', similarity: .86 }] : qa.connections
+    const notes = !qa.enabled ? [] : edges.filter((edge: any) => edge.source === id || edge.target === id)
+      .sort((a: any, b: any) => b.similarity - a.similarity).slice(0, 3)
+      .map((edge: any) => ({ ...qa.notes.find((note: any) => note.id === (edge.source === id ? edge.target : edge.source)), similarity: edge.similarity }))
+    return Response.json({ notes, indexing: qa.indexing })
+  }
   if (route === '/api/knowledge-map') {
     if (!qa.enabled) return Response.json({ enabled: false, notes: [], connections: [], indexing: { stage: 'idle', total: 0, completed: 0 }, total: 0, limit: 400 })
     if (qa.fail) return Response.json({ error: 'Fixture failure' }, { status: 503 })
     const workspace = url.searchParams.get('workspace'), search = (url.searchParams.get('search') || '').toLowerCase()
-    const notes = qa.empty ? [] : qa.notes.filter((note: any) => (!workspace || note.workspaceId === workspace) && JSON.stringify(note).toLowerCase().includes(search))
+    const notes = qa.empty ? [] : qa.notes.filter((note: any) => (!workspace || note.workspaceId === workspace) && (!search || (search === 'how should i split documents?' ? note.id === 'fixture-1' : JSON.stringify(note).toLowerCase().includes(search))))
     const ids = new Set(notes.map((note: any) => note.id))
     return Response.json({ enabled: true, notes: notes.map(({ excerpt, ...note }: any) => note), connections: qa.connections.filter((edge: any) => ids.has(edge.source) && ids.has(edge.target)), indexing: qa.indexing, total: notes.length, limit: 400 })
   }
@@ -37,7 +50,7 @@ window.fetch = (async (input: any, init?: RequestInit) => {
   if (route.endsWith('/viewed')) { qa.views.push(route.split('/').at(-2)!); return Response.json({ ok: true }) }
   if (route.startsWith('/api/logs/')) {
     const note = qa.notes.find((item: any) => item.id === route.split('/').pop())
-    return Response.json({ ...note, content: (note?.excerpt ?? '') + '\n\n' + 'Full body detail. '.repeat(70) + 'End of full note', log_type: 'note', content_format: 'markdown', tags: [], attachments: [], pinned: false, favorite: false, is_secret: false, created_at: 1700000000, updated_at: 1700000000, workspace_id: note?.workspaceId, group_id: null })
+    return Response.json({ ...note, content: (note?.excerpt ?? '') + '\n\n' + 'Full body detail. '.repeat(70) + 'End of full note', log_type: note?.type ?? 'note', content_format: 'markdown', tags: [], attachments: [], pinned: false, favorite: false, is_secret: false, created_at: 1700000000, updated_at: 1700000000, workspace_id: note?.workspaceId, group_id: null })
   }
   if (route === '/api/logs' || route === '/api/groups') return Response.json([])
   throw new Error('Unexpected map fixture request: ' + route)

@@ -9,11 +9,12 @@ app.whenReady().then(async()=>{
   const win = new BrowserWindow({width:480,height:580,frame:false,show:false,webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false}})
   const js=code=>win.webContents.executeJavaScript(code).catch(error=>{console.error('Fixture expression:',code);throw error})
   const png=nativeImage.createFromBitmap(Buffer.alloc(20*16*4,180),{width:20,height:16}).toPNG().toString('base64')
-  let scenario='success',captures=0,holdRead=false,readPending=false,finishRead
+  let scenario='success',captures=0,holdRead=false,readPending=false,finishRead,reads=0
   ipcMain.handle('set-recording-active',()=>{})
   ipcMain.handle('overlay-is-maximized',()=>false)
   ipcMain.handle('close-overlay',()=>win.hide())
   ipcMain.handle('read-file-as-base64',()=>{
+    reads++
     if(holdRead){readPending=true;return new Promise(resolve=>{finishRead=()=>resolve(png)})}
     return png
   })
@@ -28,7 +29,7 @@ app.whenReady().then(async()=>{
   })
   await win.loadFile(path.join(__dirname,'overlay-preview.html'));win.show()
   await until(()=>js('!!document.querySelector(".overlay-tab")'))
-  win.webContents.send('screenshot-captured','/fixture/initial.png')
+  win.webContents.send('screenshot-captured','/fixture/initial.png','data:image/png;base64,'+png)
   const captureTab=`Array.from(document.querySelectorAll('.overlay-tab')).find(el=>el.textContent.trim()==='Capture')`
   const captureButton=`Array.from(document.querySelectorAll('button')).find(el=>el.textContent.trim()==='Capture screen')`
   const preview='document.querySelector("img[alt=Preview]")'
@@ -36,6 +37,7 @@ app.whenReady().then(async()=>{
   const contentInput=`document.querySelector(${JSON.stringify('textarea[id$="-content"]')})`
   const tagInput=`document.querySelector(${JSON.stringify('input[id$="-tags"]')})`
   await until(()=>js(`${preview}?.src.startsWith('data:image/png')`))
+  assert.equal(reads,0,'the composer displays a captured PNG without a second file read')
   const setInput=async(selector,value,textarea=false)=>js(`{const el=document.querySelector(${JSON.stringify(selector)});Object.getOwnPropertyDescriptor(${textarea?'HTMLTextAreaElement':'HTMLInputElement'}.prototype,'value').set.call(el,${JSON.stringify(value)});el.dispatchEvent(new Event('input',{bubbles:true}));}`)
   await setInput('input[id$="-title"]','Keep this capture title')
   await setInput('textarea[id$="-content"]','Keep these draft notes',true)

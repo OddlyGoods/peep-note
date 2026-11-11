@@ -1,5 +1,5 @@
 import { invalidateExploreCache } from './exploreCache'
-import type { MapSnapshot } from '../../shared/knowledgeMap'
+import type { MapSnapshot, RelatedMapSnapshot } from '../../shared/knowledgeMap'
 import type { McpClient } from '../../shared/mcpClients'
 import type { TrashRetentionDays } from '../../shared/trashRetention'
 import type { Hotkeys } from '../../shared/hotkeys'
@@ -29,6 +29,8 @@ export const api = {
   retryKnowledgeMap: () => request<{ ok: boolean }>('/api/knowledge-map/retry', { method: 'POST' }),
   setNoteMapEnabled: (enabled: boolean) => request<{ enabled: boolean }>('/api/knowledge-map/enabled', { method: 'PUT', body: JSON.stringify({ enabled }) }),
   knowledgeMap: (workspace: string, search: string, signal?: AbortSignal) => request<MapSnapshot>(`/api/knowledge-map?${new URLSearchParams({ workspace, search })}`, { signal }),
+  relatedMapNotes: (id: string, signal?: AbortSignal) => request<RelatedMapSnapshot>(`/api/knowledge-map/related/${encodeURIComponent(id)}`, { signal }),
+  mapThumbnail: (id: string, version: string, signal?: AbortSignal) => request<{ image: string }>(`/api/knowledge-map/thumbnail/${encodeURIComponent(id)}?v=${encodeURIComponent(version)}`, { signal }),
   mcp: {
     status: () => request<McpStatus>('/api/mcp'),
     savePreferences: (preferences: { enabled: boolean; notificationsEnabled: boolean }) => request<McpStatus>('/api/mcp', { method: 'PUT', body: JSON.stringify(preferences) }),

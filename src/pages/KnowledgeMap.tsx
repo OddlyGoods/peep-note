@@ -3,16 +3,21 @@ import { ArrowUpRight, Check, ChevronDown, FileText, FolderOpen, Waypoints, Refr
 import { buildKnowledgeGraph, emptyMapSnapshot, type MapNode, type MapSnapshot } from '../../shared/knowledgeMap'
 import { api } from '../lib/api'
 import { useScreenActive } from '../lib/screenActivity'
+import { useScrollGutter } from '../lib/useScrollGutter'
 import { useWorkspaceStore } from '../stores/workspaceStore'
 import { useLogStore } from '../stores/logStore'
 import { useI18n } from '../i18n'
+import { useTheme } from '../theme'
 import { useOpenLog } from '../components/LogNavigationProvider'
 import KnowledgeMapCanvas from '../components/KnowledgeMapCanvas'
+import MapNoteThumbnail from '../components/MapNoteThumbnail'
 import SearchClearButton from '../components/SearchClearButton'
 import './KnowledgeMap.css'
 
 export default function KnowledgeMap() {
   const { t } = useI18n(), active = useScreenActive(), openLog = useOpenLog()
+  const { theme } = useTheme()
+  const { scrollbarWidth } = useScrollGutter(true)
   const workspaces = useWorkspaceStore(state => state.workspaces)
   const fetchWorkspaces = useWorkspaceStore(state => state.fetchWorkspaces)
   const logs = useLogStore(state => state.logs)
@@ -23,7 +28,7 @@ export default function KnowledgeMap() {
   const [savingEnabled, setSavingEnabled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const menu = useRef<HTMLDivElement>(null), trigger = useRef<HTMLButtonElement>(null)
-  useEffect(() => { const timer = setTimeout(() => setSearch(query.trim()), 200); return () => clearTimeout(timer) }, [query])
+  useEffect(() => { const timer = setTimeout(() => setSearch(query.trim()), 350); return () => clearTimeout(timer) }, [query])
   useEffect(() => {
     if (!active) { setMenuOpen(false); return }
     void fetchWorkspaces()
@@ -80,6 +85,9 @@ export default function KnowledgeMap() {
     useWorkspaceStore.getState().setSelectedId(node.note.workspaceId || workspaces.find(item => item.is_default)?.id || null)
     openLog(node.note.id)
   }
+  const previewImage = (node: MapNode) => {
+    if (node.note.imageVersion) void window.electronAPI?.openMapImageViewer(node.note.id, theme).catch(() => {})
+  }
   const options = [{ id: '', label: t('mapAllWorkspaces') }, ...workspaces.map(item => ({ id: item.id, label: item.is_default ? t('defaultWorkspace') : item.name }))]
   const toggleEnabled = async () => {
     setSavingEnabled(true)
@@ -96,16 +104,16 @@ export default function KnowledgeMap() {
       <div><h1>{t('knowledgeMap')}</h1><p>{t('mapDescription')}</p></div>
       <div className="knowledge-header-actions">
         <label className="knowledge-enable-control"><span>{t(snapshot.enabled ? 'mapEnabled' : 'mapDisabled')}</span>
-          <button type="button" role="switch" className="knowledge-enable-toggle" aria-label={t('knowledgeMap')} aria-checked={snapshot.enabled} disabled={savingEnabled || loading} onClick={() => void toggleEnabled()}><span /></button>
+          <button type="button" role="switch" className="knowledge-enable-toggle" aria-label={t('knowledgeMap')} aria-checked={snapshot.enabled} disabled={savingEnabled || (loading && !snapshot.enabled)} onClick={() => void toggleEnabled()}><span /></button>
         </label>
         <button type="button" className="knowledge-icon-button" disabled={!snapshot.enabled || loading || savingEnabled} onClick={() => setRefresh(value => value + 1)} title={t('mapRefresh')} aria-label={t('mapRefresh')}><RefreshCw size={16} className={loading && snapshot.enabled ? 'animate-spin' : ''} /></button>
       </div>
     </header>
     {!snapshot.enabled ? <div className="knowledge-disabled" role="status"><Waypoints size={32} /><p>{error ? t('mapError') : t('mapEnableHint')}</p></div> : <>
     <div className="knowledge-toolbar">
-      <div className="knowledge-search"><Search size={15} className="shrink-0" /><input aria-label={t('mapSearch')} placeholder={t('mapSearch')} value={query} onChange={event => setQuery(event.target.value)} /><SearchClearButton value={query} onClear={() => { setQuery(''); setSearch('') }} /></div>
-      <div className="knowledge-workspaces" ref={menu}>
-        <button ref={trigger} type="button" aria-label={t('workspaces')} aria-haspopup="listbox" aria-expanded={menuOpen} onClick={() => setMenuOpen(value => !value)} onKeyDown={event => { if (['ArrowDown', 'ArrowUp'].includes(event.key)) { event.preventDefault(); setMenuOpen(true) } }}>
+      <div className="knowledge-search"><Search size={14} className="search-input-icon text-gray-400" /><input className="input block pl-8 pr-9 w-full py-1.5" aria-label={t('mapSearch')} placeholder={t('mapSearch')} maxLength={200} value={query} onChange={event => setQuery(event.target.value)} /><SearchClearButton value={query} onClear={() => { setQuery(''); setSearch('') }} /></div>
+      <div className="knowledge-workspaces" ref={menu} style={{ marginRight: scrollbarWidth }}>
+        <button ref={trigger} className="input" type="button" aria-label={t('workspaces')} aria-haspopup="listbox" aria-expanded={menuOpen} onClick={() => setMenuOpen(value => !value)} onKeyDown={event => { if (['ArrowDown', 'ArrowUp'].includes(event.key)) { event.preventDefault(); setMenuOpen(true) } }}>
           <FolderOpen size={14} /><span>{options.find(item => item.id === workspace)?.label ?? t('mapAllWorkspaces')}</span><ChevronDown size={14} />
         </button>
         {menuOpen && <div role="listbox" aria-label={t('workspaces')} className="knowledge-workspace-options" onKeyDown={event => {
@@ -123,10 +131,16 @@ export default function KnowledgeMap() {
         {['downloading', 'indexing', 'error'].includes(snapshot.indexing.stage) && <div className="knowledge-index-status" role="status">
           {snapshot.indexing.stage === 'error' ? <><span>{t('mapIndexError')}</span><button onClick={() => { void api.retryKnowledgeMap().then(() => setRefresh(value => value + 1)).catch(() => setError(true)) }}>{t('settingsRetry')}</button></> : <><RefreshCw size={13} className="animate-spin" /><span>{snapshot.indexing.stage === 'downloading' ? t('mapDownloading', { progress: snapshot.indexing.progress ?? 0 }) : t('mapIndexing', { completed: snapshot.indexing.completed, total: snapshot.indexing.total })}</span></>}
         </div>}
-        <KnowledgeMapCanvas graph={graph} selected={selected} onSelect={select} />
+        <KnowledgeMapCanvas graph={graph} selected={selected} onSelect={select} onOpen={id => {
+          const node = nodeById.get(id)
+          if (node) readNote(node)
+        }} onPreview={id => {
+          const node = nodeById.get(id)
+          if (node) previewImage(node)
+        }} />
         {loading && <div className="knowledge-loading" role="status" aria-label={t('loading')}><RefreshCw size={20} className="animate-spin" /></div>}
-        {!loading && (!snapshot.notes.length || error) && <div className="knowledge-empty" role="status"><Waypoints size={36} /><h2>{error ? t('mapError') : t('mapEmpty')}</h2><p>{error ? '' : t('mapEmptyHint')}</p>{error && <button className="knowledge-action" onClick={() => setRefresh(value => value + 1)}>{t('mapRefresh')}</button>}</div>}
-        {snapshot.total > snapshot.notes.length && <div className="knowledge-map-caption">{t('mapLimit', { shown: snapshot.notes.length, total: snapshot.total })}</div>}
+        {!loading && (error || (!snapshot.notes.length && !['downloading', 'indexing'].includes(snapshot.indexing.stage))) && <div className="knowledge-empty" role="status"><Waypoints size={36} /><h2>{error ? t('mapError') : t('mapEmpty')}</h2><p>{error ? '' : t('mapEmptyHint')}</p>{error && <button className="knowledge-action" onClick={() => setRefresh(value => value + 1)}>{t('mapRefresh')}</button>}</div>}
+        {snapshot.total > snapshot.notes.length && <div className="knowledge-map-caption">{t(search ? 'mapSearchLimit' : 'mapLimit', { shown: snapshot.notes.length, total: snapshot.total })}</div>}
       </div>
       <aside className={`knowledge-inspector${current ? '' : ' knowledge-inspector-empty'}`} data-screen-scroll="knowledge-inspector">
         {current ? <>
@@ -134,10 +148,14 @@ export default function KnowledgeMap() {
             <span className="knowledge-kind"><FileText size={14} />{t('mapNotes')}</span>
             <button className="knowledge-icon-button" onClick={() => select(null)} aria-label={t('close')}><X size={15} /></button>
           </div>
-            <h2><button type="button" className="knowledge-selected-note" onClick={() => readNote(current)}><span>{name(current)}</span><ArrowUpRight size={14} aria-hidden="true" /></button></h2>
+            <h2><button type="button" className="knowledge-selected-note" onClick={() => readNote(current)}><span className="knowledge-selected-note-title"><span>{name(current)}</span><ArrowUpRight size={14} aria-hidden="true" /></span></button></h2>
+            <MapNoteThumbnail key={current.id} note={current.note} onOpen={() => previewImage(current)} className="knowledge-selected-thumbnail" />
             <h3>{t('mapConnectedNotes')} <span>{connections.length}</span></h3>
             {!connections.length && <p className="knowledge-muted">{t('mapNoConnections')}</p>}
-            <div className="knowledge-node-list">{connections.map(node => <button key={node.id} onClick={() => readNote(node)}><FileText size={14} /><span>{name(node)}<small>{workspaceName(node.note!)}</small></span></button>)}</div>
+            <div className="knowledge-node-list">{connections.map(node => <div key={node.id} className="knowledge-node-entry">
+              {node.note.imageVersion && <MapNoteThumbnail note={node.note} onOpen={() => previewImage(node)} />}
+              <button className="knowledge-node-link" onClick={() => readNote(node)}>{!node.note.imageVersion && <FileText size={14} />}<span>{name(node)}<small>{workspaceName(node.note!)}</small></span></button>
+            </div>)}</div>
         </> : <div className="knowledge-intro"><Waypoints size={30} /><h2>{t('mapSelect')}</h2><p>{t('mapSelectHint')}</p></div>}
       </aside>
     </div>

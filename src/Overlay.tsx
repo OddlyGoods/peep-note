@@ -192,9 +192,14 @@ export default function Overlay() {
     syncWorkspace()
     void refreshWorkspaces()
     contentRef.current?.focus()
-    window.electronAPI?.on('screenshot-captured', (path: unknown) => {
+    window.electronAPI?.on('screenshot-captured', (path: unknown, preview: unknown) => {
       setType('screenshot')
       setFilePath(path as string)
+      if (typeof preview === 'string' && preview.startsWith('data:image/png;base64,')) {
+        setPreviewUrl(preview)
+        return
+      }
+      setPreviewUrl(null)
       window.electronAPI?.readFileAsBase64(path as string).then(b64 => {
         if (b64) setPreviewUrl(`data:image/png;base64,${b64}`)
       })

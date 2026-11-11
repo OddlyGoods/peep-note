@@ -50,6 +50,12 @@ Press `Alt+S` and draw around text, a diagram, or anything you want to understan
 
 ![Select content with Magic Pen, ask a follow-up question, and save the conversation as a note](docs/images/magic-pen.gif)
 
+### 7. Discover connections with Map
+
+Explore an interactive 3D map that connects notes with similar content. Enable **Map** to download the local embedding model on first use; it runs on your computer without an AI API key. Describe what you want to find in the search box, select a note to see its connections, or double-click it to open its contents. Image thumbnails can be enlarged with a click. Secret notes and trashed notes are excluded.
+
+![Search Map, explore related notes, and open a connected note in PeepNote](docs/images/map.gif)
+
 ## Configuration
 
 PeepNote opens directly to the main screen. There are no app accounts, login forms, Google sign-in, session tokens or authentication server. All windows use one local data space for notes, workspaces, settings and optional AI keys. OS user accounts still have their own application data directories.
@@ -65,6 +71,7 @@ The package and Linux executable are named `peep-note`. The app keeps its existi
 - Draw directly over the live screen with `Alt+S` to ask AI about a selected area. In **Settings → AI settings → Magic Pen**, choose **AI API** to use the provider and API key from AI settings, or **AI tools** to choose Codex, Claude Code, Gemini CLI, or Qwen Code (the selected CLI must be installed and signed in). Magic Pen remembers its own model and custom input for each provider and tool, separately from summaries. API models must support image input. A movable response window shows the provider, model and duration, supports follow-up questions and captures, and saves the conversation with its images as a Markdown note. The window closes after a successful save. Codex analysis does not save a Codex session; change or disable the shortcut in **Settings → Global shortcuts**.
 - Select and remember a preferred monitor for capture and recording
 - Organize records with workspaces, tags, date ranges, search, and groups
+- Explore content-based connections in a 3D Map and search notes by meaning using local embeddings
 - Restore deleted records from Trash during a configurable retention period (7, 10, 30, or 90 days; default 10), or permanently delete them. Individually deleted AI summaries are removed immediately; deleting a whole group keeps its summary in Trash with the group.
 - Search Korean and English text in screenshots and attached images using local OCR
 - Generate AI summaries with OpenAI, Claude, Gemini, or Qwen

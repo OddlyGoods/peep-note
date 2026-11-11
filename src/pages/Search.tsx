@@ -174,7 +174,7 @@ export default function Search({ sidebarOnly }: { sidebarOnly?: boolean }) {
               <button
                 key={value}
                 onClick={() => setTypeFilter(value)}
-                className={`flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-sm transition-colors ${
+                className={`flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-xs leading-5 transition-colors ${
                   typeFilter === value
                     ? 'bg-violet-600/20 text-violet-400 border border-violet-500/30'
                     : 'search-sidebar-item text-gray-400 hover:text-gray-200 hover:bg-gray-800'
@@ -196,7 +196,7 @@ export default function Search({ sidebarOnly }: { sidebarOnly?: boolean }) {
           <div className="space-y-0.5">
             <button
               onClick={() => setWorkspaceFilter('')}
-              className={`flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-sm transition-colors ${
+              className={`flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-xs leading-5 transition-colors ${
                 workspaceFilter === ''
                   ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30'
                   : 'search-sidebar-item text-gray-400 hover:text-gray-200 hover:bg-gray-800'
@@ -209,7 +209,7 @@ export default function Search({ sidebarOnly }: { sidebarOnly?: boolean }) {
               <button
                 key={ws.id}
                 onClick={() => setWorkspaceFilter(ws.id)}
-                className={`flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-sm transition-colors ${
+                className={`flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-xs leading-5 transition-colors ${
                   workspaceFilter === ws.id
                     ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30'
                     : 'search-sidebar-item text-gray-400 hover:text-gray-200 hover:bg-gray-800'

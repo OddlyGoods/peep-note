@@ -14,6 +14,7 @@ import remarkGfm from 'remark-gfm'
 import { api, Log, LogComment } from '../lib/api'
 import { useLogStore } from '../stores/logStore'
 import OcrText from '../components/OcrText'
+import RelatedMapNotes from '../components/RelatedMapNotes'
 import FavoriteButton from '../components/FavoriteButton'
 import WorkspaceMoveButton from '../components/WorkspaceMoveButton'
 import MarkdownCodeBlock from '../components/MarkdownCodeBlock'
@@ -798,7 +799,7 @@ export default function LogDetail() {
                       </button>
                     )}
                   </>
-                : <img src={mediaUrl} alt={t('screenshot')} className="w-full object-contain max-h-96 bg-black" />
+                : <img src={mediaUrl} alt={t('screenshot')} className="w-full object-contain max-h-96" style={{ backgroundColor: theme === 'light' ? '#fff' : '#000' }} />
               }
               {log.log_type !== 'video' && log.file_path && (
                 <button
@@ -813,7 +814,7 @@ export default function LogDetail() {
             </div>
           )}
 
-          {!editing && !log.is_secret && log.log_type === 'screenshot' && <OcrText key={log.id} log={log} />}
+          {!editing && !log.is_secret && log.log_type === 'screenshot' && <OcrText key={`ocr:${log.id}`} log={log} />}
 
           {/* 내용 */}
           <div>
@@ -946,7 +947,7 @@ export default function LogDetail() {
                 {attachmentPicker.dialog}
                 <FileDropZone onSelect={attachmentPicker.selectFiles} busy={addingFiles} dragging={draggingFiles} />
                 {fileAddFailed && <p className="text-xs text-red-400">{t('fileImportFailed')}</p>}
-                {!editing && !log.is_secret && log.log_type !== 'screenshot' && !!log.attachments.length && <OcrText key={log.id} log={log} />}
+                {!editing && !log.is_secret && log.log_type !== 'screenshot' && !!log.attachments.length && <OcrText key={`ocr:${log.id}`} log={log} />}
               </>}
             </section>
           )}
@@ -986,6 +987,8 @@ export default function LogDetail() {
               </div>
             </section>
           )}
+
+          {!editing && !log.is_secret && secretGate === 'open' && <RelatedMapNotes key={`related-map:${log.id}`} noteId={log.id} />}
 
           {/* 태그 */}
           <div>

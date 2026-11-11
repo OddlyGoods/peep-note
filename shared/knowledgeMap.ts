@@ -3,9 +3,10 @@ export const KNOWLEDGE_MAP_LIMIT = 400
 export type MapNote = {
   id: string; title: string
   workspaceId: string; workspaceName: string; workspaceDefault: boolean
-  type: string; createdAt: number
+  type: string; createdAt: number; imageVersion?: string
 }
 export type MapSnapshot = { enabled: boolean; notes: MapNote[]; connections: SemanticConnection[]; indexing: EmbeddingState; total: number; limit: number }
+export type RelatedMapSnapshot = { notes: (MapNote & { similarity: number })[]; indexing: EmbeddingState }
 export type MapNode = { id: string; kind: 'note'; label: string; note: MapNote; x: number; y: number; z: number }
 export type MapEdge = { source: string; target: string; similarity: number }
 export type KnowledgeGraph = { nodes: MapNode[]; edges: MapEdge[] }

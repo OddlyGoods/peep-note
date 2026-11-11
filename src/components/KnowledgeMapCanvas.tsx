@@ -4,22 +4,26 @@ import { INITIAL_MAP_CAMERA, projectMapNode, type KnowledgeGraph, type MapNode }
 import { useTheme } from '../theme'
 import { useI18n } from '../i18n'
 import { useScreenActive } from '../lib/screenActivity'
+import { mapThumbnailKey, useMapThumbnails } from '../lib/useMapThumbnails'
 
 export function mapNodeColor(node: MapNode, dark: boolean) {
   const seed = [...(node.note?.workspaceId ?? '')].reduce((sum, char) => (sum * 31 + char.charCodeAt(0)) >>> 0, 0)
   return `hsl(${[224, 270, 190, 32, 330][seed % 5]} 78% ${dark ? 76 : 43}%)`
 }
 
-export default function KnowledgeMapCanvas({ graph, selected, onSelect }: {
-  graph: KnowledgeGraph; selected: string | null; onSelect: (id: string | null) => void
+export default function KnowledgeMapCanvas({ graph, selected, onSelect, onOpen, onPreview }: {
+  graph: KnowledgeGraph; selected: string | null; onSelect: (id: string | null) => void; onOpen: (id: string) => void; onPreview: (id: string) => void
 }) {
   const { theme } = useTheme(), { t } = useI18n(), active = useScreenActive()
   const canvas = useRef<HTMLCanvasElement>(null), container = useRef<HTMLDivElement>(null)
   const [camera, setCamera] = useState({ ...INITIAL_MAP_CAMERA })
   const [size, setSize] = useState({ width: 1, height: 1 })
   const [hovered, setHovered] = useState<string | null>(null)
+  const [previewHovered, setPreviewHovered] = useState(false)
   const drag = useRef<{ id: number; x: number; y: number; moved: boolean; pan: boolean } | null>(null)
+  const lastClick = useRef<{ id: string | null; repeated: boolean } | null>(null)
   const labelHits = useRef<{ id: string; x: number; y: number; width: number; height: number }[]>([])
+  const imageHits = useRef<{ id: string; x: number; y: number; width: number; height: number }[]>([])
   const dark = theme === 'dark'
   const extent = useMemo(() => Math.max(160, ...graph.nodes.map(node => Math.hypot(node.x, node.y, node.z))), [graph])
   const projected = useMemo(() => graph.nodes.map(node => ({ node, ...projectMapNode(node, camera, size.width, size.height, extent) })).sort((a, b) => b.z - a.z), [graph, camera, size, extent])
@@ -34,6 +38,10 @@ export default function KnowledgeMapCanvas({ graph, selected, onSelect }: {
     }
     return ids
   }, [graph, selected, hovered])
+  const thumbnailNotes = useMemo(() => projected.filter(point => point.node.note.imageVersion && point.x >= -40 && point.y >= -40 && point.x <= size.width + 40 && point.y <= size.height + 40)
+    .sort((a, b) => Number(highlighted.has(b.node.id)) - Number(highlighted.has(a.node.id)))
+    .slice(0, 60).map(point => point.node.note), [projected, size, highlighted])
+  const thumbnails = useMapThumbnails(thumbnailNotes, active)
 
   useEffect(() => {
     if (!active || !container.current) return
@@ -67,6 +75,7 @@ export default function KnowledgeMapCanvas({ graph, selected, onSelect }: {
     }
     const labels: { x: number; y: number; width: number; height: number }[] = []
     labelHits.current = []
+    imageHits.current = []
     for (const point of projected) {
       const { node, x, y, depth } = point
       if (x < -40 || y < -40 || x > width + 40 || y > height + 40) continue
@@ -90,18 +99,26 @@ export default function KnowledgeMapCanvas({ graph, selected, onSelect }: {
       if (!focused && labels.length >= 60) continue
       const raw = node.label || t('mapUntitled')
       const label = raw.length > 28 ? raw.slice(0, 27) + '…' : raw
+      const thumbnail = thumbnails.get(mapThumbnailKey(node.note))
+      const imageSpace = thumbnail ? 28 : 0, labelHeight = thumbnail ? 32 : 22
       ctx.font = `${focused ? 600 : 400} 12px sans-serif`
-      const labelWidth = ctx.measureText(label).width + 12
+      const labelWidth = ctx.measureText(label).width + 12 + imageSpace
       const lx = Math.min(width - labelWidth - 6, Math.max(6, x - labelWidth / 2)), ly = y + radius + 6
-      if (!focused && labels.some(rect => lx < rect.x + rect.width && lx + labelWidth > rect.x && ly < rect.y + rect.height && ly + 22 > rect.y)) continue
-      labels.push({ x: lx, y: ly, width: labelWidth, height: 22 })
-      labelHits.current.push({ id: node.id, x: lx, y: ly, width: labelWidth, height: 22 })
+      if (!focused && labels.some(rect => lx < rect.x + rect.width && lx + labelWidth > rect.x && ly < rect.y + rect.height && ly + labelHeight > rect.y)) continue
+      labels.push({ x: lx, y: ly, width: labelWidth, height: labelHeight })
+      labelHits.current.push({ id: node.id, x: lx, y: ly, width: labelWidth, height: labelHeight })
       ctx.globalAlpha = highlighted.size && !related ? 0.5 : 1
-      ctx.fillStyle = dark ? '#10152f' : '#ffffff'; ctx.beginPath(); ctx.roundRect(lx, ly, labelWidth, 22, 5); ctx.fill()
-      ctx.fillStyle = focused ? color : dark ? '#d2d8ee' : '#475569'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(label, lx + 6, ly + 11)
+      ctx.fillStyle = dark ? '#10152f' : '#ffffff'; ctx.beginPath(); ctx.roundRect(lx, ly, labelWidth, labelHeight, 5); ctx.fill()
+      if (thumbnail) {
+        const scale = Math.min(24 / thumbnail.naturalWidth, 24 / thumbnail.naturalHeight)
+        const w = thumbnail.naturalWidth * scale, h = thumbnail.naturalHeight * scale
+        ctx.drawImage(thumbnail, lx + 4 + (24 - w) / 2, ly + 4 + (24 - h) / 2, w, h)
+        imageHits.current.push({ id: node.id, x: lx + 4, y: ly + 4, width: 24, height: 24 })
+      }
+      ctx.fillStyle = focused ? color : dark ? '#d2d8ee' : '#475569'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(label, lx + 6 + imageSpace, ly + labelHeight / 2)
     }
     ctx.globalAlpha = 1
-  }, [graph, projected, size, dark, active, selected, hovered, highlighted, t])
+  }, [graph, projected, size, dark, active, selected, hovered, highlighted, thumbnails, t])
 
   const hit = (x: number, y: number) => {
     let best: string | null = null, distance = 18
@@ -113,6 +130,7 @@ export default function KnowledgeMapCanvas({ graph, selected, onSelect }: {
     if (best) return best
     return [...labelHits.current].reverse().find(rect => x >= rect.x && x <= rect.x + rect.width && y >= rect.y && y <= rect.y + rect.height)?.id ?? null
   }
+  const hitImage = (x: number, y: number) => [...imageHits.current].reverse().find(rect => x >= rect.x && x <= rect.x + rect.width && y >= rect.y && y <= rect.y + rect.height)?.id ?? null
   const zoom = (factor: number) => setCamera(value => ({ ...value, zoom: Math.min(4, Math.max(0.35, value.zoom * factor)) }))
   const reset = () => { setCamera({ ...INITIAL_MAP_CAMERA }); setHovered(null) }
   const hoverNode = graph.nodes.find(node => node.id === hovered)
@@ -127,7 +145,7 @@ export default function KnowledgeMapCanvas({ graph, selected, onSelect }: {
   }, [active])
   return <div className="knowledge-canvas-wrap" ref={container}>
     <canvas ref={canvas} tabIndex={0} role="img" aria-label={`${t('knowledgeMap')}. ${t('mapHint')}. ${t('mapKeyboard')}`} data-testid="knowledge-canvas"
-      style={{ cursor: drag.current ? 'grabbing' : hovered ? 'pointer' : 'grab', touchAction: 'none' }}
+      style={{ cursor: drag.current ? 'grabbing' : previewHovered ? 'zoom-in' : hovered ? 'pointer' : 'grab', touchAction: 'none' }}
       onContextMenu={event => event.preventDefault()}
       onPointerDown={event => {
         if (event.button !== 0 && event.button !== 2) return
@@ -140,18 +158,34 @@ export default function KnowledgeMapCanvas({ graph, selected, onSelect }: {
           const dx = event.clientX - previous.x, dy = event.clientY - previous.y
           if (!previous.moved && Math.hypot(dx, dy) < 4) return
           previous.moved = true; previous.x = event.clientX; previous.y = event.clientY
-          setHovered(null)
+          setHovered(null); setPreviewHovered(false)
           setCamera(value => previous.pan ? { ...value, panX: value.panX + dx, panY: value.panY + dy } : { ...value, yaw: value.yaw - dx * 0.007, pitch: Math.max(-1.4, Math.min(1.4, value.pitch + dy * 0.007)) })
-        } else { const rect = event.currentTarget.getBoundingClientRect(); setHovered(hit(event.clientX - rect.left, event.clientY - rect.top)) }
+        } else {
+          const rect = event.currentTarget.getBoundingClientRect(), x = event.clientX - rect.left, y = event.clientY - rect.top
+          setHovered(hit(x, y)); setPreviewHovered(!!hitImage(x, y))
+        }
       }}
       onPointerUp={event => {
         const previous = drag.current
         if (!previous || previous.id !== event.pointerId) return
         drag.current = null
-        if (!previous.moved && event.button === 0) { const rect = event.currentTarget.getBoundingClientRect(); onSelect(hit(event.clientX - rect.left, event.clientY - rect.top)) }
+        if (!previous.moved && event.button === 0) {
+          const rect = event.currentTarget.getBoundingClientRect()
+          const x = event.clientX - rect.left, y = event.clientY - rect.top
+          const preview = hitImage(x, y), id = preview ?? hit(x, y)
+          lastClick.current = preview ? null : { id, repeated: !!id && lastClick.current?.id === id }
+          onSelect(id)
+          if (preview) onPreview(preview)
+        } else lastClick.current = null
         event.currentTarget.releasePointerCapture(event.pointerId)
       }}
-      onLostPointerCapture={() => { drag.current = null }} onPointerCancel={() => { drag.current = null }} onPointerLeave={() => setHovered(null)}
+      onDoubleClick={event => {
+        if (event.button !== 0 || !lastClick.current?.repeated) return
+        const rect = event.currentTarget.getBoundingClientRect()
+        const id = hit(event.clientX - rect.left, event.clientY - rect.top)
+        if (id && lastClick.current.id === id) { event.preventDefault(); lastClick.current = null; onOpen(id) }
+      }}
+      onLostPointerCapture={() => { drag.current = null }} onPointerCancel={() => { drag.current = null }} onPointerLeave={() => { setHovered(null); setPreviewHovered(false) }}
       onKeyDown={event => {
         if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', '+', '=', '-', 'Home'].includes(event.key)) return
         event.preventDefault()

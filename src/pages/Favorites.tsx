@@ -105,8 +105,8 @@ export default function Favorites() {
     </header>
     <div className="px-6 md:px-[84px] py-3 border-b" style={{ borderColor: 'rgba(99,102,241,0.12)' }}>
       <div className="relative" style={{ marginRight: scrollbarWidth }}>
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-        <input className="input pl-8 pr-9 w-full py-1.5" value={query} onChange={event => setQuery(event.target.value)} aria-label={t('searchPlaceholder')} placeholder={t('searchPlaceholder')} />
+        <Search className="search-input-icon text-gray-400" />
+        <input className="input block pl-8 pr-9 w-full py-1.5" value={query} onChange={event => setQuery(event.target.value)} aria-label={t('searchPlaceholder')} placeholder={t('searchPlaceholder')} />
         <SearchClearButton value={query} onClear={() => { setQuery(''); setSearch('') }} />
       </div>
     </div>

@@ -172,18 +172,6 @@ Choose **Download**, then **Restart and install** when you are ready. Ubuntu may
 
 ## Usage guide
 
-### Date navigation
-
-In **Settings → General**, **Automatically advance dates** updates the main list's end date to today when you reopen or refocus the app. By default, the start date moves with it to preserve the selected range length. Enable the separate **Fix start date** option to keep the selected start date and advance only the end date. Both options are saved independently; with automatic advancement off, the selected dates remain unchanged. You can still change dates manually. The separate Search screen uses its own date range.
-
-### Trash
-
-**Trash** is in the left navigation, below **Favorites**. Deleting a record, selected records, or a group moves its records to Trash and removes them from normal lists, search, Quick List, and calendar counts. Deleted groups appear as a single group, including their AI summary, and can be restored or permanently deleted together. Select records to restore them or permanently delete them. **Empty** permanently deletes all of the current user's trashed records after confirmation.
-
-### Image text search
-
-Open an image record and click **Extract text** to recognize its screenshot or attached images. Saving, opening, editing, restoring records, and launching the app never start extraction automatically. Interrupted requests must be started again. Korean and English recognition models ship with the app; OCR runs locally without an AI API key or uploading images. The first extraction prepares local models under the app's data directory. Extraction may take time for large images. Images larger than 40 MB are skipped; recognition accuracy depends on image quality and typography. Use **Search** to find previously extracted image text alongside titles and note contents.
-
 ### Create a record
 
 1. Click **Add**, or open the quick composer with `Alt+1`.

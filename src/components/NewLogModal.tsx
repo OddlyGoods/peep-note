@@ -8,6 +8,7 @@ import { startRegionRecording } from '../lib/regionRecording'
 import TagInput from './TagInput'
 import VideoPreview from './VideoPreview'
 import ModalLayer from './ModalLayer'
+import ConfirmModal from './ConfirmModal'
 import { useAttachmentPicker } from '../lib/useAttachmentPicker'
 import FileDropZone from './FileDropZone'
 import AttachmentFileRow from './AttachmentFileRow'
@@ -32,6 +33,7 @@ const FORMATS: { value: ContentFormat; label: string; icon: React.ElementType }[
 
 export default function NewLogModal({ onClose, workspaceId, workspaceName }: { onClose: () => void; workspaceId?: string | null; workspaceName?: string }) {
   const fieldId = useId()
+  const dialogRef = useRef<HTMLDivElement>(null)
   const active = useScreenActive()
   const { t } = useI18n()
   const { theme } = useTheme()
@@ -56,6 +58,7 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
   const savePending = useRef(false)
   const dragDepth = useRef(0)
   const [saving, setSaving] = useState(false)
+  const [confirmClose, setConfirmClose] = useState(false)
   const [recording, setRecording] = useState(false)
   useEffect(() => {
     void window.electronAPI?.setRecordingActive?.(recording)
@@ -216,16 +219,32 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
     onClose()
   }
 
+  const hasDraft = () => {
+    const tagDraft = dialogRef.current?.querySelector<HTMLInputElement>('.tag-input-field')?.value ?? ''
+    return !!(title.length || content.length || tags.length || tagDraft.length || filePath || attachmentsRef.current.length
+      || recording || importing.current || savePending.current)
+  }
+
+  const requestClose = () => {
+    if (savePending.current) return
+    if (hasDraft()) setConfirmClose(true)
+    else handleClose()
+  }
+
+  const handleBackdropClose = () => {
+    if (!hasDraft()) handleClose()
+  }
+
   useEffect(() => {
-    if (!active) return
+    if (!active || confirmClose) return
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || event.isComposing || event.defaultPrevented) return
       event.preventDefault()
-      handleClose()
+      requestClose()
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [active, handleClose])
+  }, [active, requestClose, confirmClose])
 
   useEffect(() => {
     if (!active) stopRecording()
@@ -273,12 +292,13 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
   const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
 
   return (
-    <ModalLayer className="new-log-overlay p-4" onClose={handleClose}>
-      <div role="dialog" aria-modal="true" aria-label={workspaceTitle} className="relative w-full max-w-lg bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl max-h-[90vh] flex flex-col">
+    <>
+    <ModalLayer className="new-log-overlay p-4" onClose={handleBackdropClose}>
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={workspaceTitle} className="relative w-full max-w-lg bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl max-h-[90vh] flex flex-col">
         {/* 헤더 */}
         <div className="flex items-center justify-between px-5 py-3 border-b border-gray-800 shrink-0">
           <h2 className="min-w-0 truncate pr-3 text-sm font-semibold text-white">{workspaceTitle}</h2>
-          <button onClick={handleClose} aria-label={t('cancel')} className="new-log-close-button btn-ghost shrink-0 p-1.5"><X className="w-4 h-4" /></button>
+          <button onClick={requestClose} aria-label={t('cancel')} className="new-log-close-button btn-ghost shrink-0 p-1.5"><X className="w-4 h-4" /></button>
         </div>
 
         <div className="p-5 flex flex-col gap-4 overflow-y-auto flex-1 [&>*]:shrink-0"
@@ -395,7 +415,7 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
         {/* 푸터 */}
         <div className="flex items-center justify-end px-5 py-3 border-t border-gray-800 shrink-0">
           <div className="flex items-center gap-2">
-            <button onClick={handleClose} className="new-log-cancel-button btn-secondary">{t('cancel')}</button>
+            <button onClick={requestClose} className="new-log-cancel-button btn-secondary">{t('cancel')}</button>
             <button onClick={handleSave} disabled={saving || recording || importingFiles} className="btn-primary flex items-center gap-2">
               {saving && <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
               {t('save')}
@@ -404,5 +424,9 @@ export default function NewLogModal({ onClose, workspaceId, workspaceName }: { o
         </div>
       </div>
     </ModalLayer>
+    {confirmClose && <ConfirmModal title={t('unsavedChanges')} message={t('discardChangesMessage')}
+      danger={false} confirmLabel={t('discardChanges')} cancelLabel={t('keepEditing')}
+      onConfirm={handleClose} onCancel={() => setConfirmClose(false)} />}
+    </>
   )
 }

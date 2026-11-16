@@ -6,6 +6,7 @@ PeepNote is a local-first desktop app for saving useful LLM responses, recording
 
 ## News
 
+- **2026-11-16 — v1.3.2** — Added workspace reordering and unsaved note protection, and improved Markdown image display and enlarged viewing.
 - **2026-11-11 — v1.3.1** — Improved Map and fixed delays when opening the capture composer.
 - **2026-11-09 — v1.3.0** — Added Map, recently viewed Quick List ordering, and Alt+X to toggle global shortcuts.
 - **2026-11-05 — v1.2.0** — Added Magic Pen and data folder switching.

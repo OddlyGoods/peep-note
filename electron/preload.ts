@@ -37,6 +37,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 파일
   readFileAsBase64: (filepath: string) =>
     ipcRenderer.invoke('read-file-as-base64', filepath),
+  readMarkdownImage: (source: string) => ipcRenderer.invoke('read-markdown-image', source),
   importAttachments: (files: File[], mode: 'copy' | 'link' = 'copy') => ipcRenderer.invoke('import-attachments', files.map(file => ({
     path: webUtils.getPathForFile(file),
     name: file.name
@@ -101,6 +102,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
   openVideoViewer: (filepath: string, theme?: 'light' | 'dark') => ipcRenderer.invoke('open-video-viewer', filepath, theme),
   openImageViewer: (filepath: string, theme?: 'light' | 'dark') => ipcRenderer.invoke('open-image-viewer', filepath, theme),
+  openMarkdownImageViewer: (source: string, alt?: string, theme?: 'light' | 'dark') => ipcRenderer.invoke('open-markdown-image-viewer', source, alt, theme),
   openMapImageViewer: (id: string, theme?: 'light' | 'dark') => ipcRenderer.invoke('open-map-image-viewer', id, theme),
   imageViewerControl: (action: 'minimize' | 'maximize' | 'close') => ipcRenderer.invoke('image-viewer-control', action),
 

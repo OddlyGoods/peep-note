@@ -12,6 +12,7 @@ declare global {
       saveVideo: (buffer: ArrayBuffer, filename: string) => Promise<string | null>
       deleteVideo: (filepath: string) => Promise<boolean>
       readFileAsBase64: (filepath: string) => Promise<string | null>
+      readMarkdownImage?: (source: string) => Promise<string | null>
       importAttachments: (files: File[], mode?: 'copy' | 'link') => Promise<Array<{ path: string; name: string; size: number; isImage: boolean; mimeType: string | null }>>
       deleteAttachmentFile: (filepath: string) => Promise<boolean>
       getAttachmentSize?: (filepath: string) => Promise<number | null>
@@ -63,6 +64,7 @@ declare global {
       openExternal: (url: string) => Promise<void>
       openVideoViewer: (filepath: string, theme?: 'light' | 'dark') => Promise<boolean>
       openImageViewer: (filepath: string, theme?: 'light' | 'dark') => Promise<void>
+      openMarkdownImageViewer?: (source: string, alt?: string, theme?: 'light' | 'dark') => Promise<boolean>
       openMapImageViewer: (id: string, theme?: 'light' | 'dark') => Promise<boolean>
       imageViewerControl: (action: 'minimize' | 'maximize' | 'close') => Promise<void>
       on: (channel: string, callback: (...args: unknown[]) => void) => void

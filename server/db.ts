@@ -111,6 +111,16 @@ function initializeSchema(db: Database) {
   `)
 
   // 마이그레이션
+  if (!db.exec('PRAGMA table_info(workspaces)')[0].values.some(column => column[1] === 'sort_order')) {
+    db.run('ALTER TABLE workspaces ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0')
+    const rows = db.exec('SELECT id, user_id FROM workspaces ORDER BY user_id, is_default DESC, created_at ASC, rowid ASC')[0]?.values ?? []
+    const positions = new Map<string, number>()
+    for (const [id, user] of rows) {
+      const position = positions.get(String(user)) ?? 0
+      db.run('UPDATE workspaces SET sort_order = ? WHERE id = ?', [position, id])
+      positions.set(String(user), position + 1)
+    }
+  }
   try { db.run("ALTER TABLE comments ADD COLUMN attachments TEXT NOT NULL DEFAULT '[]'") } catch {}
   try { db.run("ALTER TABLE logs ADD COLUMN content_format TEXT NOT NULL DEFAULT 'text'") } catch {}
   try { db.run("ALTER TABLE logs ADD COLUMN attachments TEXT NOT NULL DEFAULT '[]'") } catch {}

@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
   Camera, Video, FileText, LayoutGrid, Sparkles,
-  SlidersHorizontal, FolderOpen, Pencil, Trash2, Check, X as XIcon
+  SlidersHorizontal, FolderOpen, Pencil, Trash2, Check, ArrowUp, ArrowDown, X as XIcon
 } from 'lucide-react'
 import { useLogStore } from '../stores/logStore'
 import { useWorkspaceStore } from '../stores/workspaceStore'
@@ -77,7 +77,7 @@ export default function DashboardSidebar() {
 
   const {
     workspaces, selectedId: selectedWorkspaceId,
-    fetchWorkspaces, createWorkspace, updateWorkspace, deleteWorkspace, setSelectedId
+    fetchWorkspaces, createWorkspace, updateWorkspace, deleteWorkspace, moveWorkspace, reordering, setSelectedId
   } = useWorkspaceStore()
 
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -87,8 +87,10 @@ export default function DashboardSidebar() {
   const [typeCounts, setTypeCounts] = useState<Record<string, number>>({})
   const [workspaceCounts, setWorkspaceCounts] = useState<Record<string, number>>({})
   const [workspaceToDelete, setWorkspaceToDelete] = useState<string | null>(null)
+  const [workspaceOrderFailed, setWorkspaceOrderFailed] = useState(false)
   const editInputRef = useRef<HTMLInputElement>(null)
   const newInputRef = useRef<HTMLInputElement>(null)
+  const newWorkspaceRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!active) return
@@ -137,6 +139,24 @@ export default function DashboardSidebar() {
   useEffect(() => {
     if (addingNew && newInputRef.current) newInputRef.current.focus()
   }, [addingNew])
+
+  useEffect(() => {
+    if (!addingNew || newName.trim()) return
+    const dismissEmpty = (event: PointerEvent) => {
+      if (!newWorkspaceRef.current?.contains(event.target as Node)) {
+        setAddingNew(false)
+        setNewName('')
+      }
+    }
+    document.addEventListener('pointerdown', dismissEmpty)
+    return () => document.removeEventListener('pointerdown', dismissEmpty)
+  }, [addingNew, newName])
+
+  const changeWorkspaceOrder = async (id: string, direction: 'up' | 'down') => {
+    setWorkspaceOrderFailed(false)
+    try { await moveWorkspace(id, direction) }
+    catch { setWorkspaceOrderFailed(true) }
+  }
 
   const confirmEdit = async () => {
     if (editingId && editingName.trim()) await updateWorkspace(editingId, editingName.trim())
@@ -215,7 +235,7 @@ export default function DashboardSidebar() {
         </div>
 
         <div className="space-y-0.5">
-          {workspaces.map(ws => (
+          {workspaces.map((ws, index) => (
             <div key={ws.id} className="group relative">
               {editingId === ws.id ? (
                 <div className="rounded-lg border border-violet-500/35 bg-violet-500/10 p-2 shadow-[0_4px_14px_rgba(79,70,229,0.10)]">
@@ -244,37 +264,51 @@ export default function DashboardSidebar() {
                   </div>
                 </div>
               ) : (
+                <div>
                 <button
                   onClick={() => { setSelectedId(ws.id); if (location.pathname !== '/') navigate('/') }}
-                  className={`flex items-center gap-2 w-full px-3 py-2 rounded-lg text-xs transition-colors ${
+                  className={`flex items-center gap-2 w-full px-3 py-2 rounded-lg text-xs transition-colors ${ws.is_default ? 'group-hover:pr-14 group-focus-within:pr-14' : 'group-hover:pr-24 group-focus-within:pr-24'} ${
                     selectedWorkspaceId === ws.id
                       ? workspaceActiveClass(ws.id, ws.is_default)
                       : 'workspace-list-item text-gray-400 hover:text-gray-200 hover:bg-gray-800'
                   }`}
                 >
                   <span className="flex-1 text-left truncate">{ws.is_default ? t('defaultWorkspace') : ws.name}</span>
-                  <span className={`text-xs px-1.5 py-0.5 rounded-full bg-gray-800/80 text-gray-500 ${!ws.is_default ? 'group-hover:hidden' : ''}`}>
+                  <span className="text-xs px-1.5 py-0.5 rounded-full bg-gray-800/80 text-gray-500 group-hover:invisible group-focus-within:invisible">
                     {workspaceCounts[ws.id] ?? 0}
                   </span>
-                  {!ws.is_default && (
-                    <span className="hidden group-hover:flex items-center gap-0.5 shrink-0">
-                      <span onClick={e => { e.stopPropagation(); setEditingId(ws.id); setEditingName(ws.name) }}
-                        className="w-5 h-5 flex items-center justify-center rounded hover:bg-violet-500/15 text-gray-500 hover:text-violet-300 cursor-pointer">
-                        <Pencil className="w-3 h-3" />
-                      </span>
-                      <span onClick={e => { e.stopPropagation(); setWorkspaceToDelete(ws.id) }}
-                        className="w-5 h-5 flex items-center justify-center rounded hover:bg-red-500/20 text-gray-500 hover:text-red-400 cursor-pointer">
-                        <Trash2 className="w-3 h-3" />
-                      </span>
-                    </span>
-                  )}
                 </button>
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 hidden group-hover:flex group-focus-within:flex items-center gap-0.5 shrink-0">
+                      <button type="button" disabled={index === 0 || reordering} title={t('workspaceMoveUp')} aria-label={t('workspaceMoveUp')}
+                        onClick={() => void changeWorkspaceOrder(ws.id, 'up')}
+                        className="w-5 h-5 flex items-center justify-center rounded hover:bg-violet-500/15 text-gray-500 hover:text-violet-300 disabled:opacity-25 disabled:cursor-default">
+                        <ArrowUp className="w-3 h-3" />
+                      </button>
+                      <button type="button" disabled={index === workspaces.length - 1 || reordering} title={t('workspaceMoveDown')} aria-label={t('workspaceMoveDown')}
+                        onClick={() => void changeWorkspaceOrder(ws.id, 'down')}
+                        className="w-5 h-5 flex items-center justify-center rounded hover:bg-violet-500/15 text-gray-500 hover:text-violet-300 disabled:opacity-25 disabled:cursor-default">
+                        <ArrowDown className="w-3 h-3" />
+                      </button>
+                      {!ws.is_default && <>
+                      <button type="button" title={t('edit')} aria-label={t('edit')}
+                        onClick={() => { setEditingId(ws.id); setEditingName(ws.name) }}
+                        className="w-5 h-5 flex items-center justify-center rounded hover:bg-violet-500/15 text-gray-500 hover:text-violet-300">
+                        <Pencil className="w-3 h-3" />
+                      </button>
+                      <button type="button" title={t('delete')} aria-label={t('delete')}
+                        onClick={() => setWorkspaceToDelete(ws.id)}
+                        className="w-5 h-5 flex items-center justify-center rounded hover:bg-red-500/20 text-gray-500 hover:text-red-400">
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                      </>}
+                    </div>
+                </div>
               )}
             </div>
           ))}
 
           {addingNew && (
-            <div className="rounded-lg border border-violet-500/35 bg-violet-500/10 p-2 shadow-[0_4px_14px_rgba(79,70,229,0.10)]">
+            <div ref={newWorkspaceRef} className="rounded-lg border border-violet-500/35 bg-violet-500/10 p-2 shadow-[0_4px_14px_rgba(79,70,229,0.10)]">
               <div className="flex items-center gap-1.5">
                 <input
                   ref={newInputRef}
@@ -301,6 +335,7 @@ export default function DashboardSidebar() {
               </div>
             </div>
           )}
+          {workspaceOrderFailed && <p role="alert" className="px-1 pt-2 text-xs text-red-400">{t('workspaceOrderFailed')}</p>}
         </div>
       </div>
 

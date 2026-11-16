@@ -5,6 +5,7 @@ import { generateId, queryAll, queryOne, run, transaction } from './db'
 import { LOCAL_PROFILE_ID } from './localProfile'
 import { moveToTrash } from './trash'
 import { version } from '../package.json'
+import { ensureDefaultWorkspace, nextWorkspacePosition } from './workspaceOrder'
 
 const user = LOCAL_PROFILE_ID
 const id = z.string().min(1).max(200)
@@ -87,10 +88,11 @@ export function createPeepNoteMcp(onChanged: McpChangeListener = () => {}, autho
     return { ...noteResult(note, true), comments }
   })
   tool('list_workspaces', 'List local workspaces with counts of non-secret active notes only.', {}, true, () => ({ workspaces: queryAll(
-    `SELECT w.id, w.name, w.is_default, (SELECT COUNT(*) FROM logs l WHERE l.user_id = w.user_id AND l.is_secret = 0 AND l.deleted_at IS NULL AND (l.workspace_id = w.id OR (w.is_default = 1 AND l.workspace_id IS NULL))) AS note_count FROM workspaces w WHERE w.user_id = ? ORDER BY w.is_default DESC, w.created_at, w.id`, [user]) }))
+    `SELECT w.id, w.name, w.is_default, (SELECT COUNT(*) FROM logs l WHERE l.user_id = w.user_id AND l.is_secret = 0 AND l.deleted_at IS NULL AND (l.workspace_id = w.id OR (w.is_default = 1 AND l.workspace_id IS NULL))) AS note_count FROM workspaces w WHERE w.user_id = ? ORDER BY w.sort_order, w.is_default DESC, w.created_at, w.id`, [user]) }))
   tool('create_workspace', 'Create a workspace by name.', { name: z.string().trim().min(1).max(200) }, false, input => {
     const newId = generateId()
-    run('INSERT INTO workspaces (id, user_id, name, is_default) VALUES (?, ?, ?, 0)', [newId, user, input.name])
+    ensureDefaultWorkspace(user)
+    run('INSERT INTO workspaces (id, user_id, name, is_default, sort_order) VALUES (?, ?, ?, 0, ?)', [newId, user, input.name, nextWorkspacePosition(user)])
     return { id: newId, name: input.name }
   })
   tool('create_note', 'Save a new non-secret text, Markdown, code or HTML note. File attachments and secret notes cannot be created by MCP.', {

@@ -162,6 +162,61 @@ test('unrelated origins, no-CORS requests and rebinding hosts cannot reach local
   assert.equal((await call('/api/logs', 'OPTIONS', undefined, { Origin: 'http://localhost:5173', 'Access-Control-Request-Method': 'POST' })).status, 204)
 })
 
+test('workspace order persists, includes General, appends new workspaces and rejects foreign IDs', async () => {
+  const before = (await json('/api/workspaces')).map((row: any) => row.id)
+  const first = await json('/api/workspaces', 'POST', { name: 'Ordering first' })
+  const second = await json('/api/workspaces', 'POST', { name: 'Ordering second' })
+  let tail: any
+  try {
+    const moved = await json(`/api/workspaces/${second.id}/order`, 'PUT', { direction: 'up' })
+    assert.deepEqual(moved.map((row: any) => row.id), [...before, second.id, first.id])
+    const general = moved.find((row: any) => row.is_default)
+    const generalIndex = moved.findIndex((row: any) => row.id === general.id)
+    const expected = moved.map((row: any) => row.id)
+    ;[expected[generalIndex], expected[generalIndex + 1]] = [expected[generalIndex + 1], expected[generalIndex]]
+    await json(`/api/workspaces/${general.id}/order`, 'PUT', { direction: 'down' })
+    await initDb(root)
+    assert.deepEqual((await json('/api/workspaces')).map((row: any) => row.id), expected)
+    await json(`/api/workspaces/${expected[0]}/order`, 'PUT', { direction: 'up' })
+    assert.deepEqual((await json('/api/workspaces')).map((row: any) => row.id), expected, 'first-item up is a no-op')
+    tail = await json('/api/workspaces', 'POST', { name: 'Ordering appended' })
+    assert.deepEqual((await json('/api/workspaces')).map((row: any) => row.id), [...expected, tail.id])
+    await json(`/api/workspaces/${first.id}`, 'PUT', { name: 'Ordering renamed' })
+    assert.deepEqual((await json('/api/workspaces')).map((row: any) => row.id), [...expected, tail.id])
+    run('INSERT INTO workspaces (id, user_id, name, sort_order) VALUES (?, ?, ?, ?)', ['foreign-workspace-order', 'another-profile', 'Foreign', 17])
+    assert.equal((await call('/api/workspaces/foreign-workspace-order/order', 'PUT', { direction: 'up' })).status, 404)
+    assert.equal(queryOne<any>('SELECT sort_order FROM workspaces WHERE id = ?', ['foreign-workspace-order']).sort_order, 17)
+    assert.equal((await call(`/api/workspaces/${first.id}/order`, 'PUT', { direction: 'sideways' })).status, 400)
+    assert.equal((await call(`/api/workspaces/${first.id}/order`, 'PUT')).status, 400)
+  } finally {
+    for (const row of [first, second, tail].filter(Boolean)) await json(`/api/workspaces/${row.id}`, 'DELETE')
+    run('DELETE FROM workspaces WHERE id = ?', ['foreign-workspace-order'])
+    transaction(() => before.forEach((id: string, position: number) => run('UPDATE workspaces SET sort_order = ? WHERE id = ?', [position, id])))
+  }
+})
+
+test('legacy workspace migration keeps the existing order and does not reset later moves', async () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'peepnote-workspace-migration-'))
+  const SQL = await require('sql.js')()
+  const legacy = new SQL.Database()
+  try {
+    legacy.run('CREATE TABLE workspaces (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, name TEXT NOT NULL, is_default INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL DEFAULT 1)')
+    for (const [id, user, isDefault] of [['z-first', 'local', 0], ['a-second', 'local', 0], ['general', 'local', 1], ['foreign', 'other-profile', 0]]) {
+      legacy.run('INSERT INTO workspaces (id,user_id,name,is_default) VALUES (?,?,?,?)', [id, user, id, isDefault])
+    }
+    fs.writeFileSync(path.join(directory, 'open-peep-note.db'), Buffer.from(legacy.export()))
+    await initDb(directory)
+    assert.deepEqual((await json('/api/workspaces')).map((row: any) => row.id), ['general', 'z-first', 'a-second'])
+    await json('/api/workspaces/a-second/order', 'PUT', { direction: 'up' })
+    await initDb(directory)
+    assert.deepEqual((await json('/api/workspaces')).map((row: any) => row.id), ['general', 'a-second', 'z-first'])
+  } finally {
+    legacy.close()
+    await initDb(root)
+    fs.rmSync(directory, { recursive: true, force: true })
+  }
+})
+
 test('renderer requests only the local API and never reads or sends account tokens', async () => {
   const originalFetch = globalThis.fetch
   ;(globalThis as any).localStorage = { getItem: () => { throw new Error('Account storage must not be read') } }

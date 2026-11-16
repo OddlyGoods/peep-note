@@ -19,6 +19,7 @@ import FavoriteButton from '../components/FavoriteButton'
 import WorkspaceMoveButton from '../components/WorkspaceMoveButton'
 import MarkdownCodeBlock from '../components/MarkdownCodeBlock'
 import MarkdownLink from '../components/MarkdownLink'
+import MarkdownImage, { markdownUrlTransform } from '../components/MarkdownImage'
 import HighlightedSource from '../components/HighlightedSource'
 import TagInput from '../components/TagInput'
 import AutoGrowTextarea from '../components/AutoGrowTextarea'
@@ -58,6 +59,7 @@ const FORMAT_CONFIG = {
 const FORMATS = ['text', 'markdown', 'code', 'html'] as const
 const MARKDOWN_COMPONENTS = {
   a: MarkdownLink,
+  img: MarkdownImage,
   pre: MarkdownCodeBlock,
   table: ({ node: _node, ...props }: any) => (
     <div className="markdown-table-wrap"><table {...props} /></div>
@@ -77,7 +79,7 @@ function MarkdownContent({ content }: { content: string }) {
       [&_a]:text-violet-300 [&_a]:underline [&_a]:underline-offset-2
       [&_blockquote]:border-l-2 [&_blockquote]:border-violet-400/60 [&_blockquote]:pl-3 [&_blockquote]:text-gray-400 [&_blockquote]:my-3
       [&_code]:font-mono [&_code]:text-emerald-300 [&_code]:text-xs [&_code]:bg-gray-900 [&_code]:px-1 [&_code]:rounded">
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>{content}</ReactMarkdown>
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS} urlTransform={markdownUrlTransform}>{content}</ReactMarkdown>
     </div>
   )
 }
@@ -909,7 +911,7 @@ export default function LogDetail() {
                   [&_h3]:text-sm [&_h3]:font-medium [&_h3]:text-gray-200
                   [&_code]:text-emerald-400 [&_code]:bg-gray-900 [&_code]:px-1 [&_code]:rounded [&_code]:text-xs
                   [&_p]:text-gray-300 [&_p]:leading-relaxed">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>{displayContent}</ReactMarkdown>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS} urlTransform={markdownUrlTransform}>{displayContent}</ReactMarkdown>
                   {summaryProviderName && summaryModelName && (
                     <div className="not-prose mt-4 text-left text-xs text-gray-400">
                       {summaryProviderName} · {summaryModelName}{summaryDuration && ` (${summaryDuration})`}

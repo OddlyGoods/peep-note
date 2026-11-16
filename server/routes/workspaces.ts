@@ -1,32 +1,16 @@
 import { Hono } from 'hono'
-import { generateId, queryOne, queryAll, run } from '../db'
+import { generateId, queryOne, run, transaction } from '../db'
 import { LOCAL_PROFILE_ID } from '../localProfile'
+import { ensureDefaultWorkspace, nextWorkspacePosition, orderedWorkspaces } from '../workspaceOrder'
 
 const workspaces = new Hono()
 
 
-function ensureDefault(userId: string) {
-  const existing = queryOne<any>(
-    'SELECT id FROM workspaces WHERE user_id = ? AND is_default = 1',
-    [userId]
-  )
-  if (!existing) {
-    run(
-      'INSERT INTO workspaces (id, user_id, name, is_default) VALUES (?, ?, ?, 1)',
-      [generateId(), userId, '공통']
-    )
-  }
-}
-
 // GET /api/workspaces
 workspaces.get('/', async (c) => {
   const userId = LOCAL_PROFILE_ID
-  ensureDefault(userId)
-  const rows = queryAll<any>(
-    'SELECT * FROM workspaces WHERE user_id = ? ORDER BY is_default DESC, created_at ASC',
-    [userId]
-  )
-  return c.json(rows.map(r => ({ ...r, is_default: !!r.is_default })))
+  ensureDefaultWorkspace(userId)
+  return c.json(orderedWorkspaces(userId))
 })
 
 // POST /api/workspaces
@@ -35,9 +19,26 @@ workspaces.post('/', async (c) => {
   const { name } = await c.req.json()
   if (!name?.trim()) return c.json({ error: '이름을 입력하세요' }, 400)
   const id = generateId()
-  run('INSERT INTO workspaces (id, user_id, name, is_default) VALUES (?, ?, ?, 0)', [id, userId, name.trim()])
+  ensureDefaultWorkspace(userId)
+  run('INSERT INTO workspaces (id, user_id, name, is_default, sort_order) VALUES (?, ?, ?, 0, ?)', [id, userId, name.trim(), nextWorkspacePosition(userId)])
   const row = queryOne<any>('SELECT * FROM workspaces WHERE id = ?', [id])!
   return c.json({ ...row, is_default: !!row.is_default }, 201)
+})
+
+// Move relative to the current server order, so an older selector cannot
+// overwrite a newly added workspace or another completed move.
+workspaces.put('/:id/order', async c => {
+  const input = await c.req.json().catch(() => null)
+  if (input?.direction !== 'up' && input?.direction !== 'down') return c.json({ error: 'INVALID_DIRECTION' }, 400)
+  const rows = orderedWorkspaces()
+  const index = rows.findIndex(row => row.id === c.req.param('id'))
+  if (index < 0) return c.json({ error: 'WORKSPACE_NOT_FOUND' }, 404)
+  const target = index + (input.direction === 'up' ? -1 : 1)
+  if (target >= 0 && target < rows.length) {
+    ;[rows[index], rows[target]] = [rows[target], rows[index]]
+    transaction(() => rows.forEach((row, position) => run('UPDATE workspaces SET sort_order = ? WHERE id = ? AND user_id = ?', [position, row.id, LOCAL_PROFILE_ID])))
+  }
+  return c.json(orderedWorkspaces())
 })
 
 // PUT /api/workspaces/:id

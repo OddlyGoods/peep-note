@@ -1,4 +1,6 @@
 import { resolveAiResponseLanguage } from '../shared/aiResponseLanguage'
+import { readMarkdownImage } from './markdownImages'
+import { localMarkdownImagePath } from '../shared/markdownImages'
 import { runToolVision } from './toolVision'
 import type { MagicPenTool } from '../shared/magicPenTools'
 import { resolveMagicPen } from '../shared/magicPen'
@@ -55,6 +57,7 @@ import { getCaptureCodexModels } from './codexModelCatalog'
 import { CaptureAnalysisWindow, type AnalysisCapture } from './captureAnalysisWindow'
 import { saveCaptureAnalysis } from '../server/captureAnalysisNotes'
 import { LOCAL_PROFILE_ID } from '../server/localProfile'
+import { orderedWorkspaces } from '../server/workspaceOrder'
 import type { CaptureLanguage } from '../shared/captureAnalysis'
 import { openHtmlPreview } from './htmlPreview'
 import { createVideoViewer } from './videoViewer'
@@ -146,7 +149,7 @@ async function startCaptureAnalysis() {
     previous?.close()
     const settings = loadSettings()
     const language: CaptureLanguage = ['ko', 'ja', 'zh'].includes(String(settings.language)) ? settings.language as CaptureLanguage : 'en'
-    const workspaces = queryAll<{ id: string; name: string; is_default: number }>('SELECT id, name, is_default FROM workspaces WHERE user_id = ? ORDER BY is_default DESC, created_at', [LOCAL_PROFILE_ID])
+    const workspaces = orderedWorkspaces()
       .map(item => ({ id: item.id, name: item.name, isDefault: !!item.is_default }))
     const aiSettings = queryOne<Record<string, any>>('SELECT * FROM settings WHERE user_id = ?', [LOCAL_PROFILE_ID])
     const selection = resolveMagicPen(aiSettings)
@@ -972,10 +975,12 @@ function setupIPC() {
       return false
     }
   })
-  const showImageViewer = (filepath: string, requestedTheme?: string) => {
-    const source = isLinkedAttachment(filepath) ? readableAttachmentFile(filepath) : filepath
-    if (!source) return null
-    const data = fs.readFileSync(source).toString('base64')
+  const showImageViewer = (filepath: string, requestedTheme?: string, imageUrl?: string) => {
+    if (!imageUrl) {
+      const source = isLinkedAttachment(filepath) ? readableAttachmentFile(filepath) : filepath
+      if (!source) return null
+      imageUrl = `data:image/png;base64,${fs.readFileSync(source).toString('base64')}`
+    }
     const filename = path.basename(filepath)
     const settings = loadSettings()
     const theme = requestedTheme === 'light' || requestedTheme === 'dark'
@@ -1030,7 +1035,7 @@ function setupIPC() {
           <button class="titlebar-button titlebar-close" id="close" title="${labels.close}" aria-label="${labels.close}">✕</button>
         </div>
       </div>
-      <div class="img-wrap"><img src="data:image/png;base64,${data}"/></div>
+      <div class="img-wrap"><img src="${escapeHtml(imageUrl)}" referrerpolicy="no-referrer"/></div>
       <script>
         const api = window.electronAPI
         const maximize = document.getElementById('maximize')
@@ -1066,6 +1071,15 @@ function setupIPC() {
     win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`)
   }
   ipcMain.handle('open-image-viewer', (_e, filepath: string, requestedTheme?: string) => showImageViewer(filepath, requestedTheme))
+  ipcMain.handle('open-markdown-image-viewer', async (event, source: unknown, alt: unknown, requestedTheme?: string) => {
+    if (event.sender !== mainWindow?.webContents) return false
+    const file = localMarkdownImagePath(source)
+    const imageUrl = file ? await readMarkdownImage(source) : externalWebUrl(source)
+    if (!imageUrl) return false
+    const name = typeof alt === 'string' && alt.trim()
+      ? alt.slice(0, 200) : file ?? path.basename(new URL(imageUrl).pathname)
+    try { showImageViewer(name, requestedTheme, imageUrl); return true } catch { return false }
+  })
   ipcMain.handle('open-map-image-viewer', (event, id: unknown, requestedTheme?: string) => {
     if (event.sender !== mainWindow?.webContents) return false
     const source = mapImagePath(id)
@@ -1235,6 +1249,11 @@ function setupIPC() {
     } catch {
       return null
     }
+  })
+
+  ipcMain.handle('read-markdown-image', (event, source: unknown) => {
+    if (event.sender !== mainWindow?.webContents) return null
+    return readMarkdownImage(source)
   })
 
   ipcMain.handle('import-attachments', async (_e, entries: unknown, mode: unknown = 'copy') => {

@@ -2,6 +2,8 @@ import { create } from 'zustand'
 import { api, Workspace } from '../lib/api'
 
 const workspaceStorageKey = 'openpeepnote_workspace'
+export const workspaceOrderStorageKey = 'openpeepnote_workspace_order'
+let fetchVersion = 0
 
 function saveSelectedWorkspace(workspace: Workspace | undefined) {
   if (workspace) localStorage.setItem(workspaceStorageKey, JSON.stringify({ id: workspace.id, name: workspace.name, is_default: workspace.is_default }))
@@ -12,10 +14,12 @@ interface WorkspaceState {
   workspaces: Workspace[]
   selectedId: string | null
   loading: boolean
+  reordering: boolean
   fetchWorkspaces: () => Promise<void>
   createWorkspace: (name: string) => Promise<void>
   updateWorkspace: (id: string, name: string) => Promise<void>
   deleteWorkspace: (id: string) => Promise<void>
+  moveWorkspace: (id: string, direction: 'up' | 'down') => Promise<void>
   setSelectedId: (id: string | null) => void
 }
 
@@ -23,11 +27,14 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   workspaces: [],
   selectedId: null,
   loading: false,
+  reordering: false,
 
   fetchWorkspaces: async () => {
+    const version = ++fetchVersion
     set({ loading: true })
     try {
       const workspaces = await api.workspaces.list()
+      if (version !== fetchVersion) return
       set({ workspaces })
       // 선택된 워크스페이스가 없으면 기본(공통) 선택
       if (!get().selectedId && workspaces.length > 0) {
@@ -51,6 +58,18 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     const ws = await api.workspaces.update(id, name)
     set(state => ({ workspaces: state.workspaces.map(w => w.id === id ? ws : w) }))
     if (get().selectedId === id) saveSelectedWorkspace(ws)
+  },
+
+  moveWorkspace: async (id, direction) => {
+    if (get().reordering) return
+    fetchVersion++
+    set({ reordering: true })
+    try {
+      const workspaces = await api.workspaces.move(id, direction)
+      fetchVersion++
+      set({ workspaces })
+      localStorage.setItem(workspaceOrderStorageKey, JSON.stringify(workspaces.map(workspace => workspace.id)))
+    } finally { set({ reordering: false }) }
   },
 
   deleteWorkspace: async (id) => {

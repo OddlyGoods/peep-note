@@ -1,6 +1,7 @@
 import { useState, useEffect, useLayoutEffect, useRef, useId } from 'react'
 import { X, Maximize2, Minimize2, Pencil, Camera, Video, FileText, Text as TextIcon, StopCircle, Code2, Globe, Hash, Lock, ChevronDown, Check, Loader2 } from 'lucide-react'
 import { api, type Workspace } from './lib/api'
+import { workspaceOrderStorageKey } from './stores/workspaceStore'
 import { useI18n } from './i18n'
 import { useTheme } from './theme'
 import { startRegionRecording, RecordingRegion } from './lib/regionRecording'
@@ -234,6 +235,7 @@ export default function Overlay() {
     }
     const handleWorkspaceStorage = (event: StorageEvent) => {
       if (event.key === 'openpeepnote_workspace' || event.key === null) syncWorkspace()
+      if (event.key === workspaceOrderStorageKey || event.key === null) void refreshWorkspaces()
     }
     document.addEventListener('visibilitychange', handleVisibilityChange)
     window.addEventListener('storage', handleWorkspaceStorage)
@@ -631,7 +633,7 @@ export default function Overlay() {
                 aria-expanded={workspaceMenuOpen}
                 onClick={() => {
                   setWorkspaceMenuOpen(open => !open)
-                  if (workspaces.length === 0) void refreshWorkspaces()
+                  void refreshWorkspaces()
                 }}
                 className="flex h-7 max-w-44 items-center gap-1 rounded-md px-2.5 text-xs leading-none transition-colors hover:brightness-110"
                 style={{ background: 'var(--workspace-badge-bg)', color: 'var(--workspace-badge-text)', border: '1px solid var(--workspace-badge-border)' }}

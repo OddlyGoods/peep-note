@@ -166,6 +166,8 @@ export const api = {
       request<Workspace>('/api/workspaces', { method: 'POST', body: JSON.stringify({ name }) }),
     update: (id: string, name: string) =>
       request<Workspace>(`/api/workspaces/${id}`, { method: 'PUT', body: JSON.stringify({ name }) }),
+    move: (id: string, direction: 'up' | 'down') =>
+      request<Workspace[]>(`/api/workspaces/${id}/order`, { method: 'PUT', body: JSON.stringify({ direction }) }),
     delete: (id: string) =>
       request(`/api/workspaces/${id}`, { method: 'DELETE' })
   }
@@ -237,6 +239,7 @@ export interface Workspace {
   name: string
   is_default: boolean
   created_at: number
+  sort_order?: number
 }
 
 export interface Settings {
